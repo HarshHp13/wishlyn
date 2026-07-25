@@ -42,32 +42,6 @@ export default function LoginPage() {
     })();
   }, [router]);
 
-  const enableOfflineMode = (role: 'admin' | 'customer') => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('wishlyn-offline-mode', 'true');
-      const mockEmail = role === 'admin' ? 'admin@wishlyn.com' : 'customer@wishlyn.com';
-      localStorage.setItem('wishlyn-mock-user', JSON.stringify({
-        id: 'mock-user-uuid-1234',
-        email: mockEmail,
-      }));
-      localStorage.setItem('wishlyn-user', JSON.stringify({
-        id: 'mock-user-uuid-1234',
-        email: mockEmail,
-        role,
-      }));
-      setSuccessMsg(`Offline Dev Mode enabled as ${role}! Redirecting...`);
-      const searchParams = new URLSearchParams(window.location.search);
-      const redirectTo = searchParams.get('redirect') || '/';
-      setTimeout(() => {
-        if (role === 'admin') {
-          router.push('/admin');
-        } else {
-          router.push(redirectTo);
-        }
-      }, 1200);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -166,17 +140,6 @@ export default function LoginPage() {
           {errorMsg && (
             <div className={styles.errorMsg}>
               <div>{errorMsg}</div>
-              <div style={{ marginTop: '12px', borderTop: '1px solid #fecaca', paddingTop: '8px', textAlign: 'left' }}>
-                <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#7f1d1d' }}><strong>Offline Dev Bypass:</strong> Stuck on Supabase rate limits or network issues? Click below to bypass auth:</p>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" onClick={() => enableOfflineMode('admin')} style={{ padding: '6px 10px', fontSize: '11px', background: '#1f2937', color: '#fff', border: '1px solid #374151', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}>
-                    Bypass as Admin
-                  </button>
-                  <button type="button" onClick={() => enableOfflineMode('customer')} style={{ padding: '6px 10px', fontSize: '11px', background: '#1f2937', color: '#fff', border: '1px solid #374151', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}>
-                    Bypass as Customer
-                  </button>
-                </div>
-              </div>
             </div>
           )}
           {successMsg && <div className={styles.successMsg}>{successMsg}</div>}
