@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCart } from '../context/CartContext';
+import { getAuthUser } from '../lib/authClient';
 import styles from './Header.module.css';
 
 interface HeaderProps {
@@ -72,28 +73,23 @@ export const Header: React.FC<HeaderProps> = ({ onSearchChange }) => {
     }
   }, []);
 
-  // Check auth status on mount and listen for storage updates
+  // Check auth status on mount and listen for storage/auth updates
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const checkAuthSession = () => {
-      const storedUser = localStorage.getItem('wishlyn-user');
-      if (storedUser) {
-        try {
-          const parsed = JSON.parse(storedUser);
-          if (parsed && parsed.email) {
-            setUser(parsed);
-            return;
-          }
-        } catch (e) {}
-      }
-      setUser(null);
+      const userObj = getAuthUser();
+      setUser(userObj);
     };
 
     checkAuthSession();
 
     window.addEventListener('storage', checkAuthSession);
-    return () => window.removeEventListener('storage', checkAuthSession);
+    window.addEventListener('wishlyn-auth-change', checkAuthSession);
+    return () => {
+      window.removeEventListener('storage', checkAuthSession);
+      window.removeEventListener('wishlyn-auth-change', checkAuthSession);
+    };
   }, []);
 
   // Lock body scroll when mobile nav is open

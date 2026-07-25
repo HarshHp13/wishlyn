@@ -5,34 +5,24 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import { getAuthUser, getAuthToken, setAuthSession, clearAuthSession, AuthUser } from '../../lib/authClient';
 import styles from './profile.module.css';
-
-interface UserSession {
-  id: string;
-  email: string;
-  role: 'customer' | 'admin';
-}
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [user, setUser] = useState<UserSession | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const token = localStorage.getItem('wishlyn-token');
-    const storedUser = localStorage.getItem('wishlyn-user');
+    const storedUser = getAuthUser();
+    const token = getAuthToken();
 
     if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        if (parsed && parsed.email) {
-          setUser(parsed);
-          setLoading(false);
-          return;
-        }
-      } catch (e) {}
+      setUser(storedUser);
+      setLoading(false);
+      return;
     }
 
     if (token) {
@@ -44,7 +34,7 @@ export default function ProfilePage() {
           const data = await res.json();
           if (res.ok && data.user) {
             setUser(data.user);
-            localStorage.setItem('wishlyn-user', JSON.stringify(data.user));
+            setAuthSession(token, data.user);
           } else {
             router.push('/login?redirect=/profile');
           }
@@ -60,13 +50,7 @@ export default function ProfilePage() {
   }, [router]);
 
   const handleSignOut = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('wishlyn-token');
-      localStorage.removeItem('wishlyn-user');
-      localStorage.removeItem('wishlyn-offline-mode');
-      localStorage.removeItem('wishlyn-mock-user');
-      window.dispatchEvent(new Event('storage'));
-    }
+    clearAuthSession();
     router.push('/login');
   };
 

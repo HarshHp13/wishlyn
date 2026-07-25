@@ -46,53 +46,40 @@ export default function AdminPage() {
     async function checkAuth() {
       if (typeof window === 'undefined') return;
 
-      const offlineMode = localStorage.getItem('wishlyn-offline-mode') === 'true';
-      const storedUser = localStorage.getItem('wishlyn-user');
+      const token = getAuthToken();
+      const storedUser = getAuthUser();
 
-      if (offlineMode && storedUser) {
-        try {
-          const userObj = JSON.parse(storedUser);
-          setUserEmail(userObj.email);
-          setSessionToken('offline-mock-token');
-          if (userObj.role === 'admin' || userObj.email.includes('admin')) {
-            setUserRole('admin');
-            loadData();
-          } else {
-            setUserRole('customer');
-          }
-          return;
-        } catch (e) {}
-      }
-
-      const token = localStorage.getItem('wishlyn-token');
-      if (!token) {
+      if (!token && !storedUser) {
         setUserRole('unauthenticated');
         return;
       }
 
-      try {
-        const res = await fetch('/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
+      if (token) {
+        try {
+          const res = await fetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
 
-        if (!res.ok || !data.user) {
+          if (!res.ok || !data.user) {
+            setUserRole('unauthenticated');
+            return;
+          }
+
+          setUserEmail(data.user.email);
+          setUserRole(data.user.role);
+          setSessionToken(token);
+
+          if (data.user.role === 'admin') {
+            loadData();
+          }
+        } catch (e) {
+          console.error('[Admin] Auth error:', e);
           setUserRole('unauthenticated');
-          return;
         }
-
-        setUserEmail(data.user.email);
-        setSessionToken(token);
-
-        if (data.user.role === 'admin') {
-          setUserRole('admin');
-          loadData();
-        } else {
-          setUserRole('customer');
-        }
-      } catch (err) {
-        console.error('[Admin Auth] Verification error:', err);
-        setUserRole('unauthenticated');
+      } else if (storedUser) {
+        setUserEmail(storedUser.email);
+        setUserRole(storedUser.role);
       }
     }
 

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import { setAuthSession, getAuthToken } from '../../lib/authClient';
 import styles from './login.module.css';
 
 export default function LoginPage() {
@@ -18,7 +19,7 @@ export default function LoginPage() {
   // Secure auth session check with redirect parameter support
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const token = localStorage.getItem('wishlyn-token');
+    const token = getAuthToken();
     if (!token) return;
 
     (async () => {
@@ -81,9 +82,8 @@ export default function LoginPage() {
         throw new Error(data.error || 'Authentication failed');
       }
 
-      if (data.token) {
-        localStorage.setItem('wishlyn-token', data.token);
-        localStorage.setItem('wishlyn-user', JSON.stringify(data.user));
+      if (data.token && data.user) {
+        setAuthSession(data.token, data.user);
         setSuccessMsg(activeTab === 'login' ? 'Signed in successfully! Redirecting...' : 'Account created successfully! Redirecting...');
         setTimeout(() => {
           if (data.user.role === 'admin') {

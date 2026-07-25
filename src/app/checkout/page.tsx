@@ -9,6 +9,7 @@ import Footer from '../../components/Footer';
 import CartDrawer from '../../components/CartDrawer';
 import { useCart } from '../../context/CartContext';
 import Script from 'next/script';
+import { getAuthUser, getAuthToken } from '../../lib/authClient';
 import styles from './checkout.module.css';
 
 type Step = 'shipping' | 'payment' | 'confirmation';
@@ -52,21 +53,16 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const storedUser = localStorage.getItem('wishlyn-user');
-    const token = localStorage.getItem('wishlyn-token');
+    const storedUser = getAuthUser();
+    const token = getAuthToken();
 
     if (!token && !storedUser) {
       router.push('/login?redirect=/checkout');
       return;
     }
 
-    if (storedUser) {
-      try {
-        const u = JSON.parse(storedUser);
-        if (u && u.email) {
-          setShipping(prev => ({ ...prev, email: u.email }));
-        }
-      } catch (e) {}
+    if (storedUser && storedUser.email) {
+      setShipping(prev => ({ ...prev, email: storedUser.email }));
     }
 
     // Load saved addresses from localStorage
