@@ -1,0 +1,510 @@
+.section {
+  padding: 120px 0 60px 0; /* Extra top padding to account for fixed header */
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 60px;
+  align-items: start;
+}
+
+/* Gallery styles */
+.gallery {
+  position: sticky;
+  top: 120px;
+}
+
+.mainImageWrapper {
+  width: 100%;
+  aspect-ratio: 1;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mainImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Purchase details panel */
+.detailsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.breadcrumbs {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.breadcrumbs a:hover {
+  color: var(--rose-gold-dark);
+}
+
+.title {
+  font-size: 36px;
+  line-height: 1.2;
+}
+
+.priceRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.price {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stockWarning {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e57373;
+}
+
+.description {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* Variant & Sizing Customizers */
+.optionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.optionLabel {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metalSwatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.metalTab {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+}
+
+.activeMetal {
+  border-color: var(--champagne-gold);
+  background-color: var(--soft-peach);
+  color: var(--champagne-gold-hover);
+  font-weight: 600;
+}
+
+.sizeGrid {
+  display: flex;
+  gap: 12px;
+}
+
+.sizeBtn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.activeSize {
+  border-color: var(--champagne-gold);
+  background-color: var(--soft-peach);
+  color: var(--champagne-gold-hover);
+}
+
+/* Packaging Cards */
+.giftingCard {
+  padding: 20px;
+  background-color: var(--bg-secondary);
+  border: 1px dashed var(--champagne-gold);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.giftCheckboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.giftCheckbox {
+  accent-color: var(--champagne-gold);
+}
+
+.giftInputWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.giftTextarea {
+  width: 100%;
+  height: 80px;
+  padding: 12px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+  resize: none;
+}
+
+.giftTextarea:focus {
+  border-color: var(--champagne-gold);
+}
+
+.giftTextLimit {
+  font-size: 11px;
+  color: var(--text-secondary);
+  align-self: flex-end;
+}
+
+/* CTA triggers */
+.addToCartBtn {
+  width: 100%;
+  padding: 16px;
+  background-color: var(--deep-espresso);
+  color: var(--warm-ivory);
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--champagne-gold);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-smooth);
+}
+
+.addToCartBtn:hover:not(:disabled) {
+  background-color: var(--champagne-gold);
+  color: var(--deep-espresso);
+  box-shadow: 0 4px 16px rgba(198, 164, 106, 0.35);
+}
+
+.addToCartBtn:disabled {
+  background-color: var(--medium-gray);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+/* Pincode checking inputs */
+.pincodeBox {
+  padding: 20px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color-light);
+  border-radius: var(--radius-md);
+}
+
+.pincodeLabel {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.pincodeForm {
+  display: flex;
+  gap: 10px;
+}
+
+.pincodeInput {
+  flex: 1;
+  padding: 10px 16px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  border: 1px solid var(--border-color-light);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.pincodeInput:focus {
+  border-color: var(--rose-gold-dark);
+}
+
+.pincodeBtn {
+  padding: 10px 20px;
+  background-color: var(--charcoal);
+  color: var(--pure-white);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+
+.pincodeBtn:hover {
+  background-color: var(--rose-gold-dark);
+}
+
+.pincodeStatus {
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.pincodeValid {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #388e3c;
+  border: 1px solid rgba(76, 175, 80, 0.2);
+}
+
+.pincodeInvalid {
+  background-color: rgba(229, 115, 115, 0.1);
+  color: #d32f2f;
+  border: 1px solid rgba(229, 115, 115, 0.2);
+}
+
+/* Tabs specifications Panel */
+.tabsWrapper {
+  border: 1px solid var(--border-color-light);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.tabsHeader {
+  display: flex;
+  border-bottom: 1px solid var(--border-color-light);
+}
+
+.tabTitle {
+  flex: 1;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: center;
+  border-bottom: 2px solid transparent;
+}
+
+.tabTitle:hover {
+  color: var(--rose-gold-dark);
+}
+
+.activeTab {
+  color: var(--text-primary);
+  border-bottom-color: var(--rose-gold-dark);
+  font-weight: 600;
+  background-color: var(--bg-primary);
+}
+
+.tabContent {
+  padding: 20px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.specList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.specList li {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color-light);
+  padding-bottom: 6px;
+}
+
+.specList li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.tabPara {
+  color: var(--text-secondary);
+}
+
+/* Cross sales Complete the Look panel */
+.crossSell {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.crossSell h3 {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+}
+
+.crossSellCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color-light);
+  border-radius: var(--radius-md);
+}
+
+.crossSellImgWrapper {
+  width: 60px;
+  height: 60px;
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.crossSellImg {
+  object-fit: cover;
+}
+
+.crossSellInfo {
+  flex: 1;
+}
+
+.crossSellInfo h4 {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.crossSellInfo span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rose-gold-dark);
+}
+
+.crossSellBtn {
+  padding: 6px 16px;
+  background-color: var(--charcoal);
+  color: var(--pure-white);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+
+.crossSellBtn:hover {
+  background-color: var(--rose-gold-dark);
+}
+
+/* Responsiveness settings */
+@media (max-width: 900px) {
+  .section {
+    padding: 100px 0 40px 0;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .gallery {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 28px;
+  }
+  .price {
+    font-size: 22px;
+  }
+  .description {
+    font-size: 14px;
+  }
+  .tabsHeader {
+    flex-direction: column;
+  }
+  .tabTitle {
+    border-bottom: 1px solid var(--border-color-light);
+    border-right: none;
+  }
+  .activeTab {
+    border-bottom-color: var(--rose-gold-dark);
+  }
+  .metalSwatches {
+    gap: 8px;
+  }
+  .metalTab {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .sizeBtn {
+    width: 40px;
+    height: 40px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .section {
+    padding: 88px 0 24px 0;
+  }
+  .grid {
+    gap: 24px;
+  }
+  .title {
+    font-size: 24px;
+  }
+  .price {
+    font-size: 20px;
+  }
+  .priceRow {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pincodeForm {
+    flex-direction: column;
+  }
+  .pincodeBtn {
+    width: 100%;
+  }
+  .giftingCard {
+    padding: 16px;
+  }
+  .addToCartBtn {
+    padding: 14px;
+    font-size: 13px;
+  }
+  .crossSellCard {
+    padding: 10px;
+    gap: 12px;
+  }
+}

@@ -1,0 +1,148 @@
+:root {
+  color-scheme: light;
+
+  /* Wishlyn Brand Palette (from Design.jpeg) */
+  --champagne-gold: #c6a46a;
+  --champagne-gold-hover: #b39054;
+  --champagne-gold-light: #f8f1e5;
+  --soft-peach: #f5eae2;
+  --warm-ivory: #faf7f2;
+  --deep-espresso: #3b312a;
+  --muted-sand: #8c7d73;
+  --border-tint: #e8dfd5;
+  --pure-white: #ffffff;
+
+  /* Functional Mappings */
+  --bg-primary: var(--warm-ivory);
+  --bg-secondary: var(--pure-white);
+  --bg-tertiary: var(--soft-peach);
+  --text-primary: var(--deep-espresso);
+  --text-secondary: var(--muted-sand);
+  --text-inverse: var(--warm-ivory);
+  --accent-gold: var(--champagne-gold);
+  --border-color: var(--border-tint);
+  --border-color-light: #f0e8e1;
+
+  /* Legacy compatibility aliases */
+  --rose-gold: var(--champagne-gold);
+  --rose-gold-dark: var(--champagne-gold-hover);
+  --rose-gold-light: var(--soft-peach);
+  --champagne: var(--champagne-gold);
+  --champagne-dark: var(--champagne-gold-hover);
+  --alabaster: var(--warm-ivory);
+  --charcoal: var(--deep-espresso);
+  --soft-gray: #ece9e4;
+  --medium-gray: var(--border-tint);
+  --muted-text: var(--muted-sand);
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(59, 49, 42, 0.04);
+  --shadow-md: 0 8px 24px rgba(59, 49, 42, 0.07);
+  --shadow-lg: 0 16px 40px rgba(59, 49, 42, 0.12);
+  --shadow-glass: 0 8px 32px rgba(198, 164, 106, 0.12);
+
+  /* Borders & Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Layout */
+  --container-width: 1280px;
+  --header-height: 80px;
+
+  /* Animations */
+  --transition-smooth: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --transition-fast: all 0.15s ease-out;
+}
+
+/* CSS resets and default properties */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  min-height: 100%;
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: var(--transition-smooth);
+}
+
+button {
+  font-family: var(--font-sans);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Focus outline styles for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--champagne-gold);
+  outline-offset: 4px;
+}
+
+/* Base Layout Container */
+.container {
+  width: 100%;
+  max-width: var(--container-width);
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: 24px;
+  padding-left: 24px;
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--rose-gold-dark);
+}
