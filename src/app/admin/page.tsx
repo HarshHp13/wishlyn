@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import { getProducts, getCategories, Product, Category } from '../../data/mockDb';
+import { getAuthUser, getAuthToken, clearAuthSession } from '../../lib/authClient';
 import styles from './admin.module.css';
 
 export default function AdminPage() {
