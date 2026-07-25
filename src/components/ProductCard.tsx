@@ -67,7 +67,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
           <div className={styles.priceRow}>
             <span className={styles.pricePrefix}>From</span>
-            <span className={styles.price}>${product.basePrice.toFixed(2)}</span>
+            <span className={styles.price}>₹{product.basePrice.toLocaleString('en-IN')}</span>
           </div>
         </div>
       </Link>

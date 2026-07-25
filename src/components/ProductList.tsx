@@ -20,7 +20,7 @@ export const ProductList: React.FC<ProductListProps> = ({
   const [categories] = useState<Category[]>(initialCategories);
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedSort, setSelectedSort] = useState('featured');
-  const [maxPrice, setMaxPrice] = useState<number>(300);
+  const [maxPrice, setMaxPrice] = useState<number>(50000);
 
   const displayCategories = useMemo(() => {
     const cleanCategories = categories.filter(c => c.id !== 'all');
@@ -76,14 +76,14 @@ export const ProductList: React.FC<ProductListProps> = ({
           {/* Price Range Filter */}
           <div className={styles.filterGroup}>
             <label htmlFor="priceRange" className={styles.filterLabel}>
-              Max Price: <strong>${maxPrice}</strong>
+              Max Price: <strong>₹{maxPrice.toLocaleString('en-IN')}</strong>
             </label>
             <input
               type="range"
               id="priceRange"
-              min="50"
-              max="300"
-              step="10"
+              min="1000"
+              max="50000"
+              step="500"
               value={maxPrice}
               onChange={(e) => setMaxPrice(Number(e.target.value))}
               className={styles.rangeInput}
@@ -121,7 +121,7 @@ export const ProductList: React.FC<ProductListProps> = ({
               onClick={() => {
                 setActiveCategory('all');
                 setSelectedSort('featured');
-                setMaxPrice(300);
+                setMaxPrice(50000);
               }}
               className={styles.resetBtn}
             >

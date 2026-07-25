@@ -89,8 +89,8 @@ export default function CheckoutPage() {
     setAuthLoading(false);
   }, [router]);
 
-  const shippingCost = cartTotal >= 150 ? 0 : 9.99;
-  const tax = cartTotal * 0.08;
+  const shippingCost = cartTotal >= 3000 ? 0 : 250;
+  const tax = Math.round(cartTotal * 0.03);
   const total = cartTotal + shippingCost + tax;
 
   const handleShippingChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -116,48 +116,6 @@ export default function CheckoutPage() {
 
     setCurrentStep('payment');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Direct Instant Success Flow (Test Mode / Bypass Domestic Card limits)
-  const handleDirectSuccessPayment = async () => {
-    setIsSubmitting(true);
-    setPaymentError(null);
-    const generatedOrderId = `WISHLYN-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
-    try {
-      const cartPayload = cartItems.map(item => ({
-        variantId: item.variant.id,
-        quantity: item.quantity,
-        giftWrap: item.giftWrap,
-        giftMessage: item.giftMessage,
-      }));
-
-      await fetch('/api/razorpay/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          razorpay_order_id: `MOCK-RZP-${Date.now()}`,
-          razorpay_payment_id: `pay_mock_${Date.now()}`,
-          razorpay_signature: `mock_sig_${Date.now()}`,
-          orderId: generatedOrderId,
-          shipping,
-          items: cartPayload,
-          serverTotal: total,
-        }),
-      });
-
-      setOrderId(generatedOrderId);
-      clearCart();
-      setCurrentStep('confirmation');
-    } catch (err: unknown) {
-      console.error('[Checkout] Direct Success Flow Error:', err);
-      setOrderId(generatedOrderId);
-      clearCart();
-      setCurrentStep('confirmation');
-    } finally {
-      setIsSubmitting(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
   };
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
@@ -189,7 +147,11 @@ export default function CheckoutPage() {
       // Mock mode (dev only — credentials missing)
       if (orderData.mock) {
         console.log('[Checkout] Razorpay in mock mode, simulating success');
-        await handleDirectSuccessPayment();
+        setOrderId(generatedOrderId);
+        clearCart();
+        setCurrentStep('confirmation');
+        setIsSubmitting(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
 
@@ -197,7 +159,7 @@ export default function CheckoutPage() {
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount,
-        currency: orderData.currency,
+        currency: orderData.currency || 'INR',
         name: 'Wishlyn Fine Jewellery',
         description: `Checkout Order for ${shipping.firstName} ${shipping.lastName}`,
         order_id: orderData.orderId,
@@ -437,33 +399,15 @@ export default function CheckoutPage() {
                   <div className={styles.paymentSection}>
                     <div className={styles.paymentBadges}>
                       <span className={styles.badge}>🔒 256-bit SSL Encryption</span>
-                      <span className={styles.badge}>💳 Visa / Mastercard / UPI</span>
+                      <span className={styles.badge}>💳 UPI / Cards / NetBanking</span>
                       <span className={styles.badge}>🛡️ Buyer Protection</span>
                     </div>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: '16px 0 8px 0' }}>
-                      Your payment will be processed securely in INR (approx ₹{(total * 83).toFixed(0)}) at the current conversion rate. You will be redirected to a secure payment window to complete your purchase.
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: '16px 0 12px 0' }}>
+                      Your payment will be processed securely via Razorpay in INR (₹{Math.round(total).toLocaleString('en-IN')}). You will be redirected to the secure payment window to complete your order.
                     </p>
 
-                    {/* Instant Success / Test Mode Option */}
-                    <div className={styles.demoSuccessBox}>
-                      <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '4px' }}>
-                        ⚡ Test Mode / Instant Success Path:
-                      </div>
-                      <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-                        If Razorpay test mode prompts for a domestic card or fails, click below to complete the test purchase instantly and record your order in Neon DB.
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleDirectSuccessPayment}
-                        className={styles.demoSuccessBtn}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? 'Processing Order...' : 'Complete Test Order Instantly (Success Path) →'}
-                      </button>
-                    </div>
-
                     {paymentError && (
-                      <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-sm)', color: '#991b1b', fontSize: '14px', margin: '16px 0 0 0' }}>
+                      <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-sm)', color: '#991b1b', fontSize: '14px', margin: '8px 0 16px 0' }}>
                         {paymentError}
                       </div>
                     )}
@@ -471,7 +415,7 @@ export default function CheckoutPage() {
                   <div className={styles.btnRow}>
                     <button type="button" onClick={() => { setCurrentStep('shipping'); setPaymentError(null); }} className={styles.secondaryBtn} disabled={isSubmitting}>← Back</button>
                     <button type="submit" className={styles.primaryBtn} disabled={isSubmitting}>
-                      {isSubmitting ? 'Processing...' : `Pay via Razorpay Gateway — $${total.toFixed(2)}`}
+                      {isSubmitting ? 'Processing...' : `Pay via Razorpay — ₹${Math.round(total).toLocaleString('en-IN')}`}
                     </button>
                   </div>
                 </form>
@@ -485,7 +429,7 @@ export default function CheckoutPage() {
               </div>
               <ul className={styles.summaryItems}>
                 {cartItems.map((item) => {
-                  const unitPrice = item.product.basePrice + item.variant.priceAdjustment + (item.giftWrap ? 5 : 0);
+                  const unitPrice = item.product.basePrice + item.variant.priceAdjustment + (item.giftWrap ? 350 : 0);
                   return (
                     <li key={item.id} className={styles.summaryItem}>
                       <div className={styles.summaryItemImg}>
@@ -495,7 +439,7 @@ export default function CheckoutPage() {
                         <span className={styles.summaryItemTitle}>{item.product.title}</span>
                         <span className={styles.summaryItemMeta}>{item.variant.metalType} × {item.quantity}</span>
                       </div>
-                      <span className={styles.summaryItemPrice}>${(unitPrice * item.quantity).toFixed(2)}</span>
+                      <span className={styles.summaryItemPrice}>₹{(unitPrice * item.quantity).toLocaleString('en-IN')}</span>
                     </li>
                   );
                 })}
@@ -503,19 +447,19 @@ export default function CheckoutPage() {
               <div className={styles.summaryFooter}>
                 <div className={styles.summaryRow}>
                   <span>Subtotal</span>
-                  <span>${cartTotal.toFixed(2)}</span>
+                  <span>₹{cartTotal.toLocaleString('en-IN')}</span>
                 </div>
                 <div className={styles.summaryRow}>
                   <span>Shipping</span>
-                  <span>{shippingCost === 0 ? 'Free' : `$${shippingCost.toFixed(2)}`}</span>
+                  <span>{shippingCost === 0 ? 'Free' : `₹${shippingCost.toLocaleString('en-IN')}`}</span>
                 </div>
                 <div className={styles.summaryRow}>
-                  <span>Tax (8%)</span>
-                  <span>${tax.toFixed(2)}</span>
+                  <span>Tax (3% GST)</span>
+                  <span>₹{tax.toLocaleString('en-IN')}</span>
                 </div>
                 <div className={styles.summaryTotal}>
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>₹{Math.round(total).toLocaleString('en-IN')}</span>
                 </div>
               </div>
             </div>

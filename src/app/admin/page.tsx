@@ -675,7 +675,7 @@ export default function AdminPage() {
                         </span>
                       </div>
                       <div className={styles.productPrice}>
-                        ${prod.basePrice.toFixed(2)}
+                        ₹{prod.basePrice.toLocaleString('en-IN')}
                       </div>
                       <button
                         onClick={() => handleDelete(prod.id)}

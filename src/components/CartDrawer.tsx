@@ -76,7 +76,7 @@ export const CartDrawer: React.FC = () => {
     };
   }, [isCartOpen]);
 
-  const freeShippingThreshold = 150;
+  const freeShippingThreshold = 3000;
   const progressToFreeShipping = Math.min((cartTotal / freeShippingThreshold) * 100, 100);
   const remainingForFreeShipping = freeShippingThreshold - cartTotal;
 
@@ -118,7 +118,7 @@ export const CartDrawer: React.FC = () => {
         <div className={styles.shippingTracker}>
           {remainingForFreeShipping > 0 ? (
             <p className={styles.trackerText}>
-              You are <strong>${remainingForFreeShipping.toFixed(2)}</strong> away from <strong>Free Shipping</strong>.
+              You are <strong>₹{remainingForFreeShipping.toLocaleString('en-IN')}</strong> away from <strong>Free Shipping</strong>.
             </p>
           ) : (
             <p className={styles.trackerText}>
@@ -151,7 +151,7 @@ export const CartDrawer: React.FC = () => {
             <ul className={styles.itemsList}>
               {cartItems.map((item) => {
                 const itemPrice = item.product.basePrice + item.variant.priceAdjustment;
-                const giftWrapPrice = item.giftWrap ? 5 : 0;
+                const giftWrapPrice = item.giftWrap ? 350 : 0;
                 const unitPrice = itemPrice + giftWrapPrice;
 
                 return (
@@ -187,7 +187,7 @@ export const CartDrawer: React.FC = () => {
                       )}
                       {item.giftWrap && (
                         <p className={styles.giftLabel}>
-                          🎁 Gift Wrapped (+ $5.00)
+                          🎁 Gift Wrapped (+ ₹350)
                         </p>
                       )}
                       
@@ -213,7 +213,7 @@ export const CartDrawer: React.FC = () => {
                         </div>
                         {/* Item Total Price */}
                         <span className={styles.itemPrice}>
-                          ${(unitPrice * item.quantity).toFixed(2)}
+                          ₹{(unitPrice * item.quantity).toLocaleString('en-IN')}
                         </span>
                       </div>
                     </div>
@@ -229,7 +229,7 @@ export const CartDrawer: React.FC = () => {
           <div className={styles.footer}>
             <div className={styles.summaryLine}>
               <span>Subtotal</span>
-              <span className={styles.totalPrice}>${cartTotal.toFixed(2)}</span>
+              <span className={styles.totalPrice}>₹{cartTotal.toLocaleString('en-IN')}</span>
             </div>
             <p className={styles.taxNote}>Shipping & taxes calculated at checkout.</p>
             <button onClick={handleCheckout} className={styles.checkoutBtn}>

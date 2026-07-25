@@ -38,7 +38,7 @@ INSERT INTO products (id, title, description, category_id, base_price, images, r
   'Wishlyn Evil Eye Pendant',
   'Embrace protection and timeless elegance with our Wishlyn Evil Eye Pendant. Handcrafted in 925 sterling silver, this necklace features a stunning sapphire blue central stone encircled by shimmering white cubic zirconia and turquoise detailing. Perfect for layering or as a signature daily statement.',
   'necklaces',
-  69.00,
+  5727.00,
   ARRAY['/aura_evil_eye_pendant.png'],
   4.8,
   142,
@@ -51,7 +51,7 @@ INSERT INTO products (id, title, description, category_id, base_price, images, r
   'Classic Eternity Diamond Ring',
   'A shimmering loop of endless brilliance. This eternity band is crafted in rich 18K rose gold and features a continuous row of micro-prong set lab-grown diamonds. A stunning symbol of commitment or a luxurious stacking statement.',
   'rings',
-  249.00,
+  20667.00,
   ARRAY['/classic_rose_gold_ring.png'],
   4.9,
   88,
@@ -74,17 +74,17 @@ CREATE TABLE IF NOT EXISTS product_variants (
 
 INSERT INTO product_variants (id, product_id, size, metal_type, purity, price_adjustment, stock) VALUES
   ('v-pendant-silver', 'aura-evil-eye-pendant', NULL, 'Silver', '925 Sterling Silver', 0.00, 24),
-  ('v-pendant-gold', 'aura-evil-eye-pendant', NULL, '18K Yellow Gold', '18K Gold Vermeil', 30.00, 12),
-  ('v-pendant-rose', 'aura-evil-eye-pendant', NULL, '18K Rose Gold', '18K Rose Gold Vermeil', 30.00, 8),
+  ('v-pendant-gold', 'aura-evil-eye-pendant', NULL, '18K Yellow Gold', '18K Gold Vermeil', 2490.00, 12),
+  ('v-pendant-rose', 'aura-evil-eye-pendant', NULL, '18K Rose Gold', '18K Rose Gold Vermeil', 2490.00, 8),
   ('v-ring-rose-6', 'classic-rose-gold-ring', '6', '18K Rose Gold', '18K Solid Rose Gold', 0.00, 5),
-  ('v-ring-gold-6', 'classic-rose-gold-ring', '6', '18K Yellow Gold', '18K Solid Yellow Gold', 10.00, 4),
-  ('v-ring-platinum-6', 'classic-rose-gold-ring', '6', 'Platinum', '950 Solid Platinum', 120.00, 3),
+  ('v-ring-gold-6', 'classic-rose-gold-ring', '6', '18K Yellow Gold', '18K Solid Yellow Gold', 830.00, 4),
+  ('v-ring-platinum-6', 'classic-rose-gold-ring', '6', 'Platinum', '950 Solid Platinum', 9960.00, 3),
   ('v-ring-rose-7', 'classic-rose-gold-ring', '7', '18K Rose Gold', '18K Solid Rose Gold', 0.00, 5),
-  ('v-ring-gold-7', 'classic-rose-gold-ring', '7', '18K Yellow Gold', '18K Solid Yellow Gold', 10.00, 4),
-  ('v-ring-platinum-7', 'classic-rose-gold-ring', '7', 'Platinum', '950 Solid Platinum', 120.00, 3),
+  ('v-ring-gold-7', 'classic-rose-gold-ring', '7', '18K Yellow Gold', '18K Solid Yellow Gold', 830.00, 4),
+  ('v-ring-platinum-7', 'classic-rose-gold-ring', '7', 'Platinum', '950 Solid Platinum', 9960.00, 3),
   ('v-ring-rose-8', 'classic-rose-gold-ring', '8', '18K Rose Gold', '18K Solid Rose Gold', 0.00, 5),
-  ('v-ring-gold-8', 'classic-rose-gold-ring', '8', '18K Yellow Gold', '18K Solid Yellow Gold', 10.00, 4),
-  ('v-ring-platinum-8', 'classic-rose-gold-ring', '8', 'Platinum', '950 Solid Platinum', 120.00, 3)
+  ('v-ring-gold-8', 'classic-rose-gold-ring', '8', '18K Yellow Gold', '18K Solid Yellow Gold', 830.00, 4),
+  ('v-ring-platinum-8', 'classic-rose-gold-ring', '8', 'Platinum', '950 Solid Platinum', 9960.00, 3)
 ON CONFLICT (id) DO NOTHING;
 
 -- 4. User Profiles / Auth Table
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 -- bcrypt hash for 'Admin12345!': $2a$10$7Z/Y3jD3004.Z0P2iM3SFe3b7Hj.h.QG8.w.HhZ6P/M2N3P4Q5R6S
 INSERT INTO profiles (id, email, password_hash, role) VALUES
   ('admin-user-id-001', 'admin@wishlyn.com', '$2a$10$7Z/Y3jD3004.Z0P2iM3SFe3b7Hj.h.QG8.w.HhZ6P/M2N3P4Q5R6S', 'admin')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (email) DO NOTHING;
 
 -- 5. Orders Table
 CREATE TABLE IF NOT EXISTS orders (

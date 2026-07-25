@@ -114,7 +114,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
           <h1 className={styles.title}>{product.title}</h1>
           
           <div className={styles.priceRow}>
-            <span className={styles.price}>${finalPrice.toFixed(2)}</span>
+            <span className={styles.price}>₹{finalPrice.toLocaleString('en-IN')}</span>
             {activeVariant?.stock <= 5 && activeVariant?.stock > 0 && (
               <span className={styles.stockWarning}>
                 🔥 Only {activeVariant.stock} left in stock!
@@ -175,7 +175,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
                 onChange={(e) => setIsGift(e.target.checked)}
                 className={styles.giftCheckbox}
               />
-              <span>🎁 Send as a Gift (+ $5.00)</span>
+              <span>🎁 Send as a Gift (+ ₹350)</span>
             </label>
             {isGift && (
               <div className={styles.giftInputWrapper}>
@@ -255,7 +255,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
               )}
               {activeTab === 'shipping' && (
                 <p className={styles.tabPara}>
-                  Enjoy free standard shipping on orders over $150. All shipments are insured and discreetly packaged for safety. Returns are accepted within 30 days of delivery, no questions asked.
+                  Enjoy free standard shipping on orders over ₹3,000. All shipments are insured and discreetly packaged for safety. Returns are accepted within 30 days of delivery, no questions asked.
                 </p>
               )}
               {activeTab === 'care' && (
@@ -282,7 +282,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
                 </div>
                 <div className={styles.crossSellInfo}>
                   <h4>{crossSellProduct.title}</h4>
-                  <span>${crossSellProduct.basePrice.toFixed(2)}</span>
+                  <span>₹{crossSellProduct.basePrice.toLocaleString('en-IN')}</span>
                 </div>
                 <Link href={`/product/${crossSellProduct.id}`} className={styles.crossSellBtn}>
                   View

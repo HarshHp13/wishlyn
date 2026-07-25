@@ -41,6 +41,15 @@ async function runSeed() {
     console.log('⚡ Executing neon_seed.sql...');
     await client.query(seedSql);
 
+    console.log('⚡ Updating base prices & variants to INR...');
+    await client.query(`
+      UPDATE products SET base_price = 5727.00 WHERE id = 'aura-evil-eye-pendant';
+      UPDATE products SET base_price = 20667.00 WHERE id = 'classic-rose-gold-ring';
+      UPDATE product_variants SET price_adjustment = 2490.00 WHERE product_id = 'aura-evil-eye-pendant' AND metal_type IN ('18K Yellow Gold', '18K Rose Gold');
+      UPDATE product_variants SET price_adjustment = 830.00 WHERE product_id = 'classic-rose-gold-ring' AND metal_type = '18K Yellow Gold';
+      UPDATE product_variants SET price_adjustment = 9960.00 WHERE product_id = 'classic-rose-gold-ring' AND metal_type = 'Platinum';
+    `);
+
     console.log('🎉 Successfully created all tables and seeded data in Neon PostgreSQL!');
     await client.end();
     process.exit(0);
