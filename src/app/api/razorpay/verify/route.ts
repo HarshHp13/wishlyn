@@ -75,13 +75,13 @@ export async function POST(request: Request) {
         };
       });
 
-      // Compute server-side totals
+      // Compute server-side totals in INR
       const subtotal = orderItems.reduce((acc, item) => {
-        const giftWrapPrice = items.find(i => i.variantId === item.variantId)?.giftWrap ? 5 : 0;
+        const giftWrapPrice = items.find(i => i.variantId === item.variantId)?.giftWrap ? 350 : 0;
         return acc + (item.price + giftWrapPrice) * item.quantity;
       }, 0);
-      const shippingCost = subtotal >= 150 ? 0 : 9.99;
-      const tax = subtotal * 0.08;
+      const shippingCost = subtotal >= 3000 ? 0 : 250;
+      const tax = Math.round(subtotal * 0.03);
       const total = subtotal + shippingCost + tax;
 
       // Insert order with verified payment data

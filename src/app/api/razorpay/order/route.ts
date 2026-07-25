@@ -10,14 +10,13 @@ interface CartItemPayload {
 
 export async function POST(request: Request) {
   try {
-    // C-4: Accept cart items instead of a raw amount — server computes the price
     const { items } = await request.json() as { items: CartItemPayload[] };
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'Cart items are required' }, { status: 400 });
     }
 
-    // C-4: Server-side price verification — look up actual prices from DB
+    // Server-side price verification — look up actual prices from DB
     let serverTotal = 0;
 
     if (sql) {
@@ -29,7 +28,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to verify cart items' }, { status: 500 });
       }
 
-      // M-4: Validate stock availability
+      // Validate stock availability
       for (const item of items) {
         const variant = variants.find(v => v.id === item.variantId);
         if (!variant) {
@@ -59,11 +58,10 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: `Product for variant ${item.variantId} not found` }, { status: 400 });
         }
         const unitPrice = Number(product.base_price) + Number(variant.price_adjustment);
-        const giftWrapPrice = item.giftWrap ? 5 : 0;
+        const giftWrapPrice = item.giftWrap ? 350 : 0;
         serverTotal += (unitPrice + giftWrapPrice) * item.quantity;
       }
     } else {
-      // Fallback: if no SQL, use a mock total (dev only)
       return NextResponse.json({
         mock: true,
         orderId: `MOCK-ORDER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
@@ -72,10 +70,10 @@ export async function POST(request: Request) {
       });
     }
 
-    // Apply shipping and tax server-side
-    const shippingCost = serverTotal >= 150 ? 0 : 9.99;
-    const tax = serverTotal * 0.08;
-    const totalUsd = serverTotal + shippingCost + tax;
+    // Apply shipping and 3% GST tax server-side in INR
+    const shippingCost = serverTotal >= 3000 ? 0 : 250;
+    const tax = Math.round(serverTotal * 0.03);
+    const finalTotalInr = serverTotal + shippingCost + tax;
 
     const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
@@ -86,13 +84,13 @@ export async function POST(request: Request) {
       keyId === 'rzp_test_placeholder' ||
       keySecret === 'placeholder_secret'
     ) {
-      console.warn('[Razorpay API] Using mock transaction — credentials not configured');
+      console.warn('[Razorpay API] Using mock transaction — credentials missing');
       return NextResponse.json({
         mock: true,
         orderId: `MOCK-ORDER-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-        amount: totalUsd,
+        amount: Math.round(finalTotalInr * 100),
         currency: 'INR',
-        serverTotal: totalUsd,
+        serverTotal: finalTotalInr,
       });
     }
 
@@ -101,9 +99,8 @@ export async function POST(request: Request) {
       key_secret: keySecret,
     });
 
-    // H-7: Read exchange rate from env (configurable)
-    const usdToInrRate = parseFloat(process.env.USD_TO_INR_RATE || '83');
-    const amountInPaise = Math.round(totalUsd * usdToInrRate * 100);
+    // Amount in paise for Razorpay INR transaction
+    const amountInPaise = Math.round(finalTotalInr * 100);
 
     const options = {
       amount: amountInPaise,
@@ -118,14 +115,13 @@ export async function POST(request: Request) {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      serverTotal: totalUsd,
+      serverTotal: finalTotalInr,
     });
   } catch (error: unknown) {
-    // L-5 + H-8: Use unknown type and generic error
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Razorpay Order Error]:', message);
     return NextResponse.json(
-      { error: 'Failed to create payment order. Please try again.' },
+      { error: `Failed to create payment order: ${message}` },
       { status: 500 }
     );
   }
