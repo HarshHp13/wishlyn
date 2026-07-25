@@ -402,9 +402,13 @@ export default function CheckoutPage() {
                       <span className={styles.badge}>💳 UPI / Cards / NetBanking</span>
                       <span className={styles.badge}>🛡️ Buyer Protection</span>
                     </div>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: '16px 0 12px 0' }}>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: '16px 0 8px 0' }}>
                       Your payment will be processed securely via Razorpay in INR (₹{Math.round(total).toLocaleString('en-IN')}). You will be redirected to the secure payment window to complete your order.
                     </p>
+
+                    <div style={{ margin: '12px 0 16px 0', padding: '12px 14px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 'var(--radius-sm)', fontSize: '13px', color: '#6b21a8', lineHeight: '1.5' }}>
+                      💡 <strong>Razorpay Test Mode Tip:</strong> Select <strong>Netbanking</strong> (choose any bank &amp; click &quot;Success&quot;) or <strong>UPI</strong> (enter <code>success@razorpay</code>). For cards, use domestic test card <code>4514 0100 0000 0001</code>.
+                    </div>
 
                     {paymentError && (
                       <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-sm)', color: '#991b1b', fontSize: '14px', margin: '8px 0 16px 0' }}>
