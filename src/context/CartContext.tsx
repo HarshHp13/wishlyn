@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { Product, ProductVariant, getProductById, VARIANTS } from '../data/mockDb';
+import { Product, ProductVariant } from '../data/mockDb';
 
 export interface CartItem {
   id: string; // unique item id: variantId-giftOption
@@ -39,70 +39,50 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // F-3, M-3: Load minimal data from localStorage on mount and validate/hydrate it
+  // Load cart data from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem('wishlyn-cart');
     if (savedCart) {
       try {
         const parsed = JSON.parse(savedCart);
         if (Array.isArray(parsed)) {
-          (async () => {
-            const hydratedItems: CartItem[] = [];
-            for (const item of parsed) {
-              if (
-                item &&
-                typeof item === 'object' &&
-                typeof item.variantId === 'string' &&
-                typeof item.quantity === 'number'
-              ) {
-                // Find variant from static or loaded catalog
-                const variant = VARIANTS.find(v => v.id === item.variantId);
-
-                if (variant) {
-                  const product = await getProductById(variant.productId);
-                  if (product) {
-                    // F-2: Cap quantity at variant stock level
-                    const quantity = Math.min(item.quantity, variant.stock);
-                    if (quantity > 0) {
-                      hydratedItems.push({
-                        id: item.id || `${item.variantId}-${item.giftWrap ? 'gift' : 'standard'}`,
-                        variantId: item.variantId,
-                        product,
-                        variant,
-                        quantity,
-                        giftWrap: !!item.giftWrap,
-                        giftMessage: item.giftMessage || undefined,
-                      });
-                    }
-                  }
-                }
-              }
+          const validItems: CartItem[] = [];
+          for (const item of parsed) {
+            if (
+              item &&
+              typeof item === 'object' &&
+              item.product &&
+              item.variant &&
+              typeof item.quantity === 'number'
+            ) {
+              validItems.push({
+                id: item.id || `${item.variantId}-${item.giftWrap ? 'gift' : 'standard'}`,
+                variantId: item.variantId,
+                product: item.product,
+                variant: item.variant,
+                quantity: Math.max(1, item.quantity),
+                giftWrap: !!item.giftWrap,
+                giftMessage: item.giftMessage || undefined,
+              });
             }
-            setCartItems(hydratedItems);
-          })();
+          }
+          setCartItems(validItems);
         }
       } catch (e) {
-        console.error('Error loading and hydrating cart data:', e);
+        console.error('Error loading cart data from localStorage:', e);
       }
     }
     setIsLoaded(true);
   }, []);
 
-  // F-3: Synchronize only basic details back to localStorage
+  // Synchronize cart details back to localStorage
   useEffect(() => {
     if (isLoaded) {
-      const minimalCart = cartItems.map(item => ({
-        id: item.id,
-        variantId: item.variantId,
-        quantity: item.quantity,
-        giftWrap: item.giftWrap,
-        giftMessage: item.giftMessage,
-      }));
-      localStorage.setItem('wishlyn-cart', JSON.stringify(minimalCart));
+      localStorage.setItem('wishlyn-cart', JSON.stringify(cartItems));
     }
   }, [cartItems, isLoaded]);
 
-  const addToCart = useCallback(async (
+  const addToCart = useCallback((
     variantId: string, 
     quantity: number, 
     giftWrap: boolean, 
@@ -110,19 +90,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     passedProduct?: Product,
     passedVariant?: ProductVariant
   ) => {
-    const variant = passedVariant || VARIANTS.find(v => v.id === variantId);
-
-    if (!variant) {
-      console.warn(`[Cart] Variant ${variantId} could not be resolved in catalog.`);
+    if (!passedProduct || !passedVariant) {
+      console.warn(`[Cart] Missing product or variant metadata for ${variantId}.`);
       return;
     }
 
-    const product = passedProduct || await getProductById(variant.productId);
-    if (!product) {
-      console.warn(`[Cart] Product metadata for variant ${variantId} (productId: ${variant.productId}) could not be resolved.`);
-      return;
-    }
-
+    const product = passedProduct;
+    const variant = passedVariant;
     const cartItemId = `${variantId}-${giftWrap ? 'gift' : 'standard'}`;
 
     setCartItems(prevItems => {
