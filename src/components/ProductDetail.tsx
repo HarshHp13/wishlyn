@@ -31,6 +31,30 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
     text: string;
   }>({ searched: false, valid: false, text: '' });
   const [activeTab, setActiveTab] = useState<'details' | 'shipping' | 'care'>('details');
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  const images = useMemo(() => {
+    return product.images && product.images.length > 0
+      ? product.images
+      : ['https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=600&q=80'];
+  }, [product.images]);
+
+  // Reset active image when product changes
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [product.id]);
+
+  const handlePrevImage = () => {
+    setActiveImageIndex((prevIndex) =>
+      prevIndex === 0 ? images.length - 1 : prevIndex - 1
+    );
+  };
+
+  const handleNextImage = () => {
+    setActiveImageIndex((prevIndex) =>
+      prevIndex === images.length - 1 ? 0 : prevIndex + 1
+    );
+  };
 
   // Filter variants based on selected metal
   const availableSizes = useMemo(() => {
@@ -93,15 +117,64 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
       <div className={`${styles.grid} container`}>
         {/* Gallery Panel */}
         <div className={styles.gallery}>
-          <div className={styles.mainImageWrapper}>
-            <Image
-              src={product.images[0]}
-              alt={product.title}
-              width={500}
-              height={500}
-              className={styles.mainImage}
-              priority
-            />
+          <div className={styles.carouselContainer}>
+            <div className={styles.mainImageWrapper}>
+              <Image
+                src={images[activeImageIndex]}
+                alt={product.title}
+                width={500}
+                height={500}
+                className={styles.mainImage}
+                priority
+              />
+              
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrevImage}
+                    className={styles.carouselArrow}
+                    style={{ left: '16px' }}
+                    aria-label="Previous image"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleNextImage}
+                    className={styles.carouselArrow}
+                    style={{ right: '16px' }}
+                    aria-label="Next image"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Thumbnails */}
+            {images.length > 1 && (
+              <div className={styles.thumbnailRow}>
+                {images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`${styles.thumbnailWrapper} ${activeImageIndex === idx ? styles.activeThumbnail : ''}`}
+                    aria-label={`Go to image ${idx + 1}`}
+                  >
+                    <Image
+                      src={img}
+                      alt={`${product.title} thumbnail ${idx + 1}`}
+                      width={80}
+                      height={80}
+                      className={styles.thumbnailImage}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

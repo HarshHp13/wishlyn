@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS categories (
 INSERT INTO categories (id, name, slug) VALUES
   ('necklaces', 'Necklaces', 'necklaces'),
   ('rings', 'Rings', 'rings'),
-  ('earrings', 'Earrings', 'earrings')
+  ('earrings', 'Earrings', 'earrings'),
+  ('bracelets', 'Bracelets', 'bracelets')
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. Products Table

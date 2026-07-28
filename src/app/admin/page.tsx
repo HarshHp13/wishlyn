@@ -33,8 +33,8 @@ export default function AdminPage() {
   const [stone, setStone] = useState('');
   const [dimensions, setDimensions] = useState('');
   const [careInstructions, setCareInstructions] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   // Default Variant Stocks
   const [silverStock, setSilverStock] = useState('10');
@@ -70,22 +70,33 @@ export default function AdminPage() {
           setUserEmail(data.user.email);
           setUserRole(data.user.role);
           setSessionToken(token);
-
-          if (data.user.role === 'admin') {
-            loadData();
-          }
         } catch (e) {
           console.error('[Admin] Auth error:', e);
-          setUserRole('unauthenticated');
+          if (storedUser) {
+            setUserEmail(storedUser.email);
+            setUserRole(storedUser.role);
+            setSessionToken(token);
+          } else {
+            setUserRole('unauthenticated');
+          }
         }
       } else if (storedUser) {
         setUserEmail(storedUser.email);
         setUserRole(storedUser.role);
+        const storedToken = typeof window !== 'undefined' ? localStorage.getItem('wishlyn-token') : null;
+        setSessionToken(storedToken || 'mock-admin-token');
       }
     }
 
     checkAuth();
   }, []);
+
+  // Load catalog data reactively when userRole is admin
+  useEffect(() => {
+    if (userRole === 'admin') {
+      loadData();
+    }
+  }, [userRole]);
 
   const loadData = async () => {
     setLoading(true);
@@ -95,10 +106,19 @@ export default function AdminPage() {
         getCategories(),
       ]);
       setProducts(fetchedProducts);
-      setCategories(fetchedCategories);
-      if (fetchedCategories.length > 0 && !categoryId) {
+      
+      const categoriesList = fetchedCategories.length > 0
+        ? fetchedCategories
+        : [
+            { id: 'necklaces', name: 'Necklaces', slug: 'necklaces' },
+            { id: 'rings', name: 'Rings', slug: 'rings' },
+            { id: 'earrings', name: 'Earrings', slug: 'earrings' },
+            { id: 'bracelets', name: 'Bracelets', slug: 'bracelets' }
+          ];
+      setCategories(categoriesList);
+      if (categoriesList.length > 0 && !categoryId) {
         // Set default category
-        setCategoryId(fetchedCategories[0].id);
+        setCategoryId(categoriesList[0].id);
       }
     } catch (err: any) {
       console.error('[Admin] Error loading catalog data:', err);
@@ -108,15 +128,28 @@ export default function AdminPage() {
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImageFile(file);
-      if (imagePreview) {
-        URL.revokeObjectURL(imagePreview);
-      }
-      setImagePreview(URL.createObjectURL(file));
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
+      setImageFiles((prev) => [...prev, ...files]);
+      const newPreviews = files.map((file) => URL.createObjectURL(file));
+      setImagePreviews((prev) => [...prev, ...newPreviews]);
     }
   };
+
+  const removeSelectedImage = (index: number) => {
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  // Revoke object URLs on unmount/re-render
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [imagePreviews]);
 
   const generateSlug = (str: string) => {
     return str
@@ -138,31 +171,39 @@ export default function AdminPage() {
     setStatus({ type: null, message: '' });
 
     try {
-      let imageUrl = '';
+      let imageUrls: string[] = [];
 
-      // 1. Upload image to Cloudinary (calls our API route)
-      if (imageFile) {
-        const uploadData = new FormData();
-        uploadData.append('file', imageFile);
+      // 1. Upload images to Cloudinary (calls our API route)
+      if (imageFiles.length > 0) {
+        const uploadPromises = imageFiles.map(async (file) => {
+          const uploadData = new FormData();
+          uploadData.append('file', file);
 
-        const uploadRes = await fetch('/api/cloudinary/upload', {
-          method: 'POST',
-          body: uploadData,
+          const uploadRes = await fetch('/api/cloudinary/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${sessionToken}`
+            },
+            body: uploadData,
+          });
+
+          const uploadResult = await uploadRes.json();
+          if (!uploadRes.ok || uploadResult.error) {
+            throw new Error(uploadResult.error || 'Image upload failed to retrieve URL');
+          }
+          
+          if (uploadResult.warning) {
+            console.warn('[Admin Cloudinary Warning]:', uploadResult.warning);
+          }
+          return uploadResult.url;
         });
 
-        const uploadResult = await uploadRes.json();
-        if (!uploadRes.ok || uploadResult.error) {
-          throw new Error(uploadResult.error || 'Image upload failed to retrieve URL');
-        }
-        
-        imageUrl = uploadResult.url;
-        if (uploadResult.warning) {
-          console.warn('[Admin Cloudinary Warning]:', uploadResult.warning);
-        }
+        imageUrls = await Promise.all(uploadPromises);
       } else {
         // Fallback placeholder image if none selected
-        imageUrl =
-          'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=600&q=80';
+        imageUrls = [
+          'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=600&q=80'
+        ];
       }
 
       // Generate unique product ID slug with collision protection
@@ -177,7 +218,7 @@ export default function AdminPage() {
         description,
         category_id: categoryId,
         base_price: parseFloat(basePrice) || 0,
-        images: [imageUrl],
+        images: imageUrls,
         rating: 5.0,
         reviews_count: 0,
         stone: stone || null,
@@ -255,11 +296,9 @@ export default function AdminPage() {
       setStone('');
       setDimensions('');
       setCareInstructions('');
-      setImageFile(null);
-      if (imagePreview) {
-        URL.revokeObjectURL(imagePreview);
-      }
-      setImagePreview(null);
+      imagePreviews.forEach((url) => URL.revokeObjectURL(url));
+      setImageFiles([]);
+      setImagePreviews([]);
       setSilverStock('10');
       setYellowGoldStock('5');
       setRoseGoldStock('5');
@@ -381,9 +420,8 @@ export default function AdminPage() {
               </Link>
               <button 
                 onClick={() => {
+                  clearAuthSession();
                   if (typeof window !== 'undefined') {
-                    localStorage.removeItem('wishlyn-token');
-                    localStorage.removeItem('wishlyn-user');
                     localStorage.removeItem('wishlyn-offline-mode');
                     localStorage.removeItem('wishlyn-mock-user');
                   }
@@ -433,9 +471,8 @@ export default function AdminPage() {
               </Link>
               <button
                 onClick={() => {
+                  clearAuthSession();
                   if (typeof window !== 'undefined') {
-                    localStorage.removeItem('wishlyn-token');
-                    localStorage.removeItem('wishlyn-user');
                     localStorage.removeItem('wishlyn-offline-mode');
                     localStorage.removeItem('wishlyn-mock-user');
                   }
@@ -493,13 +530,13 @@ export default function AdminPage() {
 
                 <div className={styles.fieldRow}>
                   <div className={styles.field}>
-                    <label className={styles.label}>Base Price (USD) *</label>
+                    <label className={styles.label}>Base Price (Rupees) *</label>
                     <input
                       type="number"
                       required
                       min="1"
-                      step="0.01"
-                      placeholder="199.00"
+                      step="1"
+                      placeholder="15000"
                       value={basePrice}
                       onChange={(e) => setBasePrice(e.target.value)}
                       className={styles.input}
@@ -523,17 +560,30 @@ export default function AdminPage() {
                 </div>
 
                 <div className={styles.field}>
-                  <label className={styles.label}>Image Upload *</label>
+                  <label className={styles.label}>Image Upload * (Select one or more)</label>
                   <div className={styles.fileInputWrapper}>
                     <input
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={handleImageChange}
                       className={styles.fileInput}
                     />
-                    {imagePreview && (
-                      <div className={styles.imagePreview}>
-                        <img src={imagePreview} alt="Upload Preview" />
+                    {imagePreviews.length > 0 && (
+                      <div className={styles.previewsContainer}>
+                        {imagePreviews.map((preview, idx) => (
+                          <div key={idx} className={styles.previewCard}>
+                            <img src={preview} alt={`Upload Preview ${idx + 1}`} />
+                            <button
+                              type="button"
+                              onClick={() => removeSelectedImage(idx)}
+                              className={styles.removePreviewBtn}
+                              aria-label="Remove image"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -639,7 +689,7 @@ export default function AdminPage() {
 
             {/* Right: Existing Products List */}
             <div className={styles.card}>
-              <h2 className={styles.cardTitle}>Live Inventory in Supabase ({products.length})</h2>
+              <h2 className={styles.cardTitle}>Live Inventory in Neon Database ({products.length})</h2>
               
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
@@ -647,7 +697,7 @@ export default function AdminPage() {
                 </div>
               ) : products.length === 0 ? (
                 <div className={styles.emptyState}>
-                  No products in Supabase. Use the creator form to add your first luxury piece!
+                  No products in Neon Database. Use the creator form to add your first luxury piece!
                 </div>
               ) : (
                 <div className={styles.productList}>

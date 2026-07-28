@@ -84,7 +84,14 @@ function mapVariant(row: DbVariant): ProductVariant {
 
 export async function getCategories(): Promise<Category[]> {
   const rows = await dbGetCategories();
-  if (!rows) return [];
+  if (!rows || rows.length === 0) {
+    return [
+      { id: 'necklaces', name: 'Necklaces', slug: 'necklaces' },
+      { id: 'rings', name: 'Rings', slug: 'rings' },
+      { id: 'earrings', name: 'Earrings', slug: 'earrings' },
+      { id: 'bracelets', name: 'Bracelets', slug: 'bracelets' }
+    ];
+  }
   return rows.map(r => ({ id: r.id, name: r.name, slug: r.slug }));
 }
 

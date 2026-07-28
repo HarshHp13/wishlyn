@@ -294,3 +294,56 @@
     text-align: center;
   }
 }
+
+/* Multiple Image Previews */
+.previewsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.previewCard {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color-light);
+  overflow: hidden;
+  background-color: var(--bg-primary);
+}
+
+.previewCard img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.removePreviewBtn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background-color: rgba(229, 115, 115, 0.9);
+  color: var(--pure-white);
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: var(--transition-fast);
+  z-index: 2;
+  line-height: 1;
+  padding: 0;
+}
+
+.removePreviewBtn:hover {
+  background-color: #d32f2f;
+  transform: scale(1.1);
+}
+

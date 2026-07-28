@@ -26,7 +26,10 @@ export const Hero: React.FC = () => {
           Handcrafted For You.
         </h1>
         <p className={styles.subtitle}>
-          Explore Wishlyn’s signature collection of sterling silver, fine gold, and brilliant diamond jewellery designed to match your unique story.
+          Explore Wishlyn’s signature collection of
+          anti-tarnish jewellery, thoughtfully designed
+          to add a touch of elegance to your everyday style.
+          Timeless pieces. Effortless shine. Made for you.
         </p>
         {/* F-13: Use next/link so it routes correctly from other pages to the homepage's #shop section */}
         <Link href="/#shop" className={styles.ctaBtn}>
