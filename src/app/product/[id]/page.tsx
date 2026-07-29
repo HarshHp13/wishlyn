@@ -1,5 +1,5 @@
 import React from 'react';
-import { getProductById, getVariantsByProductId, getProducts } from '../../../data/mockDb';
+import { getProductById, getVariantsByProductId, getProducts } from '../../../data/db';
 import Header from '../../../components/Header';
 import ProductDetail from '../../../components/ProductDetail';
 import CartDrawer from '../../../components/CartDrawer';

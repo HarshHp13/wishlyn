@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS products (
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   category_id TEXT NOT NULL REFERENCES categories(id),
-  base_price NUMERIC(10,2) NOT NULL,
   images TEXT[] NOT NULL DEFAULT '{}',
   rating NUMERIC(2,1) NOT NULL DEFAULT 0,
   reviews_count INTEGER NOT NULL DEFAULT 0,
@@ -33,13 +32,12 @@ CREATE TABLE IF NOT EXISTS products (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-INSERT INTO products (id, title, description, category_id, base_price, images, rating, reviews_count, stone, dimensions, care_instructions) VALUES
+INSERT INTO products (id, title, description, category_id, images, rating, reviews_count, stone, dimensions, care_instructions) VALUES
 (
   'aura-evil-eye-pendant',
   'Wishlyn Evil Eye Pendant',
   'Embrace protection and timeless elegance with our Wishlyn Evil Eye Pendant. Handcrafted in 925 sterling silver, this necklace features a stunning sapphire blue central stone encircled by shimmering white cubic zirconia and turquoise detailing. Perfect for layering or as a signature daily statement.',
   'necklaces',
-  69.00,
   ARRAY['/aura_evil_eye_pendant.png'],
   4.8,
   142,
@@ -52,7 +50,6 @@ INSERT INTO products (id, title, description, category_id, base_price, images, r
   'Classic Eternity Diamond Ring',
   'A shimmering loop of endless brilliance. This eternity band is crafted in rich 18K rose gold and features a continuous row of micro-prong set lab-grown diamonds. A stunning symbol of commitment or a luxurious stacking statement.',
   'rings',
-  249.00,
   ARRAY['/classic_rose_gold_ring.png'],
   4.9,
   88,
@@ -69,25 +66,25 @@ CREATE TABLE IF NOT EXISTS product_variants (
   size TEXT,
   metal_type TEXT NOT NULL,
   purity TEXT NOT NULL,
-  price_adjustment NUMERIC(10,2) NOT NULL DEFAULT 0,
+  price NUMERIC(10,2) NOT NULL,
   stock INTEGER NOT NULL DEFAULT 0
 );
 
-INSERT INTO product_variants (id, product_id, size, metal_type, purity, price_adjustment, stock) VALUES
+INSERT INTO product_variants (id, product_id, size, metal_type, purity, price, stock) VALUES
   -- Wishlyn Evil Eye Pendant
-  ('v-pendant-silver', 'aura-evil-eye-pendant', NULL, 'Silver', '925 Sterling Silver', 0, 24),
-  ('v-pendant-gold', 'aura-evil-eye-pendant', NULL, '18K Yellow Gold', '18K Gold Vermeil', 30, 12),
-  ('v-pendant-rose', 'aura-evil-eye-pendant', NULL, '18K Rose Gold', '18K Rose Gold Vermeil', 30, 8),
+  ('v-pendant-silver', 'aura-evil-eye-pendant', NULL, 'Silver', '925 Sterling Silver', 69.00, 24),
+  ('v-pendant-gold', 'aura-evil-eye-pendant', NULL, '18K Yellow Gold', '18K Gold Vermeil', 99.00, 12),
+  ('v-pendant-rose', 'aura-evil-eye-pendant', NULL, '18K Rose Gold', '18K Rose Gold Vermeil', 99.00, 8),
   -- Classic Eternity Diamond Ring
-  ('v-ring-rose-6', 'classic-rose-gold-ring', '6', '18K Rose Gold', '18K Solid Rose Gold', 0, 5),
-  ('v-ring-gold-6', 'classic-rose-gold-ring', '6', '18K Yellow Gold', '18K Solid Yellow Gold', 10, 4),
-  ('v-ring-platinum-6', 'classic-rose-gold-ring', '6', 'Platinum', '950 Solid Platinum', 120, 3),
-  ('v-ring-rose-7', 'classic-rose-gold-ring', '7', '18K Rose Gold', '18K Solid Rose Gold', 0, 5),
-  ('v-ring-gold-7', 'classic-rose-gold-ring', '7', '18K Yellow Gold', '18K Solid Yellow Gold', 10, 4),
-  ('v-ring-platinum-7', 'classic-rose-gold-ring', '7', 'Platinum', '950 Solid Platinum', 120, 3),
-  ('v-ring-rose-8', 'classic-rose-gold-ring', '8', '18K Rose Gold', '18K Solid Rose Gold', 0, 5),
-  ('v-ring-gold-8', 'classic-rose-gold-ring', '8', '18K Yellow Gold', '18K Solid Yellow Gold', 10, 4),
-  ('v-ring-platinum-8', 'classic-rose-gold-ring', '8', 'Platinum', '950 Solid Platinum', 120, 3)
+  ('v-ring-rose-6', 'classic-rose-gold-ring', '6', '18K Rose Gold', '18K Solid Rose Gold', 249.00, 5),
+  ('v-ring-gold-6', 'classic-rose-gold-ring', '6', '18K Yellow Gold', '18K Solid Yellow Gold', 259.00, 4),
+  ('v-ring-platinum-6', 'classic-rose-gold-ring', '6', 'Platinum', '950 Solid Platinum', 369.00, 3),
+  ('v-ring-rose-7', 'classic-rose-gold-ring', '7', '18K Rose Gold', '18K Solid Rose Gold', 249.00, 5),
+  ('v-ring-gold-7', 'classic-rose-gold-ring', '7', '18K Yellow Gold', '18K Solid Yellow Gold', 259.00, 4),
+  ('v-ring-platinum-7', 'classic-rose-gold-ring', '7', 'Platinum', '950 Solid Platinum', 369.00, 3),
+  ('v-ring-rose-8', 'classic-rose-gold-ring', '8', '18K Rose Gold', '18K Solid Rose Gold', 249.00, 5),
+  ('v-ring-gold-8', 'classic-rose-gold-ring', '8', '18K Yellow Gold', '18K Solid Yellow Gold', 259.00, 4),
+  ('v-ring-platinum-8', 'classic-rose-gold-ring', '8', 'Platinum', '950 Solid Platinum', 369.00, 3)
 ON CONFLICT (id) DO NOTHING;
 
 -- Orders table (for future checkout integration)

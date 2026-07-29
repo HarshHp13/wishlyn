@@ -41,7 +41,6 @@ interface ProductInput {
   title: string;
   description: string;
   category_id: string;
-  base_price: number;
   images: string[];
   stone?: string | null;
   dimensions?: string | null;
@@ -53,7 +52,7 @@ interface VariantInput {
   product_id: string;
   metal_type: string;
   purity: string;
-  price_adjustment: number;
+  price: number;
   stock: number;
 }
 
@@ -64,7 +63,6 @@ function validateProductInput(p: any): p is ProductInput {
     typeof p.title === 'string' && p.title.trim().length > 0 &&
     typeof p.description === 'string' &&
     typeof p.category_id === 'string' && p.category_id.trim().length > 0 &&
-    typeof p.base_price === 'number' && p.base_price >= 0 &&
     Array.isArray(p.images) && p.images.every((img: any) => typeof img === 'string')
   );
 }
@@ -76,7 +74,7 @@ function validateVariantInput(v: any): v is VariantInput {
     typeof v.product_id === 'string' && v.product_id.trim().length > 0 &&
     typeof v.metal_type === 'string' && v.metal_type.trim().length > 0 &&
     typeof v.purity === 'string' && v.purity.trim().length > 0 &&
-    typeof v.price_adjustment === 'number' &&
+    typeof v.price === 'number' && v.price >= 0 &&
     typeof v.stock === 'number' && v.stock >= 0
   );
 }

@@ -4,7 +4,7 @@ import Hero from '../components/Hero';
 import ProductList from '../components/ProductList';
 import CartDrawer from '../components/CartDrawer';
 import Footer from '../components/Footer';
-import { getProducts, getCategories } from '../data/mockDb';
+import { getProducts, getCategories } from '../data/db';
 
 interface PageProps {
   searchParams: Promise<{ search?: string }>;

@@ -4,8 +4,7 @@ import {
   dbGetProductById,
   dbGetVariantsByProductId,
   DbProduct,
-  DbVariant,
-  sql
+  DbVariant
 } from '@/lib/neon';
 
 // ──────────────────────────────────────────────
@@ -22,9 +21,9 @@ export interface ProductVariant {
   id: string;
   productId: string;
   size?: string;
-  metalType: 'Silver' | '18K Yellow Gold' | '18K Rose Gold' | 'Platinum';
+  metalType: string;
   purity: string;
-  priceAdjustment: number;
+  price: number;
   stock: number;
 }
 
@@ -54,7 +53,7 @@ function mapProduct(row: DbProduct): Product {
     title: row.title,
     description: row.description,
     categoryId: row.category_id,
-    basePrice: Number(row.base_price),
+    basePrice: Number(row.base_price || 0),
     images: row.images ?? [],
     rating: Number(row.rating),
     reviewsCount: Number(row.reviews_count),
@@ -71,27 +70,20 @@ function mapVariant(row: DbVariant): ProductVariant {
     id: row.id,
     productId: row.product_id,
     size: row.size ?? undefined,
-    metalType: row.metal_type as ProductVariant['metalType'],
+    metalType: row.metal_type,
     purity: row.purity,
-    priceAdjustment: Number(row.price_adjustment),
+    price: Number(row.price),
     stock: Number(row.stock),
   };
 }
 
 // ──────────────────────────────────────────────
-//  Public Database API (Neon PostgreSQL)
+//  Public Database API (Neon PostgreSQL Only - No Mock Fallbacks)
 // ──────────────────────────────────────────────
 
 export async function getCategories(): Promise<Category[]> {
   const rows = await dbGetCategories();
-  if (!rows || rows.length === 0) {
-    return [
-      { id: 'necklaces', name: 'Necklaces', slug: 'necklaces' },
-      { id: 'rings', name: 'Rings', slug: 'rings' },
-      { id: 'earrings', name: 'Earrings', slug: 'earrings' },
-      { id: 'bracelets', name: 'Bracelets', slug: 'bracelets' }
-    ];
-  }
+  if (!rows) return [];
   return rows.map(r => ({ id: r.id, name: r.name, slug: r.slug }));
 }
 

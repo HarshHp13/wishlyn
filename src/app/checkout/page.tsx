@@ -429,7 +429,7 @@ export default function CheckoutPage() {
               </div>
               <ul className={styles.summaryItems}>
                 {cartItems.map((item) => {
-                  const unitPrice = item.product.basePrice + item.variant.priceAdjustment + (item.giftWrap ? 350 : 0);
+                  const unitPrice = item.variant.price + (item.giftWrap ? 350 : 0);
                   return (
                     <li key={item.id} className={styles.summaryItem}>
                       <div className={styles.summaryItemImg}>

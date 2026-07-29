@@ -57,7 +57,7 @@ export async function POST(request: Request) {
         if (!product) {
           return NextResponse.json({ error: `Product for variant ${item.variantId} not found` }, { status: 400 });
         }
-        const unitPrice = Number(product.base_price) + Number(variant.price_adjustment);
+        const unitPrice = Number(variant.price);
         const giftWrapPrice = item.giftWrap ? 350 : 0;
         serverTotal += (unitPrice + giftWrapPrice) * item.quantity;
       }

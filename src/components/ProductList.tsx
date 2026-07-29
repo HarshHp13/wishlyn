@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Product, Category } from '../data/mockDb';
+import { Product, Category } from '../data/db';
 import ProductCard from './ProductCard';
 import styles from './ProductList.module.css';
 

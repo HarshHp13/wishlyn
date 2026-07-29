@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { Product, ProductVariant } from '../data/mockDb';
+import { Product, ProductVariant } from '../data/db';
 import { getAuthUser } from '../lib/authClient';
 
 export interface CartItem {
@@ -201,7 +201,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const cartTotal = useMemo(() => {
     return cartItems.reduce((total, item) => {
-      const itemBase = item.product.basePrice + item.variant.priceAdjustment;
+      const itemBase = item.variant.price;
       const itemSurcharge = item.giftWrap ? 350 : 0;
       return total + (itemBase + itemSurcharge) * item.quantity;
     }, 0);

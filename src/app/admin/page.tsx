@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
-import { getProducts, getCategories, Product, Category } from '../../data/mockDb';
+import { getProducts, getCategories, Product, Category } from '../../data/db';
 import { getAuthUser, getAuthToken, clearAuthSession } from '../../lib/authClient';
 import styles from './admin.module.css';
 
@@ -28,7 +28,6 @@ export default function AdminPage() {
   // Form State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [basePrice, setBasePrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [stone, setStone] = useState('');
   const [dimensions, setDimensions] = useState('');
@@ -36,11 +35,34 @@ export default function AdminPage() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
-  // Default Variant Stocks
-  const [silverStock, setSilverStock] = useState('10');
-  const [yellowGoldStock, setYellowGoldStock] = useState('5');
-  const [roseGoldStock, setRoseGoldStock] = useState('5');
-  const [platinumStock, setPlatinumStock] = useState('2');
+  // Dynamic metal variants
+  interface AdminVariantForm {
+    metalType: string;
+    purity: string;
+    price: string;
+    stock: string;
+  }
+
+  const [formVariants, setFormVariants] = useState<AdminVariantForm[]>([
+    { metalType: '', purity: '', price: '', stock: '' }
+  ]);
+
+  const addFormVariant = () => {
+    setFormVariants((prev) => [
+      ...prev,
+      { metalType: '', purity: '', price: '', stock: '' }
+    ]);
+  };
+
+  const removeFormVariant = (index: number) => {
+    setFormVariants((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateFormVariant = (index: number, key: keyof AdminVariantForm, value: string) => {
+    setFormVariants((prev) =>
+      prev.map((v, i) => (i === index ? { ...v, [key]: value } : v))
+    );
+  };
 
   // Verify authorization on mount
   useEffect(() => {
@@ -167,6 +189,29 @@ export default function AdminPage() {
       return;
     }
 
+    if (formVariants.length === 0) {
+      setStatus({ type: 'error', message: 'At least one variant is mandatory.' });
+      return;
+    }
+
+    // Validate variants
+    for (const v of formVariants) {
+      if (!v.metalType.trim() || !v.purity.trim()) {
+        setStatus({ type: 'error', message: 'All variants must have a metal name and purity.' });
+        return;
+      }
+      const priceVal = parseFloat(v.price);
+      if (isNaN(priceVal) || priceVal < 0) {
+        setStatus({ type: 'error', message: 'All variants must have a valid positive price.' });
+        return;
+      }
+      const stockVal = parseInt(v.stock);
+      if (isNaN(stockVal) || stockVal < 0) {
+        setStatus({ type: 'error', message: 'All variants must have a valid non-negative stock.' });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setStatus({ type: null, message: '' });
 
@@ -217,7 +262,6 @@ export default function AdminPage() {
         title,
         description,
         category_id: categoryId,
-        base_price: parseFloat(basePrice) || 0,
         images: imageUrls,
         rating: 5.0,
         reviews_count: 0,
@@ -226,42 +270,19 @@ export default function AdminPage() {
         care_instructions: careInstructions || null,
       };
 
-      const variantsToCreate = [
-        {
-          id: `v-${productId}-silver`,
+      const variantsToCreate = formVariants.map((v, index) => {
+        const variantSlug = generateSlug(v.metalType) || `var-${index}`;
+        return {
+          id: `v-${productId}-${variantSlug}-${index}`,
           product_id: productId,
-          metal_type: 'Silver',
-          purity: '925 Sterling Silver',
-          price_adjustment: 0,
-          stock: parseInt(silverStock) || 0,
-        },
-        {
-          id: `v-${productId}-yellowgold`,
-          product_id: productId,
-          metal_type: '18K Yellow Gold',
-          purity: '18K Solid Yellow Gold',
-          price_adjustment: 40,
-          stock: parseInt(yellowGoldStock) || 0,
-        },
-        {
-          id: `v-${productId}-rosegold`,
-          product_id: productId,
-          metal_type: '18K Rose Gold',
-          purity: '18K Solid Rose Gold',
-          price_adjustment: 40,
-          stock: parseInt(roseGoldStock) || 0,
-        },
-        {
-          id: `v-${productId}-platinum`,
-          product_id: productId,
-          metal_type: 'Platinum',
-          purity: '950 Solid Platinum',
-          price_adjustment: 120,
-          stock: parseInt(platinumStock) || 0,
-        },
-      ];
+          metal_type: v.metalType.trim(),
+          purity: v.purity.trim(),
+          price: parseFloat(v.price) || 0,
+          stock: parseInt(v.stock) || 0,
+        };
+      });
 
-      // 2. Call backend Admin API to create product and default variants
+      // 2. Call backend Admin API to create product and dynamic variants
       const res = await fetch('/api/admin/product', {
         method: 'POST',
         headers: { 
@@ -292,17 +313,15 @@ export default function AdminPage() {
       // Reset form fields
       setTitle('');
       setDescription('');
-      setBasePrice('');
       setStone('');
       setDimensions('');
       setCareInstructions('');
       imagePreviews.forEach((url) => URL.revokeObjectURL(url));
       setImageFiles([]);
       setImagePreviews([]);
-      setSilverStock('10');
-      setYellowGoldStock('5');
-      setRoseGoldStock('5');
-      setPlatinumStock('2');
+      setFormVariants([
+        { metalType: '', purity: '', price: '', stock: '' }
+      ]);
       
       // Reload products list
       loadData();
@@ -530,20 +549,6 @@ export default function AdminPage() {
 
                 <div className={styles.fieldRow}>
                   <div className={styles.field}>
-                    <label className={styles.label}>Base Price (Rupees) *</label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      step="1"
-                      placeholder="15000"
-                      value={basePrice}
-                      onChange={(e) => setBasePrice(e.target.value)}
-                      className={styles.input}
-                    />
-                  </div>
-
-                  <div className={styles.field}>
                     <label className={styles.label}>Category *</label>
                     <select
                       value={categoryId}
@@ -627,55 +632,105 @@ export default function AdminPage() {
                   />
                 </div>
 
-                <h3 style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginTop: '10px' }}>
-                  Variant Stock Quantities
+                <h3 style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginTop: '10px', marginBottom: '10px' }}>
+                  Product Variants * (At least one variant is mandatory)
                 </h3>
 
-                <div className={styles.fieldRow}>
-                  <div className={styles.field}>
-                    <label className={styles.label}>Silver Stock</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={silverStock}
-                      onChange={(e) => setSilverStock(e.target.value)}
-                      className={styles.input}
-                    />
+                {formVariants.map((variant, index) => (
+                  <div key={index} className={styles.fieldRow} style={{ alignItems: 'flex-end', gap: '10px', marginBottom: '15px', borderBottom: '1px solid var(--border-color-light)', paddingBottom: '15px' }}>
+                    <div className={styles.field} style={{ flex: 2 }}>
+                      <label className={styles.label}>Metal Name *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Silver, 18K Yellow Gold"
+                        value={variant.metalType}
+                        onChange={(e) => updateFormVariant(index, 'metalType', e.target.value)}
+                        className={styles.input}
+                      />
+                    </div>
+                    <div className={styles.field} style={{ flex: 2 }}>
+                      <label className={styles.label}>Purity *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. 925 Sterling Silver"
+                        value={variant.purity}
+                        onChange={(e) => updateFormVariant(index, 'purity', e.target.value)}
+                        className={styles.input}
+                      />
+                    </div>
+                    <div className={styles.field} style={{ flex: 1.5 }}>
+                      <label className={styles.label}>Price (₹) *</label>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        step="1"
+                        placeholder="10000"
+                        value={variant.price}
+                        onChange={(e) => updateFormVariant(index, 'price', e.target.value)}
+                        className={styles.input}
+                      />
+                    </div>
+                    <div className={styles.field} style={{ flex: 1 }}>
+                      <label className={styles.label}>Stock *</label>
+                      <input
+                        type="number"
+                        required
+                        min="0"
+                        step="1"
+                        placeholder="5"
+                        value={variant.stock}
+                        onChange={(e) => updateFormVariant(index, 'stock', e.target.value)}
+                        className={styles.input}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={formVariants.length <= 1}
+                      onClick={() => removeFormVariant(index)}
+                      style={{
+                        background: 'none',
+                        border: '1px solid #e57373',
+                        color: '#e57373',
+                        padding: '10px 12px',
+                        cursor: 'pointer',
+                        borderRadius: 'var(--radius-sm)',
+                        height: '42px',
+                        alignSelf: 'flex-end',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: formVariants.length <= 1 ? 0.5 : 1
+                      }}
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <div className={styles.field}>
-                    <label className={styles.label}>Yellow Gold Stock</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={yellowGoldStock}
-                      onChange={(e) => setYellowGoldStock(e.target.value)}
-                      className={styles.input}
-                    />
-                  </div>
-                </div>
+                ))}
 
-                <div className={styles.fieldRow}>
-                  <div className={styles.field}>
-                    <label className={styles.label}>Rose Gold Stock</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={roseGoldStock}
-                      onChange={(e) => setRoseGoldStock(e.target.value)}
-                      className={styles.input}
-                    />
-                  </div>
-                  <div className={styles.field}>
-                    <label className={styles.label}>Platinum Stock</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={platinumStock}
-                      onChange={(e) => setPlatinumStock(e.target.value)}
-                      className={styles.input}
-                    />
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={addFormVariant}
+                  style={{
+                    background: 'transparent',
+                    border: '1px dashed var(--champagne-gold)',
+                    color: 'var(--champagne-gold)',
+                    padding: '10px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    cursor: 'pointer',
+                    borderRadius: 'var(--radius-sm)',
+                    width: '100%',
+                    marginBottom: '20px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  + Add Metal Variant
+                </button>
 
                 <button
                   type="submit"

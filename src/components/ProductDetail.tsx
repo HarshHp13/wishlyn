@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Product, ProductVariant } from '../data/mockDb';
+import { Product, ProductVariant } from '../data/db';
 import { useCart } from '../context/CartContext';
 import styles from './ProductDetail.module.css';
 
@@ -77,7 +77,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
   }, [variants, selectedMetal, selectedSize]);
 
   // Compute final price
-  const finalPrice = product.basePrice + (activeVariant?.priceAdjustment || 0);
+  const finalPrice = activeVariant?.price || 0;
 
   // Handle Add to Cart action
   const handleAddToCart = () => {

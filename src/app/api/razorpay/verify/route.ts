@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       const orderItems = items.map(item => {
         const variant = variants?.find(v => v.id === item.variantId);
         const product = products?.find(p => p.id === variant?.product_id);
-        const unitPrice = Number(product?.base_price || 0) + Number(variant?.price_adjustment || 0);
+        const unitPrice = Number(variant?.price || 0);
         return {
           productId: product?.id,
           productTitle: product?.title,

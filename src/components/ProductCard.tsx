@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Product } from '../data/mockDb';
+import { Product } from '../data/db';
 import styles from './ProductCard.module.css';
 
 interface ProductCardProps {

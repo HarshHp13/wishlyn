@@ -3,9 +3,7 @@ import { neon } from '@neondatabase/serverless';
 const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl && typeof window === 'undefined') {
-  console.warn(
-    '[Neon DB] Missing DATABASE_URL environment variable. Falling back to mock data or offline dev mode.'
-  );
+  throw new Error('[Neon DB] Missing DATABASE_URL environment variable.');
 }
 
 // Instantiate serverless Neon SQL query function (server-side environment only)
@@ -22,7 +20,7 @@ export interface DbProduct {
   title: string;
   description: string;
   category_id: string;
-  base_price: number | string;
+  base_price?: number | string;
   images: string[];
   rating?: number | string;
   reviews_count?: number;
@@ -38,7 +36,7 @@ export interface DbVariant {
   size: string | null;
   metal_type: string;
   purity: string;
-  price_adjustment: number | string;
+  price: number | string;
   stock: number;
 }
 
@@ -69,7 +67,9 @@ export async function dbGetProducts(): Promise<DbProduct[] | null> {
   if (!sql) return null;
   try {
     const rows = await sql`
-      SELECT id, title, description, category_id, base_price, images, rating, reviews_count, stone, dimensions, care_instructions, created_at
+      SELECT id, title, description, category_id, 
+        (SELECT MIN(price) FROM product_variants WHERE product_id = products.id) AS base_price, 
+        images, rating, reviews_count, stone, dimensions, care_instructions, created_at
       FROM products
       ORDER BY created_at DESC
     `;
@@ -84,7 +84,9 @@ export async function dbGetProductById(id: string): Promise<DbProduct | null> {
   if (!sql) return null;
   try {
     const rows = await sql`
-      SELECT id, title, description, category_id, base_price, images, rating, reviews_count, stone, dimensions, care_instructions, created_at
+      SELECT id, title, description, category_id, 
+        (SELECT MIN(price) FROM product_variants WHERE product_id = products.id) AS base_price, 
+        images, rating, reviews_count, stone, dimensions, care_instructions, created_at
       FROM products
       WHERE id = ${id}
       LIMIT 1
@@ -100,7 +102,7 @@ export async function dbGetVariantsByProductId(productId: string): Promise<DbVar
   if (!sql) return null;
   try {
     const rows = await sql`
-      SELECT id, product_id, size, metal_type, purity, price_adjustment, stock
+      SELECT id, product_id, size, metal_type, purity, price, stock
       FROM product_variants
       WHERE product_id = ${productId}
       ORDER BY id ASC
@@ -116,7 +118,7 @@ export async function dbGetVariantsByIds(variantIds: string[]): Promise<DbVarian
   if (!sql || variantIds.length === 0) return null;
   try {
     const rows = await sql`
-      SELECT id, product_id, size, metal_type, purity, price_adjustment, stock
+      SELECT id, product_id, size, metal_type, purity, price, stock
       FROM product_variants
       WHERE id = ANY(${variantIds})
     `;
@@ -131,7 +133,9 @@ export async function dbGetProductsByIds(productIds: string[]): Promise<DbProduc
   if (!sql || productIds.length === 0) return null;
   try {
     const rows = await sql`
-      SELECT id, title, description, category_id, base_price, images, rating, reviews_count, stone, dimensions, care_instructions
+      SELECT id, title, description, category_id, 
+        (SELECT MIN(price) FROM product_variants WHERE product_id = products.id) AS base_price, 
+        images, rating, reviews_count, stone, dimensions, care_instructions
       FROM products
       WHERE id = ANY(${productIds})
     `;
@@ -151,10 +155,10 @@ export async function dbInsertProduct(product: DbProduct): Promise<boolean> {
   try {
     await sql`
       INSERT INTO products (
-        id, title, description, category_id, base_price, images, rating, reviews_count, stone, dimensions, care_instructions
+        id, title, description, category_id, images, rating, reviews_count, stone, dimensions, care_instructions
       ) VALUES (
         ${product.id}, ${product.title}, ${product.description}, ${product.category_id},
-        ${product.base_price}, ${product.images}, ${product.rating || 5.0}, ${product.reviews_count || 0},
+        ${product.images}, ${product.rating || 5.0}, ${product.reviews_count || 0},
         ${product.stone || null}, ${product.dimensions || null}, ${product.care_instructions || null}
       )
     `;
@@ -170,11 +174,11 @@ export async function dbInsertVariants(variants: DbVariant[]): Promise<boolean> 
   try {
     for (const v of variants) {
       await sql`
-        INSERT INTO product_variants (id, product_id, size, metal_type, purity, price_adjustment, stock)
-        VALUES (${v.id}, ${v.product_id}, ${v.size || null}, ${v.metal_type}, ${v.purity}, ${v.price_adjustment}, ${v.stock})
+        INSERT INTO product_variants (id, product_id, size, metal_type, purity, price, stock)
+        VALUES (${v.id}, ${v.product_id}, ${v.size || null}, ${v.metal_type}, ${v.purity}, ${v.price}, ${v.stock})
         ON CONFLICT (id) DO UPDATE SET
           stock = EXCLUDED.stock,
-          price_adjustment = EXCLUDED.price_adjustment
+          price = EXCLUDED.price
       `;
     }
     return true;

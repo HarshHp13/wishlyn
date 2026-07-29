@@ -150,7 +150,7 @@ export const CartDrawer: React.FC = () => {
           ) : (
             <ul className={styles.itemsList}>
               {cartItems.map((item) => {
-                const itemPrice = item.product.basePrice + item.variant.priceAdjustment;
+                const itemPrice = item.variant.price;
                 const giftWrapPrice = item.giftWrap ? 350 : 0;
                 const unitPrice = itemPrice + giftWrapPrice;
 
