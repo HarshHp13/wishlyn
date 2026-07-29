@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
-import { dbInsertProduct, dbInsertVariants, dbDeleteProduct, sql } from '@/lib/neon';
+import { dbInsertProduct, dbInsertVariants, dbDeleteProduct, dbGetProducts, dbGetCategories, sql } from '@/lib/neon';
 
 // Helper to authenticate user and check for admin role
 async function checkAdmin(
@@ -161,6 +161,50 @@ export async function DELETE(request: Request) {
     console.error('[Admin API Route Error]:', message);
     return NextResponse.json(
       { error: 'An internal server error occurred during product deletion' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    // Verify admin privileges
+    const { authorized, errorResponse } = await checkAdmin(request);
+    if (!authorized) return errorResponse;
+
+    const [products, categories] = await Promise.all([
+      dbGetProducts(),
+      dbGetCategories()
+    ]);
+
+    const mappedProducts = products ? products.map(p => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      categoryId: p.category_id,
+      basePrice: Number(p.base_price || 0),
+      images: p.images ?? [],
+      rating: Number(p.rating || 5.0),
+      reviewsCount: Number(p.reviews_count || 0),
+      details: {
+        stone: p.stone ?? undefined,
+        dimensions: p.dimensions ?? undefined,
+        careInstructions: p.care_instructions ?? undefined,
+      }
+    })) : [];
+
+    const mappedCategories = categories ? categories.map(c => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug
+    })) : [];
+
+    return NextResponse.json({ products: mappedProducts, categories: mappedCategories });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Admin API Route GET Error]:', message);
+    return NextResponse.json(
+      { error: 'An internal server error occurred during catalog fetch' },
       { status: 500 }
     );
   }

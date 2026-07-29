@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
-import { getProducts, getCategories, Product, Category } from '../../data/db';
+import { Product, Category } from '../../data/db';
 import { getAuthUser, getAuthToken, clearAuthSession } from '../../lib/authClient';
 import styles from './admin.module.css';
 
@@ -123,14 +123,20 @@ export default function AdminPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [fetchedProducts, fetchedCategories] = await Promise.all([
-        getProducts(),
-        getCategories(),
-      ]);
-      setProducts(fetchedProducts);
+      const token = getAuthToken();
+      const res = await fetch('/api/admin/product', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!res.ok) {
+        throw new Error('Failed to fetch catalog from server');
+      }
+      const data = await res.json();
+      setProducts(data.products || []);
       
-      const categoriesList = fetchedCategories.length > 0
-        ? fetchedCategories
+      const categoriesList = data.categories && data.categories.length > 0
+        ? data.categories
         : [
             { id: 'necklaces', name: 'Necklaces', slug: 'necklaces' },
             { id: 'rings', name: 'Rings', slug: 'rings' },
