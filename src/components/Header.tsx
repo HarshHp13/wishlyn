@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 import { getAuthUser } from '../lib/authClient';
 import styles from './Header.module.css';
 
@@ -50,6 +51,7 @@ const SearchInputForm: React.FC<HeaderProps> = ({ onSearchChange }) => {
 
 export const Header: React.FC<HeaderProps> = ({ onSearchChange }) => {
   const { setIsCartOpen, cartCount } = useCart();
+  const { wishlistCount } = useWishlist();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -129,17 +131,11 @@ export const Header: React.FC<HeaderProps> = ({ onSearchChange }) => {
           {/* Brand Logo */}
           <div className={styles.logoContainer}>
             <Link href="/" className={styles.logo} aria-label="Wishlyn Home">
-              <div className={styles.logoBrandWrapper}>
-                <div className={styles.monogramBadge}>
-                  <span className={styles.monogramMark}>W</span>
-                  <span className={styles.monogramMarkL}>L</span>
-                </div>
-                <span className={styles.logoDivider} />
-                <div className={styles.brandTextGroup}>
-                  <span className={styles.brandTitle}>W I S H L Y N</span>
-                  <span className={styles.brandTagline}>MADE TO MATCH YOU</span>
-                </div>
-              </div>
+              <img
+                src="/wishlynLogo.svg"
+                alt="Wishlyn"
+                className={styles.logoImage}
+              />
             </Link>
           </div>
 
@@ -185,6 +181,23 @@ export const Header: React.FC<HeaderProps> = ({ onSearchChange }) => {
               {user && <span className={styles.userLoggedInDot} />}
             </Link>
 
+            {/* Wishlist Icon */}
+            <Link
+              href="/wishlist"
+              className={`${styles.actionBtn} ${styles.wishlistHeaderBtn}`}
+              aria-label={`Wishlist${wishlistCount > 0 ? ` (${wishlistCount} items)` : ''}`}
+              title="Wishlist"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+              {wishlistCount > 0 && (
+                <span className={styles.wishlistCount} aria-live="polite">
+                  {wishlistCount}
+                </span>
+              )}
+            </Link>
+
             {/* Cart */}
             <button
               onClick={() => setIsCartOpen(true)}
@@ -215,18 +228,10 @@ export const Header: React.FC<HeaderProps> = ({ onSearchChange }) => {
             aria-label="Mobile Navigation"
           >
             <ul className={styles.mobileNavList}>
-              <li><Link href="/" className={styles.mobileNavLink} onClick={() => setIsMobileNavOpen(false)}>Shop All</Link></li>
-              <li><Link href="/#shop" className={styles.mobileNavLink} onClick={() => setIsMobileNavOpen(false)}>Collections</Link></li>
-              <li>
-                <Link
-                  href={user ? (user.role === 'admin' ? '/admin' : '/profile') : '/login'}
-                  className={styles.mobileNavLink}
-                  onClick={() => setIsMobileNavOpen(false)}
-                >
-                  {user ? `Account (${user.role})` : 'Sign In / Register'}
-                </Link>
-              </li>
-              <li><Link href="/checkout" className={styles.mobileNavLink} onClick={() => setIsMobileNavOpen(false)}>Checkout</Link></li>
+              <li><Link href="/" className={styles.mobileNavLink} onClick={() => setIsMobileNavOpen(false)}>Shop</Link></li>
+              <li><Link href="/#shop" className={styles.mobileNavLink} onClick={() => setIsMobileNavOpen(false)}>All Collections</Link></li>
+              <li><Link href="/wishlist" className={styles.mobileNavLink} onClick={() => setIsMobileNavOpen(false)}>Wishlist{wishlistCount > 0 ? ` (${wishlistCount})` : ''}</Link></li>
+              <li><button className={styles.mobileNavLink} onClick={() => { setIsMobileNavOpen(false); setIsCartOpen(true); }}>Bag{cartCount > 0 ? ` (${cartCount})` : ''}</button></li>
             </ul>
           </nav>
         </div>

@@ -27,9 +27,9 @@
   height: 100%;
 }
 
-/* Hamburger — hidden on desktop */
+/* Hamburger — visible on all screen sizes */
 .hamburger {
-  display: none;
+  display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 5px;
@@ -98,75 +98,96 @@
 
 .logoBrandWrapper {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 14px;
-}
-
-.monogramBadge {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--soft-peach);
-  border: 1px solid var(--champagne-gold);
-  font-family: var(--font-serif);
-  line-height: 1;
-  box-shadow: 0 2px 8px rgba(198, 164, 106, 0.18);
+  gap: 0;
   transition: var(--transition-smooth);
 }
 
-.logo:hover .monogramBadge {
-  transform: scale(1.06);
-  border-color: var(--deep-espresso);
-  box-shadow: 0 4px 12px rgba(198, 164, 106, 0.28);
+.logo:hover .logoBrandWrapper {
+  transform: scale(1.03);
 }
 
-.monogramMark {
-  font-size: 20px;
+.logoImage {
+  height: 100px;
+  width: auto;
+  max-height: 100px;
+  object-fit: contain;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.logo:hover .logoImage {
+  transform: scale(1.05);
+}
+
+/* Intertwined WL Monogram */
+.monogramStack {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  line-height: 1;
+  font-family: var(--font-serif);
+  position: relative;
+}
+
+.monogramW {
+  font-size: 26px;
   font-weight: 600;
   color: var(--champagne-gold);
-  margin-right: -4px;
+  letter-spacing: -0.04em;
 }
 
-.monogramMarkL {
-  font-size: 18px;
+.monogramL {
+  font-size: 22px;
   font-weight: 500;
-  color: var(--deep-espresso);
+  color: var(--champagne-gold);
   font-style: italic;
-}
-
-.logoDivider {
-  width: 1px;
-  height: 28px;
-  background-color: var(--border-color);
-}
-
-.brandTextGroup {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  margin-left: -6px;
+  position: relative;
+  top: -1px;
 }
 
 .brandTitle {
   font-family: var(--font-serif);
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 600;
-  letter-spacing: 0.22em;
-  color: var(--deep-espresso);
-  line-height: 1.1;
+  letter-spacing: 0.28em;
+  color: var(--champagne-gold);
+  line-height: 1;
+  margin-top: 1px;
+}
+
+/* Decorative star divider */
+.brandDivider {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.dividerLine {
+  display: block;
+  width: 18px;
+  height: 1px;
+  background-color: var(--champagne-gold);
+  opacity: 0.6;
+}
+
+.dividerStar {
+  font-size: 7px;
+  color: var(--champagne-gold);
+  line-height: 1;
 }
 
 .brandTagline {
   font-family: var(--font-sans);
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 600;
-  letter-spacing: 0.2em;
-  color: var(--champagne-gold-hover);
+  letter-spacing: 0.22em;
+  color: var(--champagne-gold);
   text-transform: uppercase;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 /* Actions */
@@ -226,6 +247,32 @@
   width: 18px;
   height: 18px;
   background-color: var(--rose-gold-dark);
+  color: var(--pure-white);
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Wishlist Header Button */
+.wishlistHeaderBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.wishlistCount {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background-color: #e57373;
   color: var(--pure-white);
   font-size: 10px;
   font-weight: 700;
@@ -334,9 +381,6 @@
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
-  .hamburger {
-    display: flex;
-  }
   .nav {
     display: none;
   }

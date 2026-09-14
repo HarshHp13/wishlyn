@@ -196,8 +196,14 @@
 }
 
 /* CTA triggers */
+.actionRow {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
 .addToCartBtn {
-  width: 100%;
+  flex: 1;
   padding: 16px;
   background-color: var(--deep-espresso);
   color: var(--warm-ivory);
@@ -221,6 +227,47 @@
   background-color: var(--medium-gray);
   color: var(--text-secondary);
   cursor: not-allowed;
+}
+
+.wishlistBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  flex-shrink: 0;
+}
+
+.wishlistBtn:hover {
+  border-color: #e57373;
+  color: #e57373;
+  background-color: rgba(229, 115, 115, 0.06);
+}
+
+.wishlistBtnActive {
+  color: #e57373;
+  border-color: #e57373;
+  background-color: rgba(229, 115, 115, 0.08);
+}
+
+.wishlistBtnActive:hover {
+  color: #ef5350;
+  border-color: #ef5350;
+  background-color: rgba(229, 115, 115, 0.12);
+}
+
+@keyframes wishlistPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.wishlistBtnActive svg {
+  animation: wishlistPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 /* Pincode checking inputs */

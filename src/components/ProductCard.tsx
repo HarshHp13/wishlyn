@@ -4,6 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Product } from '../data/db';
+import { useWishlist } from '../context/WishlistContext';
 import styles from './ProductCard.module.css';
 
 interface ProductCardProps {
@@ -11,6 +12,15 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  const wishlisted = isInWishlist(product.id);
+
+  const handleWishlistClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist(product.id);
+  };
+
   // F-18: Render star ratings helper, clamping ratings to [0, 5]
   const renderStars = (rating: number) => {
     const stars = [];
@@ -46,6 +56,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <div className={styles.overlay}>
             <span className={styles.overlayBtn}>View Collection</span>
           </div>
+          <button
+            onClick={handleWishlistClick}
+            className={`${styles.wishlistHeart} ${wishlisted ? styles.wishlistHeartActive : ''}`}
+            aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+          </button>
         </div>
 
         {/* Card Information */}

@@ -2,6 +2,7 @@ import {
   dbGetCategories,
   dbGetProducts,
   dbGetProductById,
+  dbGetProductsByIds,
   dbGetVariantsByProductId,
   DbProduct,
   DbVariant
@@ -103,4 +104,11 @@ export async function getVariantsByProductId(productId: string): Promise<Product
   const rows = await dbGetVariantsByProductId(productId);
   if (!rows) return [];
   return rows.map(mapVariant);
+}
+
+export async function getProductsByIds(productIds: string[]): Promise<Product[]> {
+  if (productIds.length === 0) return [];
+  const rows = await dbGetProductsByIds(productIds);
+  if (!rows) return [];
+  return rows.map(mapProduct);
 }

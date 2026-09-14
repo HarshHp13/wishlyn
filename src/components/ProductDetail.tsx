@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Product, ProductVariant } from '../data/db';
 import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 import styles from './ProductDetail.module.css';
 
 interface ProductDetailProps {
@@ -15,6 +16,8 @@ interface ProductDetailProps {
 
 export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVariants, crossSellProduct }) => {
   const { addToCart } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  const wishlisted = isInWishlist(product.id);
   const [variants] = useState<ProductVariant[]>(initialVariants);
 
   // State Management
@@ -85,32 +88,96 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
     addToCart(activeVariant.id, 1, isGift, giftMessage, product, activeVariant);
   };
 
-  // Handle pincode checker (F-17: Clearly note estimation logic)
-  const handlePincodeCheck = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (/^\d{6}$/.test(pincode)) {
-      const startsWithMetro = /^(11|40|56|60)/.test(pincode);
-      if (startsWithMetro) {
+  // Handle pincode checker — validates against India Post API for real pincode data
+  const checkPincode = useCallback(async (code: string) => {
+    // Basic format check: must be exactly 6 digits, starting with 1-9
+    if (!/^[1-9]\d{5}$/.test(code)) {
+      setPincodeStatus({
+        searched: true,
+        valid: false,
+        text: '❌ Please enter a valid 6-digit Indian postal code.'
+      });
+      return;
+    }
+
+    // Show loading state while validating
+    setPincodeStatus({
+      searched: true,
+      valid: false,
+      text: '🔍 Checking pincode...'
+    });
+
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${code}`);
+      const data = await res.json();
+
+      if (
+        !data ||
+        !Array.isArray(data) ||
+        data[0]?.Status !== 'Success' ||
+        !data[0]?.PostOffice?.length
+      ) {
+        setPincodeStatus({
+          searched: true,
+          valid: false,
+          text: '❌ Invalid pincode. No matching Indian postal area found.'
+        });
+        return;
+      }
+
+      const postOffice = data[0].PostOffice[0];
+      const area = postOffice.Name;
+      const city = postOffice.District;
+      const state = postOffice.State;
+
+      // Metro cities: Delhi, Mumbai, Bengaluru, Chennai, Hyderabad, Kolkata
+      const metroCities = ['New Delhi', 'Mumbai', 'Bengaluru', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata'];
+      const isMetro = metroCities.some(
+        metro => city.toLowerCase().includes(metro.toLowerCase()) ||
+                 state.toLowerCase().includes(metro.toLowerCase())
+      );
+
+      if (isMetro) {
         setPincodeStatus({
           searched: true,
           valid: true,
-          text: '⚡ Express Delivery: Estimated delivery in 2-3 business days. Cash on Delivery (COD) available.'
+          text: `⚡ Express Delivery to ${area}, ${city}: Estimated 2-3 business days. COD available.`
         });
       } else {
         setPincodeStatus({
           searched: true,
           valid: true,
-          text: '📦 Standard Delivery: Estimated delivery in 5-7 business days.'
+          text: `📦 Standard Delivery to ${area}, ${city}, ${state}: Estimated 5-7 business days.`
         });
       }
-    } else {
+    } catch {
+      // Network error — fall back to basic prefix check so the feature isn't broken offline
+      const startsWithMetro = /^(11|40|56|60)/.test(code);
       setPincodeStatus({
         searched: true,
-        valid: false,
-        text: '❌ Please enter a valid 6-digit postal code.'
+        valid: true,
+        text: startsWithMetro
+          ? '⚡ Express Delivery: Estimated 2-3 business days. COD available.'
+          : '📦 Standard Delivery: Estimated 5-7 business days.'
       });
     }
+  }, []);
+
+  const handlePincodeCheck = (e: React.FormEvent) => {
+    e.preventDefault();
+    checkPincode(pincode);
   };
+
+  // Auto-recalculate delivery when pincode changes to a valid 6-digit code
+  useEffect(() => {
+    if (/^[1-9]\d{5}$/.test(pincode)) {
+      checkPincode(pincode);
+    } else if (pincodeStatus.searched && pincode.length < 6) {
+      // Clear stale result when user is editing
+      setPincodeStatus({ searched: false, valid: false, text: '' });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pincode, checkPincode]);
 
   return (
     <div className={styles.section}>
@@ -264,14 +331,25 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
             )}
           </div>
 
-          {/* Action Trigger */}
-          <button
-            onClick={handleAddToCart}
-            disabled={!activeVariant || activeVariant.stock === 0}
-            className={styles.addToCartBtn}
-          >
-            {activeVariant && activeVariant.stock > 0 ? 'Add To Shopping Bag' : 'Out of Stock'}
-          </button>
+          {/* Action Triggers */}
+          <div className={styles.actionRow}>
+            <button
+              onClick={handleAddToCart}
+              disabled={!activeVariant || activeVariant.stock === 0}
+              className={styles.addToCartBtn}
+            >
+              {activeVariant && activeVariant.stock > 0 ? 'Add To Shopping Bag' : 'Out of Stock'}
+            </button>
+            <button
+              onClick={() => toggleWishlist(product.id)}
+              className={`${styles.wishlistBtn} ${wishlisted ? styles.wishlistBtnActive : ''}`}
+              aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+            </button>
+          </div>
 
           {/* Pincode Shipping Estimator */}
           <div className={styles.pincodeBox}>
