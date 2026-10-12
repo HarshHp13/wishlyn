@@ -96,11 +96,13 @@ export async function POST(request: Request) {
       currency: order.currency,
       receipt: order.receipt,
     });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Razorpay Create Order Error]:', message);
+  } catch (error: any) {
+    const statusCode = error?.statusCode || error?.status;
+    const message = error?.error?.description || error?.message || 'Unknown error';
+    console.error('[Razorpay Create Order Error]:', error);
 
     if (
+      statusCode === 401 ||
       message.toLowerCase().includes('auth') ||
       message.toLowerCase().includes('unauthorized') ||
       message.toLowerCase().includes('key')

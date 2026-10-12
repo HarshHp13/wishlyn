@@ -6,6 +6,9 @@ interface VerifyPayload {
   razorpay_order_id?: string;
   razorpay_payment_id?: string;
   razorpay_signature?: string;
+  order_id?: string;
+  payment_id?: string;
+  signature?: string;
   orderId?: string;
   shipping?: Record<string, any>;
   items?: Array<{
@@ -19,19 +22,18 @@ interface VerifyPayload {
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => ({}))) as VerifyPayload;
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      orderId,
-      shipping,
-      items,
-    } = body;
+    const razorpay_order_id = body.razorpay_order_id || body.order_id;
+    const razorpay_payment_id = body.razorpay_payment_id || body.payment_id;
+    const razorpay_signature = body.razorpay_signature || body.signature;
+    const { orderId, shipping, items } = body;
 
     // Validate missing fields
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return NextResponse.json(
-        { error: 'Missing payment verification data: razorpay_order_id, razorpay_payment_id, and razorpay_signature are required' },
+        { 
+          success: false,
+          error: 'Missing payment verification data: razorpay_order_id, razorpay_payment_id, and razorpay_signature are required' 
+        },
         { status: 400 }
       );
     }
@@ -40,7 +42,7 @@ export async function POST(request: Request) {
 
     if (!keySecret) {
       return NextResponse.json(
-        { error: 'Razorpay secret key configuration missing' },
+        { success: false, error: 'Razorpay secret key configuration missing' },
         { status: 500 }
       );
     }
@@ -55,7 +57,7 @@ export async function POST(request: Request) {
     if (expectedSignature !== razorpay_signature) {
       console.error('[Razorpay Verify] Signature mismatch — potential fraud attempt');
       return NextResponse.json(
-        { error: 'Invalid payment signature. Verification failed.', verified: false },
+        { success: false, error: 'Invalid payment signature. Verification failed.', verified: false },
         { status: 400 }
       );
     }
@@ -117,6 +119,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
+      success: true,
       message: 'Payment verified successfully',
       verified: true,
       razorpay_order_id,
@@ -126,7 +129,7 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Razorpay Verify Error]:', message);
     return NextResponse.json(
-      { error: `Payment verification error: ${message}` },
+      { success: false, error: `Payment verification error: ${message}` },
       { status: 500 }
     );
   }

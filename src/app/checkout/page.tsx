@@ -26,6 +26,25 @@ interface ShippingForm {
   country: string;
 }
 
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve(false);
+    if ((window as any).Razorpay) return resolve(true);
+    const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(true));
+      existing.addEventListener('error', () => resolve(false));
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart } = useCart();
   const [savedAddresses, setSavedAddresses] = useState<ShippingForm[]>([]);
@@ -121,6 +140,11 @@ export default function CheckoutPage() {
     const generatedOrderId = `WISHLYN-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
     try {
+      const scriptReady = await loadRazorpayScript();
+      if (!scriptReady && typeof (window as any).Razorpay === 'undefined') {
+        throw new Error('Razorpay Checkout SDK failed to load. Please verify your connection.');
+      }
+
       const cartPayload = cartItems.map(item => ({
         variantId: item.variant.id,
         quantity: item.quantity,
@@ -148,7 +172,7 @@ export default function CheckoutPage() {
 
       // Open the actual Razorpay Checkout Modal
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || orderData.key,
         amount: orderData.amount,
         currency: orderData.currency || 'INR',
         name: 'Wishlyn Fine Jewellery',
@@ -277,7 +301,7 @@ export default function CheckoutPage() {
   return (
     <>
       <Header />
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
       <CartDrawer />
       <main className={styles.page}>
         <div className="container">
