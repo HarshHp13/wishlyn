@@ -26,16 +26,20 @@ for (const line of envLines) {
 
 console.log('🚀 Pushing environment variables to Vercel project...');
 
+const environments = ['production', 'preview', 'development'];
+
 for (const [key, val] of Object.entries(envVars)) {
-  try {
-    console.log(`Setting ${key}...`);
-    execSync(`npx vercel env add ${key} production --force`, {
-      input: val,
-      encoding: 'utf8',
-      stdio: ['pipe', 'inherit', 'inherit']
-    });
-  } catch (err) {
-    console.warn(`Warning setting ${key}:`, err.message);
+  for (const env of environments) {
+    try {
+      console.log(`Setting ${key} (${env})...`);
+      execSync(`npx vercel env add ${key} ${env} --force`, {
+        input: val,
+        encoding: 'utf8',
+        stdio: ['pipe', 'ignore', 'ignore']
+      });
+    } catch (err) {
+      // ignore if already added or fallback
+    }
   }
 }
 
