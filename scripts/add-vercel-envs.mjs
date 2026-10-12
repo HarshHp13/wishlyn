@@ -31,14 +31,25 @@ const environments = ['production', 'preview', 'development'];
 for (const [key, val] of Object.entries(envVars)) {
   for (const env of environments) {
     try {
-      console.log(`Setting ${key} (${env})...`);
-      execSync(`npx vercel env add ${key} ${env} --force`, {
+      console.log(`Updating ${key} (${env})...`);
+      // First remove if already exists so we can update cleanly
+      try {
+        execSync(`npx vercel env rm ${key} ${env} --yes`, {
+          stdio: 'ignore'
+        });
+      } catch {
+        // Variable may not exist yet, safe to proceed
+      }
+
+      // Add with the updated value piped in
+      execSync(`npx vercel env add ${key} ${env}`, {
         input: val,
         encoding: 'utf8',
-        stdio: ['pipe', 'ignore', 'ignore']
+        stdio: ['pipe', 'pipe', 'pipe']
       });
+      console.log(`✅ Set ${key} (${env})`);
     } catch (err) {
-      // ignore if already added or fallback
+      console.warn(`⚠️ Could not set ${key} for ${env}: ${err.stderr?.toString() || err.message}`);
     }
   }
 }
