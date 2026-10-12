@@ -86,7 +86,8 @@ export async function POST(request: Request) {
       amount: Math.round(amountInPaise),
       currency,
       receipt,
-    });
+      payment_capture: 1,
+    } as any);
 
     return NextResponse.json({
       key: keyId,

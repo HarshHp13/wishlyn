@@ -172,7 +172,7 @@ export default function CheckoutPage() {
 
       // Open the actual Razorpay Checkout Modal
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || orderData.key,
+        key: orderData.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount,
         currency: orderData.currency || 'INR',
         name: 'Wishlyn Fine Jewellery',

@@ -71,9 +71,11 @@ export async function POST(request: Request) {
       amount: Math.round(amountInPaise),
       currency: 'INR',
       receipt: `receipt_${Date.now()}`,
-    });
+      payment_capture: 1,
+    } as any);
 
     return NextResponse.json({
+      key: keyId,
       order_id: order.id,
       orderId: order.id,
       amount: order.amount,
