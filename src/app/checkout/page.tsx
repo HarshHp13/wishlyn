@@ -128,28 +128,23 @@ export default function CheckoutPage() {
         giftMessage: item.giftMessage,
       }));
 
-      const res = await fetch('/api/razorpay/order', {
+      const res = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: cartPayload }),
+        body: JSON.stringify({
+          amount: Math.round(total * 100),
+          currency: 'INR',
+          items: cartPayload,
+        }),
       });
 
       const orderData = await res.json();
 
-      if (orderData.error) {
-        throw new Error(orderData.error);
+      if (!res.ok || orderData.error) {
+        throw new Error(orderData.error || 'Failed to create payment order');
       }
 
-      // Mock mode (dev only — credentials missing)
-      if (orderData.mock) {
-        console.log('[Checkout] Razorpay in mock mode, simulating success');
-        setOrderId(generatedOrderId);
-        clearCart();
-        setCurrentStep('confirmation');
-        setIsSubmitting(false);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
+      const activeOrderId = orderData.order_id || orderData.orderId;
 
       // Open the actual Razorpay Checkout Modal
       const options = {
@@ -158,10 +153,10 @@ export default function CheckoutPage() {
         currency: orderData.currency || 'INR',
         name: 'Wishlyn Fine Jewellery',
         description: `Checkout Order for ${shipping.firstName} ${shipping.lastName}`,
-        order_id: orderData.orderId,
+        order_id: activeOrderId,
         handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
           try {
-            const verifyRes = await fetch('/api/razorpay/verify', {
+            const verifyRes = await fetch('/api/verify-payment', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -171,14 +166,13 @@ export default function CheckoutPage() {
                 orderId: generatedOrderId,
                 shipping,
                 items: cartPayload,
-                serverTotal: orderData.serverTotal,
               }),
             });
 
             const verifyData = await verifyRes.json();
 
             if (!verifyRes.ok || !verifyData.verified) {
-              setPaymentError('Payment verification failed. Please contact support.');
+              setPaymentError(verifyData.error || 'Payment verification failed. Signature mismatch.');
               setIsSubmitting(false);
               return;
             }
@@ -208,17 +202,32 @@ export default function CheckoutPage() {
         modal: {
           ondismiss: function () {
             setIsSubmitting(false);
+            setPaymentError('Payment window was closed before completing payment.');
           }
         }
       };
 
       const rzp = new (window as any).Razorpay(options);
+
+      rzp.on('payment.failed', function (response: any) {
+        const errObj = response?.error || response;
+        const reason = errObj?.description || errObj?.reason;
+        if (reason) {
+          console.warn('[Razorpay] Payment failed:', reason);
+          setPaymentError(`Payment failed: ${reason}`);
+        } else {
+          console.warn('[Razorpay] Payment flow cancelled or failed');
+          setPaymentError('Payment was not completed. Please try again.');
+        }
+        setIsSubmitting(false);
+      });
+
       rzp.open();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An unexpected error occurred';
       console.error('[Checkout] Payment flow failed:', message);
       setIsSubmitting(false);
-      setPaymentError(`Payment could not be processed: ${message}.`);
+      setPaymentError(`Payment could not be initialized: ${message}.`);
     }
   };
 
@@ -402,9 +411,11 @@ export default function CheckoutPage() {
                       Your payment will be processed securely via Razorpay in INR (₹{Math.round(total).toLocaleString('en-IN')}). You will be redirected to the secure payment window to complete your order.
                     </p>
 
-                    <div style={{ margin: '12px 0 16px 0', padding: '12px 14px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 'var(--radius-sm)', fontSize: '13px', color: '#6b21a8', lineHeight: '1.5' }}>
-                      💡 <strong>Razorpay Test Mode Tip:</strong> Select <strong>Netbanking</strong> (choose any bank &amp; click &quot;Success&quot;) or <strong>UPI</strong> (enter <code>success@razorpay</code>). For cards, use domestic test card <code>4514 0100 0000 0001</code>.
-                    </div>
+                    {process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.startsWith('rzp_test_') && (
+                      <div style={{ margin: '12px 0 16px 0', padding: '12px 14px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 'var(--radius-sm)', fontSize: '13px', color: '#6b21a8', lineHeight: '1.5' }}>
+                        💡 <strong>Razorpay Test Mode Tip:</strong> Select <strong>Netbanking</strong> (choose any bank &amp; click &quot;Success&quot;) or <strong>UPI</strong> (enter <code>success@razorpay</code>). For cards, use domestic test card <code>4514 0100 0000 0001</code>.
+                      </div>
+                    )}
 
                     {paymentError && (
                       <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-sm)', color: '#991b1b', fontSize: '14px', margin: '8px 0 16px 0' }}>
