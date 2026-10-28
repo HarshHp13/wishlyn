@@ -1,102 +1,51 @@
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
+import { readFile, stat } from 'node:fs/promises';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
 import pg from 'pg';
+import sharp from 'sharp';
+import { databaseConfig } from '../src/lib/databaseConfig.mjs';
 
-const { Client } = pg;
-
-// Read .env.local
-const envPath = path.join(process.cwd(), '.env.local');
-const envVars = {};
-if (fs.existsSync(envPath)) {
-  const envLines = fs.readFileSync(envPath, 'utf8').split('\n');
-  for (const line of envLines) {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
-      const eqIdx = trimmed.indexOf('=');
-      const key = trimmed.substring(0, eqIdx).trim();
-      const val = trimmed.substring(eqIdx + 1).trim();
-      envVars[key] = val;
-    }
-  }
-}
-
-const cloudName = envVars.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dk6aax1vi';
-const apiKey = envVars.CLOUDINARY_API_KEY || '673336623865423';
-const apiSecret = envVars.CLOUDINARY_API_SECRET || 'aTKeVJwmnXe9zUYf5SgLPJU0aBw';
-const dbUrl = envVars.DATABASE_URL;
-
-if (!dbUrl) {
-  console.error('❌ DATABASE_URL is missing!');
-  process.exit(1);
-}
-
-async function uploadFileToCloudinary(filePath, publicId) {
-  const fileBuffer = fs.readFileSync(filePath);
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const folder = 'wishlyn_products';
-
-  // String to sign: folder=wishlyn_products&public_id=...&timestamp=... + secret
-  const paramsToSign = `folder=${folder}&public_id=${publicId}&timestamp=${timestamp}${apiSecret}`;
-  const signature = crypto.createHash('sha1').update(paramsToSign).digest('hex');
-
-  const formData = new FormData();
-  const blob = new Blob([fileBuffer]);
-  formData.append('file', blob, path.basename(filePath));
-  formData.append('api_key', apiKey);
-  formData.append('timestamp', timestamp);
-  formData.append('folder', folder);
-  formData.append('public_id', publicId);
-  formData.append('signature', signature);
-
-  console.log(`Uploading ${path.basename(filePath)} to Cloudinary...`);
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-    method: 'POST',
-    body: formData,
-  });
-
-  const data = await response.json();
-  if (!response.ok || data.error) {
-    throw new Error(data.error?.message || 'Cloudinary upload failed');
-  }
-
-  console.log(`✅ Uploaded ${path.basename(filePath)} -> ${data.secure_url}`);
-  return data.secure_url;
-}
-
-async function run() {
+async function main() {
+  const args = process.argv.slice(2);
+  if (!args.includes('--file')) throw new Error('Provide an approved JSON image manifest with --file; add --apply to execute.');
+  const manifest = JSON.parse(await readFile(args[args.indexOf('--file') + 1], 'utf8'));
+  if (!Array.isArray(manifest) || !manifest.length || manifest.length > 100 || manifest.some(row => !row || !/^[a-z0-9_-]{1,128}$/i.test(row.productId) || typeof row.file !== 'string')) throw new Error('Invalid image manifest.');
+  const cloud = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const key = process.env.CLOUDINARY_API_KEY;
+  const secret = process.env.CLOUDINARY_API_SECRET;
+  if (!cloud || !/^[a-z0-9_-]+$/i.test(cloud) || !key || !secret || key === secret || [cloud, key, secret].some(value => value.includes('placeholder'))) throw new Error('Explicit Cloudinary configuration is required.');
+  const connection = databaseConfig(process.env.DATABASE_URL);
+  for (const row of manifest) if ((await stat(row.file)).size > 5 * 1024 * 1024) throw new Error('Image exceeds 5 MB.');
+  console.log(`Validated ${manifest.length} image entries. Credentials are not printed.`);
+  if (!args.includes('--apply')) { console.log('Dry run: no database or provider requests.'); return; }
+  const client = new pg.Client({ ...connection, connectionTimeoutMillis: 5000 });
+  await client.connect();
   try {
-    const pendantPath = path.join(process.cwd(), 'public', 'aura_evil_eye_pendant.png');
-    const ringPath = path.join(process.cwd(), 'public', 'classic_rose_gold_ring.png');
-
-    const pendantCloudinaryUrl = await uploadFileToCloudinary(pendantPath, 'aura_evil_eye_pendant');
-    const ringCloudinaryUrl = await uploadFileToCloudinary(ringPath, 'classic_rose_gold_ring');
-
-    console.log('🚀 Connecting to Neon DB to update image URLs...');
-    const client = new Client({
-      connectionString: dbUrl,
-      ssl: { rejectUnauthorized: false },
-    });
-
-    await client.connect();
-
-    await client.query(
-      `UPDATE products SET images = ARRAY[$1::text] WHERE id = 'aura-evil-eye-pendant'`,
-      [pendantCloudinaryUrl]
-    );
-
-    await client.query(
-      `UPDATE products SET images = ARRAY[$1::text] WHERE id = 'classic-rose-gold-ring'`,
-      [ringCloudinaryUrl]
-    );
-
-    console.log('🎉 Successfully updated Neon PostgreSQL products with Cloudinary image URLs!');
-    await client.end();
-    process.exit(0);
-  } catch (err) {
-    console.error('❌ Upload Error:', err);
-    process.exit(1);
-  }
+    const ids = [...new Set(manifest.map(row => row.productId))];
+    const products = await client.query('SELECT id FROM products WHERE id = ANY($1)', [ids]);
+    if (products.rowCount !== ids.length) throw new Error('Manifest references missing products.');
+    const uploads = [];
+    for (const row of manifest) {
+      const image = await sharp(await readFile(row.file), { limitInputPixels: 20000000 }).rotate().webp().toBuffer();
+      if (image.length > 5 * 1024 * 1024) throw new Error('Processed image exceeds 5 MB.');
+      const timestamp = Math.floor(Date.now() / 1000);
+      const signature = createHash('sha1').update(`timestamp=${timestamp}${secret}`).digest('hex');
+      const body = new FormData();
+      body.set('file', new Blob([image], { type: 'image/webp' }), path.basename(row.file));
+      body.set('api_key', key); body.set('timestamp', String(timestamp)); body.set('signature', signature);
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/image/upload`, { method: 'POST', body, signal: AbortSignal.timeout(15000) });
+      const data = await response.json();
+      if (!response.ok || typeof data.secure_url !== 'string' || !data.secure_url.startsWith(`https://res.cloudinary.com/${cloud}/image/upload/`)) throw new Error('Image provider rejected upload.');
+      uploads.push({ id: row.productId, url: data.secure_url });
+    }
+    await client.query('BEGIN');
+    for (const image of uploads) {
+      const result = await client.query('UPDATE products SET images = CASE WHEN $1 = ANY(images) THEN images ELSE array_prepend($1, images) END WHERE id = $2', [image.url, image.id]);
+      if (result.rowCount !== 1) throw new Error('A product changed during upload.');
+    }
+    await client.query('COMMIT');
+    console.log('Uploaded images and updated the approved products.');
+  } catch (error) { await client.query('ROLLBACK').catch(() => undefined); throw error; }
+  finally { await client.end(); }
 }
-
-run();
+main().catch(() => { console.error('Image import failed. Check manifest/configuration. Database changes were rolled back; provider assets uploaded before a failure may require manual review.'); process.exitCode = 1; });

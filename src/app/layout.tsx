@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Montserrat } from "next/font/google";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import CartDrawer from "@/components/CartDrawer";
+import AuthBootstrap from "@/components/AuthBootstrap";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -36,6 +37,7 @@ export default function RootLayout({
     >
       <body>
         <a href="#main-content" className="skip-link">Skip to content</a>
+        <AuthBootstrap />
         <CartProvider>
           <WishlistProvider>
             {children}

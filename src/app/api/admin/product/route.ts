@@ -1,38 +1,13 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { requireAdmin } from '@/lib/session';
+import { ApiError, apiError, assertSameOrigin, readJson, requireObject } from '@/lib/api';
+import { rateLimit } from '@/lib/rateLimit';
 import { dbInsertProduct, dbInsertVariants, dbDeleteProduct, dbGetProducts, dbGetCategories, sql } from '@/lib/neon';
 
-// Helper to authenticate user and check for admin role
-async function checkAdmin(
-  request: Request
-): Promise<{ authorized: boolean; errorResponse?: NextResponse }> {
-  const authHeader = request.headers.get('Authorization');
-  const token = authHeader?.split(' ')[1];
-
-  if (!token) {
-    return {
-      authorized: false,
-      errorResponse: NextResponse.json(
-        { error: 'Authentication token required' },
-        { status: 401 }
-      ),
-    };
-  }
-
-  // Verify access token using JWT verify helper
-  const payload = verifyToken(token);
-  
-  if (!payload || payload.role !== 'admin') {
-    return {
-      authorized: false,
-      errorResponse: NextResponse.json(
-        { error: 'Forbidden: Admin authorization required' },
-        { status: 403 }
-      ),
-    };
-  }
-
-  return { authorized: true };
+async function checkAdmin(request: Request): Promise<void> {
+  assertSameOrigin(request);
+  const user = await requireAdmin(request);
+  await rateLimit(request, { scope: `admin-product-${request.method}`, limit: request.method === 'GET' ? 120 : 30, windowSeconds: 900, identity: user.id });
 }
 
 // M-8: Type definitions and validators for input schema validation
@@ -56,18 +31,22 @@ interface VariantInput {
   stock: number;
 }
 
-function validateProductInput(p: any): p is ProductInput {
+function validateProductInput(value: unknown): value is ProductInput {
+  if (!value || typeof value !== "object") return false;
+  const p = value as Record<string, unknown>;
   return (
     p &&
     typeof p.id === 'string' && p.id.trim().length > 0 &&
     typeof p.title === 'string' && p.title.trim().length > 0 &&
     typeof p.description === 'string' &&
     typeof p.category_id === 'string' && p.category_id.trim().length > 0 &&
-    Array.isArray(p.images) && p.images.every((img: any) => typeof img === 'string')
+    Array.isArray(p.images) && p.images.every((img: unknown) => typeof img === 'string')
   );
 }
 
-function validateVariantInput(v: any): v is VariantInput {
+function validateVariantInput(value: unknown): value is VariantInput {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
   return (
     v &&
     typeof v.id === 'string' && v.id.trim().length > 0 &&
@@ -82,10 +61,9 @@ function validateVariantInput(v: any): v is VariantInput {
 export async function POST(request: Request) {
   try {
     // Verify admin privileges
-    const { authorized, errorResponse } = await checkAdmin(request);
-    if (!authorized) return errorResponse;
+    await checkAdmin(request);
 
-    const body = await request.json();
+    const body = requireObject(await readJson(request, 131072));
     const { product, variants } = body;
 
     // M-8: Validate request payloads before executing queries
@@ -110,7 +88,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to create product record in Neon DB' }, { status: 400 });
       }
 
-      if (variants && variants.length > 0) {
+      if (Array.isArray(variants) && variants.length > 0) {
         const insertedVariants = await dbInsertVariants(variants);
         if (!insertedVariants) {
           return NextResponse.json({
@@ -123,20 +101,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, product });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Admin API Route Error]:', message);
-    return NextResponse.json(
-      { error: 'An internal server error occurred during product creation' },
-      { status: 500 }
-    );
+    return apiError(error);
   }
 }
 
 export async function DELETE(request: Request) {
   try {
     // Verify admin privileges
-    const { authorized, errorResponse } = await checkAdmin(request);
-    if (!authorized) return errorResponse;
+    await checkAdmin(request);
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -157,25 +129,21 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Admin API Route Error]:', message);
-    return NextResponse.json(
-      { error: 'An internal server error occurred during product deletion' },
-      { status: 500 }
-    );
+    return apiError(error);
   }
 }
 
 export async function GET(request: Request) {
   try {
     // Verify admin privileges
-    const { authorized, errorResponse } = await checkAdmin(request);
-    if (!authorized) return errorResponse;
+    await checkAdmin(request);
 
     const [products, categories] = await Promise.all([
       dbGetProducts(),
       dbGetCategories()
     ]);
+
+    if (!products || !categories) throw new ApiError(503, 'catalogue_unavailable', 'The catalogue could not be loaded. Please retry.');
 
     const mappedProducts = products ? products.map(p => ({
       id: p.id,
@@ -201,11 +169,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ products: mappedProducts, categories: mappedCategories });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Admin API Route GET Error]:', message);
-    return NextResponse.json(
-      { error: 'An internal server error occurred during catalog fetch' },
-      { status: 500 }
-    );
+    return apiError(error);
   }
 }

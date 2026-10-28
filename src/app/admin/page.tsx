@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useSyncExternalStore, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import { Product, Category } from '../../data/db';
-import { getAuthUser, getAuthToken, clearAuthSession } from '../../lib/authClient';
+import { getAuthState, getServerAuthState, subscribeAuth, refreshAuthSession, clearAuthSession } from '../../lib/authClient';
 import styles from './admin.module.css';
 
 export default function AdminPage() {
@@ -20,10 +20,9 @@ export default function AdminPage() {
     message: string;
   }>({ type: null, message: '' });
 
-  // Authentication State
-  const [userRole, setUserRole] = useState<'loading' | 'unauthenticated' | 'customer' | 'admin'>('loading');
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const auth = useSyncExternalStore(subscribeAuth, getAuthState, getServerAuthState);
+  const userRole = auth.status === 'loading' ? 'loading' : auth.user?.role ?? 'unauthenticated';
+  const userEmail = auth.user?.email ?? null;
 
   // Form State
   const [title, setTitle] = useState('');
@@ -64,71 +63,16 @@ export default function AdminPage() {
     );
   };
 
-  // Verify authorization on mount
-  useEffect(() => {
-    async function checkAuth() {
-      if (typeof window === 'undefined') return;
+  useEffect(() => { void refreshAuthSession().catch(() => undefined); }, []);
 
-      const token = getAuthToken();
-      const storedUser = getAuthUser();
+  const handleSignOut = async () => {
+    try { await clearAuthSession(); router.push('/login'); }
+    catch { setStatus({ type: 'error', message: 'Sign out could not be confirmed. Please retry.' }); }
+  };
 
-      if (!token && !storedUser) {
-        setUserRole('unauthenticated');
-        return;
-      }
-
-      if (token) {
-        try {
-          const res = await fetch('/api/auth/me', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json();
-
-          if (!res.ok || !data.user) {
-            setUserRole('unauthenticated');
-            return;
-          }
-
-          setUserEmail(data.user.email);
-          setUserRole(data.user.role);
-          setSessionToken(token);
-        } catch (e) {
-          console.error('[Admin] Auth error:', e);
-          if (storedUser) {
-            setUserEmail(storedUser.email);
-            setUserRole(storedUser.role);
-            setSessionToken(token);
-          } else {
-            setUserRole('unauthenticated');
-          }
-        }
-      } else if (storedUser) {
-        setUserEmail(storedUser.email);
-        setUserRole(storedUser.role);
-        const storedToken = typeof window !== 'undefined' ? localStorage.getItem('wishlyn-token') : null;
-        setSessionToken(storedToken || 'mock-admin-token');
-      }
-    }
-
-    checkAuth();
-  }, []);
-
-  // Load catalog data reactively when userRole is admin
-  useEffect(() => {
-    if (userRole === 'admin') {
-      loadData();
-    }
-  }, [userRole]);
-
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async () => {
     try {
-      const token = getAuthToken();
-      const res = await fetch('/api/admin/product', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const res = await fetch('/api/admin/product', { credentials: 'same-origin', cache: 'no-store' });
       if (!res.ok) {
         throw new Error('Failed to fetch catalog from server');
       }
@@ -144,16 +88,15 @@ export default function AdminPage() {
             { id: 'bracelets', name: 'Bracelets', slug: 'bracelets' }
           ];
       setCategories(categoriesList);
-      if (categoriesList.length > 0 && !categoryId) {
-        // Set default category
-        setCategoryId(categoriesList[0].id);
-      }
-    } catch (err: any) {
-      console.error('[Admin] Error loading catalog data:', err);
+      if (categoriesList.length > 0) setCategoryId(current => current || categoriesList[0].id);
+    } catch (err: unknown) {
+      setStatus({ type: 'error', message: err instanceof Error ? err.message : 'The catalogue could not be loaded. Please retry.' });
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => { if (userRole === 'admin') void loadData(); }, [userRole, loadData]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -190,7 +133,7 @@ export default function AdminPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sessionToken) {
+    if (userRole !== 'admin') {
       setStatus({ type: 'error', message: 'You must be logged in to create products.' });
       return;
     }
@@ -232,9 +175,6 @@ export default function AdminPage() {
 
           const uploadRes = await fetch('/api/cloudinary/upload', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${sessionToken}`
-            },
             body: uploadData,
           });
 
@@ -292,8 +232,7 @@ export default function AdminPage() {
       const res = await fetch('/api/admin/product', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionToken}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ product: newProduct, variants: variantsToCreate }),
       });
@@ -331,11 +270,11 @@ export default function AdminPage() {
       
       // Reload products list
       loadData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Admin Submit Error]:', err);
       setStatus({
         type: 'error',
-        message: err.message || 'An unexpected error occurred during creation.',
+        message: (err instanceof Error ? err.message : '') || 'An unexpected error occurred during creation.',
       });
     } finally {
       setIsSubmitting(false);
@@ -343,7 +282,7 @@ export default function AdminPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!sessionToken) {
+    if (userRole !== 'admin') {
       setStatus({ type: 'error', message: 'You must be logged in to delete products.' });
       return;
     }
@@ -356,9 +295,6 @@ export default function AdminPage() {
       // Call backend Admin API to delete product and variants
       const res = await fetch(`/api/admin/product?id=${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${sessionToken}`
-        }
       });
 
       const result = await res.json();
@@ -374,14 +310,16 @@ export default function AdminPage() {
       
       // Refresh list
       loadData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Admin Delete Error]:', err);
       setStatus({
         type: 'error',
-        message: err.message || 'Failed to delete product.',
+        message: (err instanceof Error ? err.message : '') || 'Failed to delete product.',
       });
     }
   };
+
+  if (auth.status === 'error') return <><Header /><main id="main-content" className={styles.adminPage}><p role="alert">Your account could not be verified. Please retry.</p><button onClick={() => { void refreshAuthSession(true).catch(() => undefined); }}>Retry</button></main><Footer /></>;
 
   if (userRole === 'loading') {
     return (
@@ -444,15 +382,7 @@ export default function AdminPage() {
                 Back to Storefront
               </Link>
               <button 
-                onClick={() => {
-                  clearAuthSession();
-                  if (typeof window !== 'undefined') {
-                    localStorage.removeItem('wishlyn-offline-mode');
-                    localStorage.removeItem('wishlyn-mock-user');
-                  }
-                  setUserRole('unauthenticated');
-                  router.push('/login');
-                }} 
+                onClick={handleSignOut} 
                 style={{
                   background: 'transparent',
                   border: '1px solid var(--border-color)',
@@ -495,15 +425,7 @@ export default function AdminPage() {
                 ← Back to Storefront
               </Link>
               <button
-                onClick={() => {
-                  clearAuthSession();
-                  if (typeof window !== 'undefined') {
-                    localStorage.removeItem('wishlyn-offline-mode');
-                    localStorage.removeItem('wishlyn-mock-user');
-                  }
-                  setUserRole('unauthenticated');
-                  router.push('/login');
-                }}
+                onClick={handleSignOut}
                 style={{
                   background: 'transparent',
                   border: 'none',

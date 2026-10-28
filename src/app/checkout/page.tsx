@@ -8,7 +8,7 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import { useCart } from '../../context/CartContext';
 import Script from 'next/script';
-import { getAuthUser, getAuthToken } from '../../lib/authClient';
+import { refreshAuthSession, getAuthUser } from '../../lib/authClient';
 import styles from './checkout.module.css';
 
 type Step = 'shipping' | 'payment' | 'confirmation';
@@ -71,36 +71,22 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const storedUser = getAuthUser();
-    const token = getAuthToken();
-
-    if (!token && !storedUser) {
-      router.push('/login?redirect=/checkout');
-      return;
-    }
-
-    if (storedUser && storedUser.email) {
-      setShipping(prev => ({ ...prev, email: storedUser.email }));
-    }
-
-    // Load saved addresses from localStorage
-    const savedStr = localStorage.getItem('wishlyn-saved-addresses');
-    if (savedStr) {
+    let cancelled = false;
+    void refreshAuthSession().then(user => {
+      if (cancelled) return;
+      if (!user) { router.push('/login?redirect=/checkout'); return; }
+      setShipping(prev => ({ ...prev, email: user.email }));
       try {
-        const list: ShippingForm[] = JSON.parse(savedStr);
-        if (Array.isArray(list) && list.length > 0) {
-          setSavedAddresses(list);
-          const first = list[0];
-          setSelectedSavedIdx(0);
-          setShipping(prev => ({
-            ...first,
-            email: prev.email || first.email,
-          }));
-        }
-      } catch (e) {}
-    }
+        const savedStr = localStorage.getItem(`wishlyn-saved-addresses:${user.id}`);
+        const list = savedStr ? JSON.parse(savedStr) : [];
+        if (Array.isArray(list) && list.length > 0) setSavedAddresses(list);
+      } catch { /* Ignore incompatible saved addresses. */ }
+      setAuthLoading(false);
+    }).catch(() => {
+      if (!cancelled) { setPaymentError('Your account could not be verified. Please reload and try again.'); setAuthLoading(false); }
+    });
+    return () => { cancelled = true; };
 
-    setAuthLoading(false);
   }, [router]);
 
   const shippingCost = cartTotal >= 3000 ? 0 : 250;
@@ -117,7 +103,7 @@ export default function CheckoutPage() {
 
     // Save shipping address into localStorage
     if (typeof window !== 'undefined') {
-      const savedStr = localStorage.getItem('wishlyn-saved-addresses');
+      const savedStr = localStorage.getItem(`wishlyn-saved-addresses:${getAuthUser()?.id ?? 'guest'}`);
       let list: ShippingForm[] = [];
       if (savedStr) {
         try { list = JSON.parse(savedStr); } catch (err) {}
@@ -125,7 +111,7 @@ export default function CheckoutPage() {
 
       list = list.filter(a => !(a.address.toLowerCase() === shipping.address.toLowerCase() && a.zipCode === shipping.zipCode));
       list.unshift(shipping);
-      localStorage.setItem('wishlyn-saved-addresses', JSON.stringify(list.slice(0, 5)));
+      localStorage.setItem(`wishlyn-saved-addresses:${getAuthUser()?.id ?? 'guest'}`, JSON.stringify(list.slice(0, 5)));
     }
 
     setCurrentStep('payment');

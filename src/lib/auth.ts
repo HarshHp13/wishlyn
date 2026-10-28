@@ -1,36 +1,18 @@
-import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { ApiError } from './api';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'wishlyn-fine-jewellery-secret-key-2026';
-const EXPIRES_IN = '7d';
-
-export interface UserTokenPayload {
-  id: string;
-  email: string;
-  role: 'customer' | 'admin';
+export function normalizeEmail(value: unknown): string {
+  if (typeof value !== 'string') throw new ApiError(400, 'invalid_email', 'Enter a valid email address.');
+  const email = value.trim().toLowerCase();
+  const [local, domain, extra] = email.split('@');
+  if (email.length > 254 || !local || local.length > 64 || extra !== undefined ||
+      !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local) || local.startsWith('.') || local.endsWith('.') || local.includes('..') ||
+      !domain || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/.test(domain)) throw new ApiError(400, 'invalid_email', 'Enter a valid email address.');
+  return email;
 }
-
-export async function hashPassword(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(10);
-  return bcrypt.hash(password, salt);
+export function validatePassword(value: unknown, signup = false): string {
+  if (typeof value !== 'string' || value.length < (signup ? 8 : 1) || Buffer.byteLength(value, 'utf8') > 72) throw new ApiError(400, 'invalid_password', signup ? 'Use a password of at least 8 characters and at most 72 UTF-8 bytes.' : 'Enter a valid password.');
+  return value;
 }
-
-export async function comparePassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
-}
-
-export function signToken(payload: UserTokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: EXPIRES_IN });
-}
-
-export function verifyToken(token: string): UserTokenPayload | null {
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as UserTokenPayload;
-    if (decoded && decoded.id && decoded.email && decoded.role) {
-      return decoded;
-    }
-    return null;
-  } catch (err) {
-    return null;
-  }
-}
+export function hashPassword(password: string): Promise<string> { return bcrypt.hash(password, 12); }
+export function comparePassword(password: string, hash: string): Promise<boolean> { return bcrypt.compare(password, hash); }
