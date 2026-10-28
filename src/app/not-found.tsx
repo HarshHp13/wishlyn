@@ -7,7 +7,7 @@ export default function NotFound() {
   return (
     <>
       <Header />
-      <main style={{
+      <main id="main-content" style={{
         minHeight: '75vh',
         display: 'flex',
         flexDirection: 'column',

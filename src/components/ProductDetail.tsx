@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Product, ProductVariant } from '../data/db';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { productImage } from '../lib/productImages';
 import styles from './ProductDetail.module.css';
 
 interface ProductDetailProps {
@@ -41,11 +42,6 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
       ? product.images
       : ['https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=600&q=80'];
   }, [product.images]);
-
-  // Reset active image when product changes
-  useEffect(() => {
-    setActiveImageIndex(0);
-  }, [product.id]);
 
   const handlePrevImage = () => {
     setActiveImageIndex((prevIndex) =>
@@ -168,17 +164,6 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
     checkPincode(pincode);
   };
 
-  // Auto-recalculate delivery when pincode changes to a valid 6-digit code
-  useEffect(() => {
-    if (/^[1-9]\d{5}$/.test(pincode)) {
-      checkPincode(pincode);
-    } else if (pincodeStatus.searched && pincode.length < 6) {
-      // Clear stale result when user is editing
-      setPincodeStatus({ searched: false, valid: false, text: '' });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pincode, checkPincode]);
-
   return (
     <div className={styles.section}>
       <div className={`${styles.grid} container`}>
@@ -187,12 +172,13 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
           <div className={styles.carouselContainer}>
             <div className={styles.mainImageWrapper}>
               <Image
-                src={images[activeImageIndex]}
+                src={productImage(images[activeImageIndex], 1200)}
                 alt={product.title}
                 width={500}
                 height={500}
                 className={styles.mainImage}
-                priority
+                preload
+                sizes="(max-width: 900px) 100vw, 55vw"
               />
               
               {images.length > 1 && (
@@ -232,7 +218,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
                     aria-label={`Go to image ${idx + 1}`}
                   >
                     <Image
-                      src={img}
+                      src={productImage(img, 180)}
                       alt={`${product.title} thumbnail ${idx + 1}`}
                       width={80}
                       height={80}
@@ -360,7 +346,14 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
                 maxLength={6}
                 placeholder="Enter 6-digit postal code"
                 value={pincode}
-                onChange={(e) => setPincode(e.target.value.replace(/\D/g, ''))}
+                inputMode="numeric"
+                aria-label="Postal code"
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  setPincode(value);
+                  setPincodeStatus({ searched: false, valid: false, text: '' });
+                  if (/^[1-9]\d{5}$/.test(value)) void checkPincode(value);
+                }}
                 className={styles.pincodeInput}
               />
               <button type="submit" className={styles.pincodeBtn}>Check</button>
@@ -424,7 +417,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, initialVa
               <div className={styles.crossSellCard}>
                 <div className={styles.crossSellImgWrapper}>
                   <Image
-                    src={crossSellProduct.images[0]}
+                    src={productImage(crossSellProduct.images[0], 180)}
                     alt={crossSellProduct.title}
                     width={60}
                     height={60}

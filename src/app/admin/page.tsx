@@ -387,7 +387,7 @@ export default function AdminPage() {
     return (
       <>
         <Header />
-        <main className={styles.adminPage} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+        <main id="main-content" className={styles.adminPage} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
           <div style={{ textAlign: 'center', color: 'var(--text-primary)' }}>
             <div style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', letterSpacing: '0.15em', marginBottom: '20px', textTransform: 'uppercase' }}>W I S H L Y N</div>
             <div style={{ display: 'inline-block', width: '30px', height: '30px', border: '2px solid var(--border-color)', borderTopColor: 'var(--champagne-gold)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
@@ -408,7 +408,7 @@ export default function AdminPage() {
     return (
       <>
         <Header />
-        <main className={styles.adminPage} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+        <main id="main-content" className={styles.adminPage} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
           <div className={styles.card} style={{ maxWidth: '400px', width: '100%', textAlign: 'center', padding: '40px 30px' }}>
             <span style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', letterSpacing: '0.15em', display: 'block', marginBottom: '8px', color: 'var(--text-primary)' }}>ACCESS RESTRICTED</span>
             <div style={{ height: '1px', background: 'var(--border-color-light)', margin: '15px 0 20px 0' }} />
@@ -429,7 +429,7 @@ export default function AdminPage() {
     return (
       <>
         <Header />
-        <main className={styles.adminPage} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+        <main id="main-content" className={styles.adminPage} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
           <div className={styles.card} style={{ maxWidth: '450px', width: '100%', textAlign: 'center', padding: '40px 30px' }}>
             <span style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', letterSpacing: '0.15em', display: 'block', marginBottom: '8px', color: '#e57373' }}>UNAUTHORIZED ACCESS</span>
             <div style={{ height: '1px', background: 'var(--border-color-light)', margin: '15px 0 20px 0' }} />
@@ -479,7 +479,7 @@ export default function AdminPage() {
   return (
     <>
       <Header />
-      <main className={styles.adminPage}>
+      <main id="main-content" className={styles.adminPage}>
         <div className="container">
           <div className={styles.titleRow}>
             <div>

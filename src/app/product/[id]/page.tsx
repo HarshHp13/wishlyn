@@ -2,7 +2,6 @@ import React from 'react';
 import { getProductById, getVariantsByProductId, getProducts } from '../../../data/db';
 import Header from '../../../components/Header';
 import ProductDetail from '../../../components/ProductDetail';
-import CartDrawer from '../../../components/CartDrawer';
 import Footer from '../../../components/Footer';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
@@ -55,10 +54,9 @@ export default async function ProductPage({ params }: PageProps) {
   return (
     <>
       <Header />
-      <main style={{ minHeight: '80vh' }}>
-        <ProductDetail product={product} initialVariants={variants} crossSellProduct={crossSellProduct} />
+      <main id="main-content" style={{ minHeight: '80vh' }}>
+        <ProductDetail key={product.id} product={product} initialVariants={variants} crossSellProduct={crossSellProduct} />
       </main>
-      <CartDrawer />
       <Footer />
     </>
   );

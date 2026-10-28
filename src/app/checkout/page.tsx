@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
-import CartDrawer from '../../components/CartDrawer';
 import { useCart } from '../../context/CartContext';
 import Script from 'next/script';
 import { getAuthUser, getAuthToken } from '../../lib/authClient';
@@ -267,7 +266,7 @@ export default function CheckoutPage() {
     return (
       <>
         <Header />
-        <main className={styles.page}>
+        <main id="main-content" className={styles.page}>
           <div className={`container ${styles.confirmation}`}>
             <div className={styles.confirmIcon}>✓</div>
             <h1>Order Confirmed!</h1>
@@ -287,7 +286,7 @@ export default function CheckoutPage() {
     return (
       <>
         <Header />
-        <main className={styles.page}>
+        <main id="main-content" className={styles.page}>
           <div className={`container ${styles.emptyState}`}>
             <p>Your cart is empty. Add some items before checking out.</p>
             <Link href="/" className={styles.homeLink}>Browse Collections</Link>
@@ -302,8 +301,7 @@ export default function CheckoutPage() {
     <>
       <Header />
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
-      <CartDrawer />
-      <main className={styles.page}>
+      <main id="main-content" className={styles.page}>
         <div className="container">
           {/* Step Indicator */}
           <div className={styles.steps}>

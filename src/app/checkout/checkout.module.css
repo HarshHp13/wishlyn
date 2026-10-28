@@ -1,5 +1,5 @@
 .page {
-  padding: 100px 0 60px 0;
+  padding: 44px 0 60px;
   min-height: 80vh;
 }
 
@@ -45,7 +45,7 @@
 
 .stepActive .stepNumber {
   border-color: var(--charcoal);
-  background-color: var(--charcoal);
+  background-color: var(--gold-ink);
   color: var(--pure-white);
 }
 
@@ -246,7 +246,7 @@
 .primaryBtn {
   flex: 1;
   padding: 16px;
-  background-color: var(--charcoal);
+  background-color: var(--gold-ink);
   color: var(--pure-white);
   font-size: 14px;
   font-weight: 600;
@@ -325,7 +325,7 @@
 .homeLink {
   display: inline-block;
   padding: 14px 32px;
-  background-color: var(--charcoal);
+  background-color: var(--gold-ink);
   color: var(--pure-white);
   font-size: 14px;
   font-weight: 600;
@@ -472,7 +472,7 @@
 /* Responsive Media Queries */
 @media (max-width: 960px) {
   .page {
-    padding: 80px 0 40px 0;
+    padding: 32px 0 40px;
   }
 
   .grid {
@@ -557,3 +557,7 @@
     width: 100%;
   }
 }
+
+.summaryPanel { border-radius: 0; background: var(--warm-ivory); box-shadow: none; }
+.primaryBtn, .secondaryBtn, .homeLink { border-radius: 0; }
+.sectionTitle { font-size: 30px; text-transform: none; letter-spacing: -0.02em; }

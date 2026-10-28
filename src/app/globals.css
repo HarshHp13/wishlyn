@@ -5,15 +5,16 @@
   --champagne-gold: #c6a46a;
   --champagne-gold-hover: #b39054;
   --champagne-gold-light: #f8f1e5;
-  --soft-peach: #f5eae2;
-  --warm-ivory: #faf7f2;
+  --soft-peach: #f3ede2;
+  --warm-ivory: #faf8f3;
   --deep-espresso: #3b312a;
-  --muted-sand: #8c7d73;
+  --muted-sand: #766e63;
+  --gold-ink: #947039;
   --border-tint: #e8dfd5;
   --pure-white: #ffffff;
 
   /* Functional Mappings */
-  --bg-primary: var(--warm-ivory);
+  --bg-primary: var(--pure-white);
   --bg-secondary: var(--pure-white);
   --bg-tertiary: var(--soft-peach);
   --text-primary: var(--deep-espresso);
@@ -48,12 +49,15 @@
   --radius-full: 9999px;
 
   /* Layout */
-  --container-width: 1280px;
-  --header-height: 120px;
+  --container-width: 1328px;
+  --header-height: 104px;
 
   /* Animations */
-  --transition-smooth: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  --transition-fast: all 0.15s ease-out;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --transition-smooth: color 180ms ease, background-color 180ms ease, border-color 180ms ease, transform 200ms var(--ease-out);
+  --transition-fast: color 150ms ease, background-color 150ms ease, opacity 150ms var(--ease-out);
 }
 
 /* CSS resets and default properties */
@@ -65,7 +69,7 @@
 
 html, body {
   min-height: 100%;
-  font-family: var(--font-sans);
+  font-family: var(--font-sans), Arial, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
@@ -80,7 +84,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-serif);
+  font-family: var(--font-serif), Georgia, serif;
   font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--text-primary);
@@ -127,6 +131,14 @@ img {
     padding-left: 16px;
   }
 }
+
+.eyebrow { font-size: 9px; font-weight: 500; letter-spacing: 0.18em; color: var(--gold-ink); }
+.text-link { display: inline-flex; align-items: center; justify-content: space-between; gap: 22px; font-size: 11px; padding-bottom: 8px; border-bottom: 1px solid var(--accent-gold); }
+.skip-link { position: fixed; top: 12px; left: 16px; padding: 12px 20px; background: white; z-index: 3000; transform: translateY(-150%); }
+.skip-link:focus { transform: translateY(0); }
+button, input, select, textarea { font: inherit; }
+button:disabled { cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { html, body { scroll-behavior: auto; } }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {

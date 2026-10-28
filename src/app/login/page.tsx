@@ -105,7 +105,7 @@ export default function LoginPage() {
   return (
     <>
       <Header />
-      <main className={styles.loginPage}>
+      <main id="main-content" className={styles.loginPage}>
         <div className={styles.card}>
           <span className={styles.brand}>W I S H L Y N</span>
           <span className={styles.subtitle}>MADE TO MATCH YOU</span>

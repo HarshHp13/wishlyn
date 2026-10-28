@@ -58,7 +58,7 @@ export default function ProfilePage() {
     return (
       <>
         <Header />
-        <main className={styles.profilePage}>
+        <main id="main-content" className={styles.profilePage}>
           <div className="container" style={{ textAlign: 'center', padding: '100px 0' }}>
             <p style={{ color: 'var(--text-secondary)' }}>Loading your profile details...</p>
           </div>
@@ -75,7 +75,7 @@ export default function ProfilePage() {
   return (
     <>
       <Header />
-      <main className={styles.profilePage}>
+      <main id="main-content" className={styles.profilePage}>
         <div className="container">
           <div className={styles.profileCard}>
             <div className={styles.headerRow}>

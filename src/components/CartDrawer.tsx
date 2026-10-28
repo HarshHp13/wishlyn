@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../context/CartContext';
+import { productImage } from '../lib/productImages';
 import styles from './CartDrawer.module.css';
 
 export const CartDrawer: React.FC = () => {
@@ -17,63 +18,17 @@ export const CartDrawer: React.FC = () => {
   } = useCart();
   const router = useRouter();
 
-  const drawerRef = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
-  // F-11: Focus trap and ESC handler
   useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isCartOpen && !dialog.open) dialog.showModal();
+    if (!isCartOpen && dialog.open) dialog.close();
     if (!isCartOpen) return;
-
-    // Focus the close button when drawer opens
-    setTimeout(() => {
-      closeBtnRef.current?.focus();
-    }, 100);
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsCartOpen(false);
-        return;
-      }
-
-      if (e.key === 'Tab') {
-        if (!drawerRef.current) return;
-        const focusableElements = drawerRef.current.querySelectorAll(
-          'a[href], button:not([disabled]), textarea, input, select'
-        );
-        if (focusableElements.length === 0) return;
-
-        const firstElement = focusableElements[0] as HTMLElement;
-        const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            lastElement.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            firstElement.focus();
-            e.preventDefault();
-          }
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isCartOpen, setIsCartOpen]);
-
-  // Lock body scroll when cart is open
-  useEffect(() => {
-    if (isCartOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
   }, [isCartOpen]);
 
   const freeShippingThreshold = 3000;
@@ -85,24 +40,20 @@ export const CartDrawer: React.FC = () => {
     router.push('/checkout');
   };
 
-  if (!isCartOpen) return null;
-
   return (
-    <div className={styles.wrapper} role="dialog" aria-modal="true" aria-label="Shopping Cart">
+    <dialog ref={dialogRef} className={styles.wrapper} aria-label="Shopping Cart" onCancel={() => setIsCartOpen(false)} onClose={() => setIsCartOpen(false)}>
       {/* Background Overlay */}
       <div
-        ref={overlayRef}
         className={styles.overlay}
         onClick={() => setIsCartOpen(false)}
       />
 
       {/* Cart Drawer Panel */}
-      <div ref={drawerRef} className={styles.drawer}>
+      <div className={styles.drawer}>
         {/* Drawer Header */}
         <div className={styles.header}>
           <h2>Shopping Bag</h2>
           <button
-            ref={closeBtnRef}
             onClick={() => setIsCartOpen(false)}
             className={styles.closeBtn}
             aria-label="Close cart"
@@ -128,7 +79,7 @@ export const CartDrawer: React.FC = () => {
           <div className={styles.progressBarBg}>
             <div
               className={styles.progressBar}
-              style={{ width: `${progressToFreeShipping}%` }}
+              style={{ transform: `scaleX(${progressToFreeShipping / 100})` }}
             />
           </div>
         </div>
@@ -158,7 +109,7 @@ export const CartDrawer: React.FC = () => {
                   <li key={item.id} className={styles.item}>
                     <div className={styles.itemImageWrapper}>
                       <Image
-                        src={item.product.images[0]}
+                        src={productImage(item.product.images[0], 160)}
                         alt={item.product.title}
                         width={80}
                         height={80}
@@ -238,7 +189,7 @@ export const CartDrawer: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </dialog>
   );
 };
 

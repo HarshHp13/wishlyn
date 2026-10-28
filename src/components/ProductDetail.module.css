@@ -1,5 +1,5 @@
 .section {
-  padding: 120px 0 60px 0; /* Extra top padding to account for fixed header */
+  padding: 48px 0 80px;
 }
 
 .grid {
@@ -70,7 +70,7 @@
 .stockWarning {
   font-size: 13px;
   font-weight: 600;
-  color: #e57373;
+  color: var(--gold-ink);
 }
 
 .description {
@@ -238,26 +238,26 @@
   border-radius: var(--radius-sm);
   background-color: var(--bg-secondary);
   color: var(--text-secondary);
-  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: var(--transition-fast);
   flex-shrink: 0;
 }
 
 .wishlistBtn:hover {
-  border-color: #e57373;
-  color: #e57373;
-  background-color: rgba(229, 115, 115, 0.06);
+  border-color: var(--gold-ink);
+  color: var(--gold-ink);
+  background-color: var(--champagne-gold-light);
 }
 
 .wishlistBtnActive {
-  color: #e57373;
-  border-color: #e57373;
-  background-color: rgba(229, 115, 115, 0.08);
+  color: var(--gold-ink);
+  border-color: var(--gold-ink);
+  background-color: var(--champagne-gold-light);
 }
 
 .wishlistBtnActive:hover {
-  color: #ef5350;
-  border-color: #ef5350;
-  background-color: rgba(229, 115, 115, 0.12);
+  color: var(--gold-ink);
+  border-color: var(--gold-ink);
+  background-color: var(--champagne-gold-light);
 }
 
 @keyframes wishlistPop {
@@ -267,7 +267,7 @@
 }
 
 .wishlistBtnActive svg {
-  animation: wishlistPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: none;
 }
 
 /* Pincode checking inputs */
@@ -476,7 +476,7 @@
 /* Responsiveness settings */
 @media (max-width: 900px) {
   .section {
-    padding: 100px 0 40px 0;
+    padding: 32px 0 50px;
   }
   .grid {
     grid-template-columns: 1fr;
@@ -523,7 +523,7 @@
 
 @media (max-width: 480px) {
   .section {
-    padding: 88px 0 24px 0;
+    padding: 24px 0 45px;
   }
   .grid {
     gap: 24px;
@@ -627,3 +627,29 @@
   object-fit: cover;
 }
 
+
+.grid { gap: 70px; }
+.detailsPanel { gap: 22px; }
+.mainImageWrapper { border: none; border-radius: 0; aspect-ratio: 0.9; background: var(--warm-ivory); }
+.title { font-size: 46px; line-height: 1.04; letter-spacing: -0.03em; }
+.price { font-size: 22px; font-weight: 500; color: var(--gold-ink); }
+.description { font-size: 12px; line-height: 1.85; }
+.breadcrumbs { font-size: 10px; }
+.optionLabel, .pincodeLabel { font-size: 10px; letter-spacing: 0.08em; }
+.metalTab { border-radius: 0; font-size: 11px; padding: 12px 18px; }
+.activeMetal, .activeSize { color: var(--gold-ink); }
+.giftingCard { border: 1px solid var(--border-color); border-radius: 0; background: var(--warm-ivory); }
+.giftCheckboxLabel { font-size: 12px; }
+.addToCartBtn { background: var(--gold-ink); border-radius: 0; font-size: 12px; letter-spacing: 0.06em; text-transform: none; }
+.wishlistBtn, .pincodeBox, .tabsWrapper, .crossSellCard, .thumbnailWrapper { border-radius: 0; }
+.pincodeBox { padding: 0; border: none; }
+.pincodeInput { min-width: 0; font-size: 12px; }
+.pincodeBtn { background: var(--gold-ink); border-radius: 0; font-size: 11px; }
+.tabTitle { font-size: 11px; }
+.crossSell h3 { font-size: 10px; }
+.crossSellInfo h4 { font-family: var(--font-serif); font-size: 18px; font-weight: 500; }
+.crossSellInfo span { font-size: 11px; color: var(--gold-ink); }
+@media (max-width: 900px) { .grid { gap: 30px; } }
+@media (max-width: 700px) { .title { font-size: 36px; } .tabsHeader { flex-direction: row; } .tabTitle { padding: 14px 8px; } .detailsPanel { gap: 20px; } }
+@media (hover: none) { .carouselArrow:hover { transform: translateY(-50%); } }
+@media (prefers-reduced-motion: reduce) { .carouselArrow:hover { transform: translateY(-50%); } }

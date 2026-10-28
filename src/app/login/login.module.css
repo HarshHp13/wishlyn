@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 120px 24px 60px 24px;
+  padding: 60px 24px;
 }
 
 .card {
@@ -101,7 +101,7 @@
 
 .submitBtn {
   padding: 14px;
-  background-color: var(--charcoal);
+  background-color: var(--gold-ink);
   color: var(--pure-white);
   font-size: 13px;
   font-weight: 700;
@@ -147,3 +147,6 @@
     padding: 24px;
   }
 }
+
+.card { border-radius: 0; box-shadow: none; border-color: var(--border-color); background: var(--warm-ivory); }
+.submitBtn { border-radius: 0; font-size: 12px; }

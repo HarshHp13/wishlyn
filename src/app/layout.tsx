@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Montserrat } from "next/font/google";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
+import CartDrawer from "@/components/CartDrawer";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -34,9 +35,11 @@ export default function RootLayout({
       className={`${cormorant.variable} ${montserrat.variable}`}
     >
       <body>
+        <a href="#main-content" className="skip-link">Skip to content</a>
         <CartProvider>
           <WishlistProvider>
             {children}
+            <CartDrawer />
           </WishlistProvider>
         </CartProvider>
       </body>
