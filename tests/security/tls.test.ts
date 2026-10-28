@@ -13,7 +13,7 @@ test('shared database TLS settings reject untrusted/wrong-host certificates and 
   const folder = mkdtempSync(path.join(os.tmpdir(), 'wishlyn-tls-test-'));
   try {
     for (const name of ['valid', 'wrong']) execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', path.join(folder, `${name}.key`), '-out', path.join(folder, `${name}.crt`), '-days', '1', '-subj', `/CN=${name}`, '-addext', `subjectAltName=${name === 'valid' ? 'IP:127.0.0.1' : 'DNS:wrong.example.test'}`], { stdio: 'ignore' });
-    async function probe(name: string, trust: boolean): Promise<void> {
+    async function probe(name: string, trust: boolean, suffix = '?sslmode=require'): Promise<void> {
       const cert = readFileSync(path.join(folder, `${name}.crt`), 'utf8');
       const key = readFileSync(path.join(folder, `${name}.key`));
       const sockets = new Set<net.Socket>();
@@ -32,12 +32,14 @@ test('shared database TLS settings reject untrusted/wrong-host certificates and 
       });
       await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
       const port = (server.address() as net.AddressInfo).port;
-      const client = new pg.Client({ ...databaseConfig(`postgresql://fixture:fixture@127.0.0.1:${port}/test?sslmode=require`, { NODE_ENV: 'production', ...(trust ? { DATABASE_CA_CERT: cert } : {}) }), connectionTimeoutMillis: 2000 });
+      const client = new pg.Client({ ...databaseConfig(`postgresql://fixture:fixture@127.0.0.1:${port}/test${suffix}`, { NODE_ENV: 'production', ...(trust ? { DATABASE_CA_CERT: cert } : {}) }), connectionTimeoutMillis: 2000 });
       try { await client.connect(); }
       finally { await client.end().catch(() => undefined); for (const socket of sockets) socket.destroy(); await new Promise<void>(resolve => server.close(() => resolve())); }
     }
     await assert.rejects(() => probe('valid', false), /self-signed|certificate/i);
     await assert.rejects(() => probe('wrong', true), /altname|IP|hostname/i);
     await probe('valid', true);
+    await probe('valid', true, '?application_name=security-test&sslmode=verify-full');
+    await probe('valid', true, '');
   } finally { rmSync(folder, { recursive: true, force: true }); }
 });

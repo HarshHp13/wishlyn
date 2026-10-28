@@ -1,5 +1,5 @@
 npm notice run wishlyn@0.1.0 lint:security
-npm notice run eslint src/lib/api.ts src/lib/auth.ts src/lib/authClient.ts src/lib/database.ts src/lib/rateLimit.ts src/lib/session.ts src/lib/databaseConfig.mjs src/app/api/auth src/app/api/admin/product src/app/api/cloudinary/upload src/app/login src/app/profile src/app/admin/page.tsx src/components/AuthBootstrap.tsx scripts tests/security
+npm notice run eslint src/lib/api.ts src/lib/auth.ts src/lib/authClient.ts src/lib/database.ts src/lib/rateLimit.ts src/lib/session.ts src/lib/safeRedirect.ts src/lib/databaseConfig.mjs src/app/api/auth src/app/api/admin/product src/app/api/cloudinary/upload src/app/login src/app/profile src/app/admin/page.tsx src/components/AuthBootstrap.tsx scripts tests/security
 
 /home/infinityzer0/.codex/worktrees/audit-identity-security/eCom/src/app/admin/page.tsx
   499:29  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element

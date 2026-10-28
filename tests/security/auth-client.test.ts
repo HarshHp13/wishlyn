@@ -55,3 +55,48 @@ test('failed logout never claims server revocation succeeded', async () => {
   assert.equal(f.client.getAuthState().status, 'error');
   assert.ok(!f.events.some(event => (event.detail as { status?: string })?.status === 'guest'));
 });
+
+
+for (const succeeds of [true, false]) for (const oldResponseFirst of [true, false]) {
+  test(`focus/storage refresh cannot race ${succeeds ? 'successful' : 'failed'} logout; old response ${oldResponseFirst ? 'first' : 'last'}`, async () => {
+    let finishMe!: (response: Response) => void;
+    let finishLogout!: (response: Response) => void;
+    let meRequests = 0;
+    const f = fixture(url => new Promise(resolve => {
+      if (url === '/api/auth/logout') finishLogout = resolve;
+      else { meRequests++; finishMe = resolve; }
+    }));
+    f.client.setAuthSession(user);
+    const oldRefresh = f.client.refreshAuthSession(true);
+    const logoutResult = f.client.clearAuthSession().then(() => true, () => false);
+    await Promise.resolve();
+    const deferredRefresh = f.client.refreshAuthSession(true).then(() => true, () => false);
+    for (const listener of f.handlers.get('focus') ?? []) listener({});
+    for (const listener of f.handlers.get('storage') ?? []) listener({ key: 'wishlyn-auth-invalidation' });
+    assert.equal(meRequests, 1, 'background requests wait behind logout instead of superseding it');
+    if (oldResponseFirst) { finishMe(Response.json({ user })); await oldRefresh; assert.equal(f.client.getAuthState().status, 'loading'); }
+    finishLogout(Response.json({}, { status: succeeds ? 200 : 503 }));
+    assert.equal(await logoutResult, succeeds);
+    assert.equal(await deferredRefresh, succeeds);
+    if (!oldResponseFirst) { finishMe(Response.json({ user })); await oldRefresh; }
+    assert.equal(f.client.getAuthState().status, succeeds ? 'guest' : 'error');
+    assert.equal(f.client.getAuthUser(), null);
+    const confirmedGuest = f.events.some(event => (event.detail as { status?: string })?.status === 'guest');
+    assert.equal(confirmedGuest, succeeds);
+  });
+}
+for (const succeeds of [true, false]) test(`a newer explicit sign-in survives an older ${succeeds ? 'successful' : 'failed'} logout`, async () => {
+  let finish!: (response: Response) => void;
+  const f = fixture(() => new Promise(resolve => { finish = resolve; }));
+  f.client.setAuthSession(user);
+  const logoutResult = f.client.clearAuthSession().then(() => true, () => false);
+  await Promise.resolve();
+  const newer: AuthUser = { id: 'customer-b', email: 'b@example.test', role: 'customer' };
+  f.client.setAuthSession(newer);
+  const refresh = f.client.refreshAuthSession(true);
+  finish(Response.json({}, { status: succeeds ? 200 : 503 }));
+  assert.equal(await logoutResult, succeeds);
+  assert.equal(f.client.getAuthState().status, 'authenticated');
+  assert.equal(f.client.getAuthUser()?.id, newer.id);
+  assert.equal((await refresh)?.id, newer.id);
+});

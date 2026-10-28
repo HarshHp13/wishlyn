@@ -7,6 +7,8 @@ let state: AuthState = SERVER_STATE;
 let generation = 0;
 let pending: Promise<AuthUser | null> | undefined;
 let initialized = false;
+let intent = 0;
+let logoutOperation: { intent: number; task: Promise<void> } | undefined;
 const listeners = new Set<() => void>();
 const INVALIDATION_KEY = 'wishlyn-auth-invalidation';
 
@@ -40,12 +42,21 @@ function isUser(value: unknown): value is AuthUser {
   return typeof user.id === 'string' && typeof user.email === 'string' && (user.role === 'customer' || user.role === 'admin');
 }
 export function setAuthSession(user: AuthUser): void {
-  initialize(); generation++; pending = undefined;
   if (!isUser(user)) throw new Error('The server returned an invalid account.');
+  initialize(); intent++; generation++; pending = undefined;
   publish({ status: 'authenticated', user }); broadcast();
 }
 export function refreshAuthSession(force = false): Promise<AuthUser | null> {
   initialize();
+  // Background verification cannot race a pending logout. A newer explicit
+  // sign-in has its own intent and is not overwritten by the older logout.
+  if (logoutOperation) {
+    const operation = logoutOperation;
+    return operation.task.then(() => state.user, error => {
+      if (operation.intent !== intent) return state.user;
+      throw error;
+    });
+  }
   if (pending && !force) return pending;
   const current = ++generation;
   publish({ status: 'loading', user: null });
@@ -71,16 +82,29 @@ export function refreshAuthSession(force = false): Promise<AuthUser | null> {
   return task;
 }
 export const refreshAuthUser = refreshAuthSession;
-export async function clearAuthSession(): Promise<void> {
-  initialize(); const current = ++generation; pending = undefined;
+export function clearAuthSession(): Promise<void> {
+  initialize();
+  if (logoutOperation?.intent === intent) return logoutOperation.task;
+  const operation = { intent: ++intent, task: Promise.resolve() };
+  logoutOperation = operation;
+  generation++; pending = undefined;
+  operation.task = Promise.resolve().then(async () => {
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin', signal: AbortSignal.timeout(10000) });
+      if (!response.ok) throw new Error('Sign out could not be confirmed. Please retry.');
+      if (operation.intent === intent) {
+        generation++; pending = undefined;
+        publish({ status: 'guest', user: null });
+      }
+      broadcast();
+    } catch (error) {
+      if (operation.intent === intent) {
+        generation++; pending = undefined;
+        publish({ status: 'error', user: null, error: 'Sign out could not be confirmed. Please retry.' });
+      }
+      throw error;
+    } finally { if (logoutOperation === operation) logoutOperation = undefined; }
+  });
   publish({ status: 'loading', user: null });
-  try {
-    const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin', signal: AbortSignal.timeout(10000) });
-    if (!response.ok) throw new Error('Sign out could not be confirmed. Please retry.');
-    if (current === generation) publish({ status: 'guest', user: null });
-    broadcast();
-  } catch (error) {
-    if (current === generation) publish({ status: 'error', user: null, error: 'Sign out could not be confirmed. Please retry.' });
-    throw error;
-  }
+  return operation.task;
 }

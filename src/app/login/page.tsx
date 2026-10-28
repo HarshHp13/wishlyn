@@ -5,10 +5,10 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import { setAuthSession, refreshAuthSession } from '../../lib/authClient';
 import styles from './login.module.css';
+import { safeInternalRedirect } from '@/lib/safeRedirect';
 
 function destination(): string {
-  const candidate = new URLSearchParams(window.location.search).get('redirect') || '/profile';
-  return candidate.startsWith('/') && !candidate.startsWith('//') && !candidate.includes('\\') ? candidate : '/profile';
+  return safeInternalRedirect(new URLSearchParams(window.location.search).get('redirect'), window.location.origin);
 }
 export default function LoginPage() {
   const router = useRouter();
@@ -44,7 +44,7 @@ export default function LoginPage() {
     {successMsg && <p role="status" className={styles.successMsg}>{successMsg}</p>}
     <form onSubmit={handleSubmit} className={styles.form} aria-describedby={errorMsg ? 'auth-error' : undefined}>
       <div className={styles.field}><label htmlFor="auth-email" className={styles.label}>Email address</label><input id="auth-email" name="email" autoComplete="email" type="email" required maxLength={254} value={email} onChange={event => setEmail(event.target.value)} className={styles.input} /></div>
-      <div className={styles.field}><label htmlFor="auth-password" className={styles.label}>Password</label><input id="auth-password" name="password" autoComplete={activeTab === 'login' ? 'current-password' : 'new-password'} type="password" required minLength={activeTab === 'signup' ? 8 : 1} maxLength={72} value={password} onChange={event => setPassword(event.target.value)} className={styles.input} aria-describedby={activeTab === 'signup' ? 'password-help' : undefined} />{activeTab === 'signup' && <p id="password-help">Use at least 8 characters. Longer passphrases are welcome.</p>}</div>
+      <div className={styles.field}><label htmlFor="auth-password" className={styles.label}>Password</label><input id="auth-password" name="password" autoComplete={activeTab === 'login' ? 'current-password' : 'new-password'} type="password" required minLength={activeTab === 'signup' ? 8 : 1} maxLength={activeTab === 'signup' ? 72 : 1024} value={password} onChange={event => setPassword(event.target.value)} className={styles.input} aria-describedby={activeTab === 'signup' ? 'password-help' : undefined} />{activeTab === 'signup' && <p id="password-help">Use at least 8 characters. Longer passphrases are welcome.</p>}</div>
       <button type="submit" disabled={loading} className={styles.submitBtn}>{loading ? 'Please wait…' : activeTab === 'login' ? 'Sign in' : 'Create account'}</button>
     </form>
   </div></main><Footer /></>;

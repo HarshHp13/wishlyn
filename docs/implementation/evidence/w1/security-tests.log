@@ -1,33 +1,48 @@
 npm notice run wishlyn@0.1.0 test:security
 npm notice run tsx --test tests/security/*.test.ts
-✔ cached browser claims never authenticate and session notifications carry no credential (144.479971ms)
-✔ stale anonymous responses cannot overwrite a newer successful sign-in (17.223943ms)
-✔ pending/error refresh is distinguishable from confirmed logout (13.371203ms)
-✔ failed logout never claims server revocation succeeded (14.310147ms)
-✔ schema-only bootstrap reruns without sample users/products and checksums are stable (221.954479ms)
-✔ public signup ignores privileged input and issues only an HttpOnly opaque session (416.568272ms)
-✔ case/whitespace variants racing signup create exactly one canonical identity (583.703259ms)
-✔ current role, password changes, disable and logout revoke issued sessions permanently (1397.390625ms)
-✔ legacy bearer tokens, absent cookies and forged local claims do not authenticate (0.619074ms)
-✔ cross-origin/missing-Origin mutations and unsupported content fail before work (1.637628ms)
-✔ chunked payload budgets do not rely on Content-Length (1.057368ms)
-✔ password/email validation bounds hashing input without silent bcrypt truncation (0.360996ms)
+✔ cached browser claims never authenticate and session notifications carry no credential (104.361128ms)
+✔ stale anonymous responses cannot overwrite a newer successful sign-in (18.52915ms)
+✔ pending/error refresh is distinguishable from confirmed logout (12.974876ms)
+✔ failed logout never claims server revocation succeeded (12.414777ms)
+✔ focus/storage refresh cannot race successful logout; old response first (12.068387ms)
+✔ focus/storage refresh cannot race successful logout; old response last (10.004314ms)
+✔ focus/storage refresh cannot race failed logout; old response first (10.656386ms)
+✔ focus/storage refresh cannot race failed logout; old response last (7.097817ms)
+✔ a newer explicit sign-in survives an older successful logout (7.255696ms)
+✔ a newer explicit sign-in survives an older failed logout (7.687676ms)
+✔ all pg URL transport/host overrides and duplicate parameters fail before pg parses them (2.265988ms)
+✔ effective pg options retain validated host/port and trusted CA without a second URL parse (2.669489ms)
+✔ schema-only bootstrap reruns without sample users/products and checksums are stable (166.665403ms)
+✔ public signup ignores privileged input and issues only an HttpOnly opaque session (344.047484ms)
+✔ case/whitespace variants racing signup create exactly one canonical identity (534.900555ms)
+✔ current role, disable and logout revoke issued sessions permanently (1040.399748ms)
+✔ legacy bearer tokens, absent cookies and forged local claims do not authenticate (0.391883ms)
+✔ cross-origin/missing-Origin mutations and unsupported content fail before work (1.137264ms)
+✔ chunked payload budgets do not rely on Content-Length (0.962757ms)
+✔ password/email validation bounds hashing input without silent bcrypt truncation (0.322849ms)
 [API] Request could not be completed.
-✔ distributed rate limits are atomic across concurrent connections and expire (26.375429ms)
+✔ distributed rate limits are atomic across concurrent connections and expire (24.442879ms)
 [API] Request could not be completed.
-✔ infrastructure failures are retryable service errors, not invalid login or secret output (10.629404ms)
-✔ transaction failure rolls back profile and session together (3.507752ms)
-✔ production cookies are Secure and remote TLS never bypasses verification (3.542919ms)
-✔ deployment plans isolate one target, reject unsupported keys/shared secrets and redact at execution (0.654834ms)
-✔ separate application processes share one request budget (302.18418ms)
-✔ canonical-email collision migration aborts before changing legacy profiles (195.74683ms)
-✔ upload configuration and image validation fail before any provider call (105.715332ms)
-✔ shared database TLS settings reject untrusted/wrong-host certificates and accept trusted matching TLS (220.529651ms)
-ℹ tests 21
+✔ infrastructure failures are retryable service errors, not invalid login or secret output (8.515059ms)
+✔ transaction failure rolls back profile and session together (4.647239ms)
+✔ production cookies are Secure and remote TLS never bypasses verification (2.435062ms)
+✔ deployment plans isolate one target, reject unsupported keys/shared secrets and redact at execution (0.481554ms)
+✔ separate application processes share one request budget (210.695415ms)
+✔ canonical-email collision migration aborts before changing legacy profiles (173.837775ms)
+✔ upload configuration and image validation fail before any provider call (73.553268ms)
+✔ password and email updates revoke prior sessions and accept only the changed credentials (1798.282586ms)
+✔ legacy bcrypt passwords above 72 UTF8 bytes can sign in, but cannot be newly registered (21.686008ms)
+✔ database and application agree on every ECMAScript boundary whitespace and reject noncanonical writes (158.781904ms)
+✔ migration canonicalizes noncolliding tab/newline/Unicode edges and aborts colliding legacy identities (440.124638ms)
+✔ production TLS cannot connect to a plaintext server through URL aliases (2.995377ms)
+✔ login return URLs reject protocol-relative origins, backslashes and decoded or encoded controls (2.044091ms)
+✔ normal internal paths retain query/hash and resolve against the store origin (0.493017ms)
+✔ shared database TLS settings reject untrusted/wrong-host certificates and accept trusted matching TLS (144.506648ms)
+ℹ tests 36
 ℹ suites 0
-ℹ pass 21
+ℹ pass 36
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 3777.653504
+ℹ duration_ms 5385.918007

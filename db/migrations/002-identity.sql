@@ -1,17 +1,35 @@
--- Abort the transaction before changing identity data if case/space collisions exist.
+-- ECMAScript String.trim whitespace, explicitly shared with normalizeEmail.
+-- ASCII-only identity text makes lowercasing independent of database locale.
+CREATE FUNCTION canonical_profile_email(value TEXT) RETURNS TEXT
+  LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE AS $$
+  SELECT lower(btrim(value, U&'\0009\000A\000B\000C\000D\0020\00A0\1680\2000\2001\2002\2003\2004\2005\2006\2007\2008\2009\200A\2028\2029\202F\205F\3000\FEFF') COLLATE "C")
+$$;
+CREATE FUNCTION valid_profile_email(value TEXT) RETURNS BOOLEAN
+  LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE AS $$
+  SELECT value = canonical_profile_email(value)
+    AND octet_length(value) = length(value) AND value ~ '^[!-~]+$' AND length(value) BETWEEN 3 AND 254
+    AND length(split_part(value, '@', 1)) BETWEEN 1 AND 64
+    AND split_part(value, '@', 1) ~ '^[a-z0-9.!#$%&''*+/=?^_`{|}~-]+$'
+    AND left(split_part(value, '@', 1), 1) <> '.'
+    AND right(split_part(value, '@', 1), 1) <> '.'
+    AND position('..' in split_part(value, '@', 1)) = 0
+    AND split_part(value, '@', 2) ~ '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$'
+    AND length(value) - length(replace(value, '@', '')) = 1
+$$;
+-- Abort before changing identity data if canonical collisions/invalid accounts exist.
 DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM profiles GROUP BY lower(btrim(email)) HAVING count(*) > 1) THEN
+  IF EXISTS (SELECT 1 FROM profiles GROUP BY canonical_profile_email(email) HAVING count(*) > 1) THEN
     RAISE EXCEPTION 'Canonical email collisions require operator resolution before migration';
   END IF;
-  IF EXISTS (SELECT 1 FROM profiles WHERE length(btrim(email)) = 0 OR length(btrim(email)) > 254) THEN
+  IF EXISTS (SELECT 1 FROM profiles WHERE NOT valid_profile_email(canonical_profile_email(email))) THEN
     RAISE EXCEPTION 'Invalid profile emails require operator resolution before migration';
   END IF;
 END $$;
-UPDATE profiles SET email = lower(btrim(email)) WHERE email <> lower(btrim(email));
-CREATE UNIQUE INDEX profiles_canonical_email ON profiles (lower(btrim(email)));
+UPDATE profiles SET email = canonical_profile_email(email) WHERE email <> canonical_profile_email(email);
+CREATE UNIQUE INDEX profiles_canonical_email ON profiles (canonical_profile_email(email));
 ALTER TABLE profiles ADD COLUMN disabled_at TIMESTAMPTZ;
 ALTER TABLE profiles ADD COLUMN session_version INTEGER NOT NULL DEFAULT 1 CHECK (session_version > 0);
-ALTER TABLE profiles ADD CONSTRAINT profile_email_canonical CHECK (email = lower(btrim(email)) AND length(email) BETWEEN 3 AND 254);
+ALTER TABLE profiles ADD CONSTRAINT profile_email_canonical CHECK (valid_profile_email(email));
 CREATE TABLE auth_sessions (
   token_hash CHAR(64) PRIMARY KEY, profile_id VARCHAR(128) NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   session_version INTEGER NOT NULL, expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now()

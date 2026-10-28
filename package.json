@@ -13,7 +13,7 @@
     "test": "tsx --test tests/**/*.test.ts",
     "test:security": "tsx --test tests/security/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "lint:security": "eslint src/lib/api.ts src/lib/auth.ts src/lib/authClient.ts src/lib/database.ts src/lib/rateLimit.ts src/lib/session.ts src/lib/databaseConfig.mjs src/app/api/auth src/app/api/admin/product src/app/api/cloudinary/upload src/app/login src/app/profile src/app/admin/page.tsx src/components/AuthBootstrap.tsx scripts tests/security",
+    "lint:security": "eslint src/lib/api.ts src/lib/auth.ts src/lib/authClient.ts src/lib/database.ts src/lib/rateLimit.ts src/lib/session.ts src/lib/safeRedirect.ts src/lib/databaseConfig.mjs src/app/api/auth src/app/api/admin/product src/app/api/cloudinary/upload src/app/login src/app/profile src/app/admin/page.tsx src/components/AuthBootstrap.tsx scripts tests/security",
     "check:secrets": "node scripts/check-secrets.mjs"
   },
   "dependencies": {

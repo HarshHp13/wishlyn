@@ -5,13 +5,14 @@ import { spawn } from 'node:child_process';
 import { query, closeDatabase, transaction } from '../../src/lib/database';
 import { ApiError, assertSameOrigin, readJson, apiError } from '../../src/lib/api';
 import { getSession, requireAdmin, createSession } from '../../src/lib/session';
-import { normalizeEmail, validatePassword } from '../../src/lib/auth';
+import { normalizeEmail, validatePassword, hashPassword } from '../../src/lib/auth';
 import { rateLimit, requestIdentity } from '../../src/lib/rateLimit';
 import { databaseConfig } from '../../src/lib/databaseConfig.mjs';
 import { planEnvironment } from '../../scripts/add-vercel-envs.mjs';
 import { migrate } from '../../scripts/migrate.mjs';
 import { NextResponse } from 'next/server';
 import pg from 'pg';
+import bcrypt from 'bcryptjs';
 
 const baseTestUrl = process.env.TEST_DATABASE_URL;
 const databaseName = `wishlyn_security_${randomUUID().replaceAll('-', '')}_test`;
@@ -70,7 +71,7 @@ test('case/whitespace variants racing signup create exactly one canonical identi
   assert.deepEqual(responses.map(r => r.status).sort(), [201, 409]);
   assert.equal((await query("SELECT count(*)::int n FROM profiles WHERE email='race@example.test'")).rows[0].n, 1);
 });
-test('current role, password changes, disable and logout revoke issued sessions permanently', async () => {
+test('current role, disable and logout revoke issued sessions permanently', async () => {
   const response = await login(request('/api/auth/login', { email: 'myadmin@example.test', password: 'Private test passphrase' }));
   assert.equal(response.status, 200);
   const user = (await response.clone().json()).user;
@@ -208,5 +209,88 @@ test('upload configuration and image validation fail before any provider call', 
     for (const [key, value] of Object.entries({ NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: original.cloud, CLOUDINARY_API_KEY: original.key, CLOUDINARY_API_SECRET: original.secret })) {
       if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }
+  }
+});
+
+
+test('password and email updates revoke prior sessions and accept only the changed credentials', async () => {
+  const id = randomUUID();
+  const email = `${id}@example.test`;
+  const original = 'Original test passphrase';
+  const replacement = 'Changed test passphrase';
+  await query('INSERT INTO profiles(id,email,password_hash) VALUES($1,$2,$3)', [id, email, await hashPassword(original)]);
+  const first = await login(request('/api/auth/login', { email, password: original }));
+  assert.equal(first.status, 200);
+  await query('UPDATE profiles SET password_hash=$1 WHERE id=$2', [await hashPassword(replacement), id]);
+  assert.equal(await getSession(new Request(origin, { headers: { cookie: cookie(first) } })), null);
+  assert.equal((await login(request('/api/auth/login', { email, password: original }))).status, 401);
+  const changed = await login(request('/api/auth/login', { email, password: replacement }));
+  assert.equal(changed.status, 200);
+  const newEmail = `${id}-changed@example.test`;
+  await query('UPDATE profiles SET email=$1 WHERE id=$2', [newEmail, id]);
+  assert.equal(await getSession(new Request(origin, { headers: { cookie: cookie(changed) } })), null);
+  assert.equal((await login(request('/api/auth/login', { email, password: replacement }))).status, 401);
+  assert.equal((await login(request('/api/auth/login', { email: newEmail, password: replacement }))).status, 200);
+});
+
+test('legacy bcrypt passwords above 72 UTF8 bytes can sign in, but cannot be newly registered', async () => {
+  for (const password of ['a'.repeat(80), '🔐'.repeat(20)]) {
+    const id = randomUUID(); const email = `${id}@example.test`;
+    const legacyHash = await bcrypt.hash(password, 4);
+    await query('INSERT INTO profiles(id,email,password_hash) VALUES($1,$2,$3)', [id, email, legacyHash]);
+    assert.equal(validatePassword(password), password);
+    assert.equal((await login(request('/api/auth/login', { email, password }))).status, 200);
+    assert.equal((await signup(request('/api/auth/signup', { email: `new-${email}`, password }))).status, 400);
+  }
+  assert.throws(() => validatePassword('a'.repeat(1025)), ApiError);
+});
+
+test('database and application agree on every ECMAScript boundary whitespace and reject noncanonical writes', async () => {
+  const whitespace = ['\u0009','\u000a','\u000b','\u000c','\u000d',' ','\u00a0','\u1680','\u2000','\u2001','\u2002','\u2003','\u2004','\u2005','\u2006','\u2007','\u2008','\u2009','\u200a','\u2028','\u2029','\u202f','\u205f','\u3000','\ufeff'];
+  for (const edge of whitespace) {
+    const raw = `${edge}Customer@example.test${edge}`;
+    const row = (await query('SELECT canonical_profile_email($1) value, valid_profile_email($1) valid', [raw])).rows[0];
+    assert.equal(row.value, normalizeEmail(raw)); assert.equal(row.valid, false);
+    await assert.rejects(() => query("INSERT INTO profiles(id,email,password_hash) VALUES($1,$2,'fixture')", [randomUUID(), raw]), (error: unknown) => Boolean(error && typeof error === 'object' && 'code' in error && error.code === '23514'));
+  }
+  for (const invalid of ['K@example.test', 'user@éxample.test']) {
+    assert.throws(() => normalizeEmail(invalid), ApiError);
+    assert.equal((await query('SELECT valid_profile_email(canonical_profile_email($1)) valid', [invalid])).rows[0].valid, false);
+  }
+});
+
+test('migration canonicalizes noncolliding tab/newline/Unicode edges and aborts colliding legacy identities', async () => {
+  for (const collision of [null, 'one', 'two', 'three']) {
+    const name = `wishlyn_whitespace_${randomUUID().replaceAll('-', '')}_test`;
+    const url = new URL(baseTestUrl!); url.pathname = `/${name}`;
+    const admin = new pg.Client(databaseConfig(baseTestUrl)); await admin.connect();
+    let fixture: pg.Client | undefined;
+    try {
+      await admin.query(`CREATE DATABASE ${name}`);
+      fixture = new pg.Client(databaseConfig(url.toString())); await fixture.connect();
+      await fixture.query("CREATE TABLE profiles(id varchar(128) PRIMARY KEY,email varchar(255) UNIQUE NOT NULL,password_hash text NOT NULL,role varchar(32) DEFAULT 'customer',created_at timestamptz DEFAULT now())");
+      const rows = [ ['one', ' User@example.test\t'], ['two', '\nOther@example.test\r'], ['three', '\u00a0Third@example.test\ufeff'] ];
+      for (const row of rows) await fixture.query("INSERT INTO profiles(id,email,password_hash) VALUES($1,$2,'fixture')", row);
+      if (collision) await fixture.query("INSERT INTO profiles(id,email,password_hash) VALUES('duplicate',$1,'fixture')", [normalizeEmail(rows.find(row => row[0] === collision)![1])]);
+      if (collision) {
+        await assert.rejects(() => migrate(url.toString(), true), /collisions/);
+        assert.equal((await fixture.query("SELECT email FROM profiles WHERE id='one'")).rows[0].email, rows[0][1]);
+        assert.equal((await fixture.query("SELECT to_regclass('schema_migrations') name")).rows[0].name, null);
+      } else {
+        await migrate(url.toString(), true);
+        for (const row of rows) assert.equal((await fixture.query('SELECT email FROM profiles WHERE id=$1', [row[0]])).rows[0].email, normalizeEmail(row[1]));
+      }
+    } finally { await fixture?.end(); await admin.query(`DROP DATABASE IF EXISTS ${name}`); await admin.end(); }
+  }
+});
+
+test('production TLS cannot connect to a plaintext server through URL aliases', async () => {
+  const productionURL = new URL(baseTestUrl!); productionURL.pathname = `/${databaseName}`;
+  const client = new pg.Client({ ...databaseConfig(productionURL.toString(), { NODE_ENV: 'production' }), connectionTimeoutMillis: 2000 });
+  try { await assert.rejects(() => client.connect(), /SSL|TLS|certificate/i); }
+  finally { await client.end().catch(() => undefined); }
+  for (const alias of ['ssl=0', 'sslmode=require&ssl=0', 'ssl=1&ssl=0']) {
+    productionURL.search = alias;
+    assert.throws(() => new pg.Client(databaseConfig(productionURL.toString(), { NODE_ENV: 'production' })), /Unsupported|repeated/);
   }
 });
