@@ -1,0 +1,36 @@
+name: Quality
+on:
+  pull_request:
+  push:
+    branches: [codex/audit-remediation]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: wishlyn_test
+          POSTGRES_PASSWORD: fixture_only
+          POSTGRES_DB: wishlyn_test
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:security
+        env:
+          TEST_DATABASE_URL: postgresql://wishlyn_test:fixture_only@127.0.0.1:5432/wishlyn_test
+      - run: npm run check:secrets
+      - run: npm run lint:security
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          APP_ORIGIN: https://preview.example.invalid
+      - run: npm audit --omit=dev --audit-level=moderate
