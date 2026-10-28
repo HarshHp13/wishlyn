@@ -9,6 +9,7 @@ import { useCart } from '@/context/CartContext';
 import { refreshAuthSession, type AuthUser } from '@/lib/authClient';
 import { commerceTotals, formatMoney, GIFT_WRAP_PAISE, SHIPPING_PAISE, FREE_SHIPPING_THRESHOLD_PAISE, TAX_RATE_PERCENT } from '@/lib/commerce-rules';
 import { CommerceRequestError, commerceRequest } from '@/lib/commerce/client';
+import { bagMatchesPurchase } from '@/lib/commerce/bag-match';
 import { loadRazorpay } from '@/lib/commerce/razorpay-client';
 import { CheckoutValidationError, INDIAN_STATES, validateShipping } from '@/lib/commerce/validation';
 import type { Purchase, ShippingAddress } from '@/lib/commerce/types';
@@ -107,7 +108,7 @@ function Checkout() {
   const pay = async () => {
     if (!user || !order || !approved) return;
     setBusy(true); setError('');
-    const owner = user.id, orderId = order.id, cartAtPayment = JSON.stringify(lines());
+    const owner = user.id, orderId = order.id;
     try {
       const Razorpay = await loadRazorpay();
       const data = await commerceRequest<{ key: string; amount: number; currency: string; providerOrderId: string }>('/api/create-order', { orderId });
@@ -126,7 +127,7 @@ function Checkout() {
             if (account.current !== owner) return;
             setOrder(result.order);
             if (result.verified) {
-              if (JSON.stringify(lines()) === cartAtPayment) clearCart();
+              if (bagMatchesPurchase(lines(), result.order.items)) clearCart();
               router.push(`/orders/${orderId}`);
             } else setError('Your payment requires review. Open this order for its current status and support.');
           } catch { if (account.current === owner) setError('Payment status could not be confirmed. Your order reference is saved. Check the order before attempting another payment.'); }

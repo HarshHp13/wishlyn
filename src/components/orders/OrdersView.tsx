@@ -21,7 +21,7 @@ const descriptions = {
 
 export default function OrdersView({ admin = false, id }: { admin?: boolean; id?: string }) {
   const auth = useSyncExternalStore(subscribeAuth, getAuthState, getServerAuthState);
-  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [orders, setOrders] = useState<Purchase[]>([]);
   const [order, setOrder] = useState<Purchase | null>(null);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
@@ -36,17 +36,19 @@ export default function OrdersView({ admin = false, id }: { admin?: boolean; id?
   const base = admin ? '/admin/orders' : '/orders';
   const endpoint = `/api${base}${id ? `/${encodeURIComponent(id)}` : `?offset=${offset}${filter ? `&status=${filter}` : ''}`}`;
 
+  const requestKey = auth.status === 'authenticated' && auth.user ? JSON.stringify([auth.user.id, auth.user.role, endpoint]) : null;
+
   useEffect(() => { void refreshAuthSession().catch(() => undefined); }, []);
 
   useEffect(() => {
-    if (auth.status !== 'authenticated' || !auth.user) return;
-    const owner = auth.user.id;
+    if (!requestKey) return;
+    const key = requestKey;
     const controller = new AbortController();
     commerceRequest<{ order?: Purchase; orders?: Purchase[]; nextOffset?: number | null }>(endpoint, undefined, controller.signal)
-      .then(data => { if (!controller.signal.aborted) { setOrder(data.order || null); setOrders(data.orders || []); setNextOffset(data.nextOffset ?? null); setLoadedFor(owner); setLoading(false); setError(''); setUnauthenticated(false); } })
-      .catch(error => { if (!controller.signal.aborted) { setError(error instanceof Error ? error.message : 'Orders could not be loaded. Please retry.'); setUnauthenticated(error instanceof CommerceRequestError && error.status === 401); setLoadedFor(owner); setLoading(false); } });
+      .then(data => { if (!controller.signal.aborted) { setOrder(data.order || null); setOrders(data.orders || []); setNextOffset(data.nextOffset ?? null); setLoadedKey(key); setLoading(false); setError(''); setUnauthenticated(false); } })
+      .catch(error => { if (!controller.signal.aborted) { setOrder(null); setOrders([]); setNextOffset(null); setError(error instanceof Error ? error.message : 'Orders could not be loaded. Please retry.'); setUnauthenticated(error instanceof CommerceRequestError && error.status === 401); setLoadedKey(key); setLoading(false); } });
     return () => controller.abort();
-  }, [endpoint, revision, auth.status, auth.user]);
+  }, [endpoint, revision, requestKey]);
 
   const reload = () => { setLoading(true); setError(''); setRevision(value => value + 1); };
   const action = async (payload: Record<string, unknown>) => {
@@ -61,8 +63,8 @@ export default function OrdersView({ admin = false, id }: { admin?: boolean; id?
     <nav className={styles.nav} aria-label="Order navigation"><Link href={admin ? '/admin' : '/profile'}>{admin ? 'Store administration' : 'My account'}</Link>{id && <Link href={base}>All orders</Link>}<Link href="/">Shop</Link></nav>
     <h1>{id ? (admin ? 'Order workspace' : 'Your order') : (admin ? 'Orders and payment exceptions' : 'Your orders')}</h1>
     {admin && !id && <p className={styles.intro}>Review payments, prepare confirmed purchases and record dispatch. Historical orders created before verified checkout are retained separately for a controlled migration.</p>}
-    {error && <div role="alert" className={styles.error}>{error} {unauthenticated ? <Link href={`/login?redirect=${encodeURIComponent(id ? `${base}/${id}` : base)}`}>Sign in</Link> : <button onClick={reload}>Retry loading</button>}</div>}
-    {auth.status === 'loading' ? <p role="status">Verifying your account…</p> : auth.status === 'error' ? <div role="alert"><p>Your account could not be verified.</p><button onClick={() => { void refreshAuthSession().catch(() => undefined); }}>Retry account check</button></div> : auth.status === 'guest' ? <p><Link href={`/login?redirect=${encodeURIComponent(id ? `${base}/${id}` : base)}`}>Sign in to view orders</Link></p> : loading || loadedFor !== auth.user?.id ? <p role="status">Loading order details…</p> : id && order ? <>
+    {requestKey && loadedKey === requestKey && error && <div role="alert" className={styles.error}>{error} {unauthenticated ? <Link href={`/login?redirect=${encodeURIComponent(id ? `${base}/${id}` : base)}`}>Sign in</Link> : <button onClick={reload}>Retry loading</button>}</div>}
+    {auth.status === 'loading' ? <p role="status">Verifying your account…</p> : auth.status === 'error' ? <div role="alert"><p>Your account could not be verified.</p><button onClick={() => { void refreshAuthSession().catch(() => undefined); }}>Retry account check</button></div> : auth.status === 'guest' ? <p><Link href={`/login?redirect=${encodeURIComponent(id ? `${base}/${id}` : base)}`}>Sign in to view orders</Link></p> : loading || loadedKey !== requestKey ? <p role="status">Loading order details…</p> : id && order ? <>
       <div className={styles.heading}><div><p className={styles.reference}>{order.id}</p><h2>{statusLabel(order)}</h2><p>{descriptions[order.status]}</p></div><div className={styles.actions}>
         {(order.providerOrderId || order.paymentSetupState !== 'idle') && <button disabled={busy} onClick={() => action({ action: 'reconcile' })}>{busy ? 'Checking…' : 'Check payment status'}</button>}
         {!admin && order.status === 'pending_payment' && <><Link href={`/checkout?order=${order.id}`}>Review and pay</Link><button disabled={busy} onClick={() => action({ action: 'cancel' })}>Cancel unpaid order</button></>}
