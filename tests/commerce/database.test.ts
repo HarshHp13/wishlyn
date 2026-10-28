@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import { before, beforeEach, after, describe, test } from 'node:test';
+import { createHmac } from 'node:crypto';
+import { NextResponse } from 'next/server';
+import { createSession, SESSION_COOKIE } from '../../src/lib/session';
+import { quotePOST, verifyPOST, customerOrderGET, adminOrderPOST } from '../../src/lib/commerce/http';
+import { POST as webhookPOST } from '../../src/app/api/razorpay/webhook/route';
 import { readFile } from 'node:fs/promises';
-import { query, transaction, closeDatabase } from '../../src/lib/database';
+import { migrate } from '../../scripts/migrate.mjs';
+import { query, closeDatabase } from '../../src/lib/database';
 import { createPurchase, startPayment, applyPayment, getPurchase, cancelPurchase, expireReservations, reconcilePurchase, updateFulfillment } from '../../src/lib/commerce/service';
 import type { GatewayPayment, PaymentGateway } from '../../src/lib/commerce/types';
 
@@ -29,11 +35,10 @@ describe('commerce PostgreSQL transaction invariants', { skip: !testUrl }, () =>
     assert.equal(url.pathname, '/wishlyn_test_commerce');
     process.env.DATABASE_URL = testUrl;
     process.env.DB_ALLOW_LOCAL_PLAINTEXT = 'true';
-    process.env.NODE_ENV = 'test';
+    Object.assign(process.env, { NODE_ENV: 'test' });
     await query('DROP SCHEMA public CASCADE; CREATE SCHEMA public');
-    await transaction(async client => {
-      for (const name of ['001-initial.sql','002-identity.sql','003-commerce.sql']) await client.query(await readFile(new URL(`../../db/migrations/${name}`, import.meta.url), 'utf8'));
-    });
+    assert.deepEqual(await migrate(testUrl!, true), ['001-initial.sql', '002-identity.sql', '003-commerce.sql']);
+    assert.deepEqual(await migrate(testUrl!, true), []);
   });
   beforeEach(async () => {
     await query('TRUNCATE commerce_order_events,commerce_reservations,commerce_orders,product_variants,products,categories,profiles CASCADE');
@@ -194,6 +199,63 @@ describe('commerce PostgreSQL transaction invariants', { skip: !testUrl }, () =>
     const delivered = await updateFulfillment(order.id, 'test-admin', { fulfillmentStatus: 'delivered' });
     assert.equal(delivered.fulfillmentStatus, 'delivered'); assert.equal(delivered.trackingNumber, 'TEST123');
   });
+  test('real route guards distinguish disabled checkout, guest, CSRF, invalid input and ownership', async () => {
+    const session = NextResponse.json({});
+    await createSession(alice.id, session);
+    const cookie = `${SESSION_COOKIE}=${session.cookies.get(SESSION_COOKIE)!.value}`;
+    const request = (body: unknown, origin = 'http://localhost:3000', authenticated = true) => new Request('http://localhost:3000/api/checkout/quote', { method: 'POST', headers: { 'content-type': 'application/json', origin, cookie: authenticated ? cookie : '' }, body: JSON.stringify(body) });
+    delete process.env.COMMERCE_CHECKOUT_ENABLED;
+    assert.equal((await quotePOST(request(payload()))).status, 503);
+    process.env.COMMERCE_CHECKOUT_ENABLED = 'true';
+    assert.equal((await quotePOST(request(payload(), 'http://localhost:3000', false))).status, 401);
+    assert.equal((await quotePOST(request(payload(), 'https://cross-site.example'))).status, 403);
+    assert.equal((await quotePOST(request({ ...payload(), shipping: { ...address, zipCode: 'x' } }))).status, 400);
+    const result = await quotePOST(request(payload()));
+    assert.equal(result.status, 201);
+    assert.match(result.headers.get('cache-control')!, /no-store/);
+    const { order } = await result.json();
+    assert.equal((await customerOrderGET(new Request('http://localhost:3000/api/orders', { headers: { cookie } }), order.id)).status, 200);
+    assert.equal((await adminOrderPOST(request({ action: 'fulfillment', fulfillmentStatus: 'processing' }), order.id)).status, 403);
+    const otherSession = NextResponse.json({}); await createSession(bob.id, otherSession);
+    assert.equal((await customerOrderGET(new Request('http://localhost:3000/api/orders', { headers: { cookie: `${SESSION_COOKIE}=${otherSession.cookies.get(SESSION_COOKIE)!.value}` } }), order.id)).status, 404);
+  });
+  test('real callback and signed webhook share ownership/binding/capture/idempotency boundary', async () => {
+    const { order, payment } = await prepare();
+    const other = await createPurchase(alice, payload());
+    const session = NextResponse.json({}); await createSession(alice.id, session);
+    const cookie = `${SESSION_COOKIE}=${session.cookies.get(SESSION_COOKIE)!.value}`;
+    const oldFetch = globalThis.fetch;
+    process.env.RAZORPAY_KEY_ID = 'rzp_test_fixture'; process.env.RAZORPAY_KEY_SECRET = 'synthetic-test-key'; process.env.RAZORPAY_WEBHOOK_SECRET = 'synthetic-webhook-key';
+    let gatewayCalls = 0;
+    globalThis.fetch = async input => {
+      assert.equal(String(input), `https://api.razorpay.com/v1/payments/${payment.id}`);
+      gatewayCalls++;
+      return Response.json(payment);
+    };
+    const proof = { orderId: order.id, razorpay_order_id: payment.order_id, razorpay_payment_id: payment.id, razorpay_signature: createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(`${payment.order_id}|${payment.id}`).digest('hex') };
+    const request = (body: unknown) => new Request('http://localhost:3000/api/verify-payment', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://localhost:3000', cookie }, body: JSON.stringify(body) });
+    try {
+      assert.equal((await verifyPOST(request({ ...proof, orderId: other.id }))).status, 400);
+      assert.equal(gatewayCalls, 0);
+      const result = await verifyPOST(request({ ...proof, amount: 1, items: [], shipping: { email: 'forged@example.test' } }));
+      assert.equal(result.status, 200); assert.equal((await result.json()).verified, true);
+      const body = JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: payment.id } } } });
+      const signature = createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET).update(body).digest('hex');
+      const hook = (payload: string, sign = signature) => new Request('http://localhost:3000/api/razorpay/webhook', { method: 'POST', headers: { 'x-razorpay-signature': sign }, body: payload });
+      assert.equal((await webhookPOST(hook(body))).status, 200);
+      assert.equal((await webhookPOST(hook(body + ' '))).status, 400);
+      assert.equal((await webhookPOST(hook('a'.repeat(65_537)))).status, 413);
+      assert.equal((await query("SELECT * FROM commerce_order_events WHERE order_id=$1 AND type='paid'", [order.id])).rowCount, 1);
+      assert.equal((await getPurchase(order.id, alice.id)).email, alice.email);
+      assert.deepEqual(await inventory(), { stock: 4, reserved_stock: 1 });
+    } finally { globalThis.fetch = oldFetch; }
+  });
+  test('migration reruns retain data and checksum history', async () => {
+    const order = await createPurchase(alice, payload());
+    assert.deepEqual(await migrate(testUrl!, true), []);
+    assert.equal((await getPurchase(order.id, alice.id)).id, order.id);
+    assert.equal((await query('SELECT * FROM schema_migrations')).rowCount, 3);
+  });
   test('database constraints reject impossible inventory and preserve referenced variants', async () => {
     await assert.rejects(query("UPDATE product_variants SET stock=-1 WHERE id='v1'"));
     await assert.rejects(query("UPDATE product_variants SET reserved_stock=6 WHERE id='v1'"));
@@ -201,4 +263,18 @@ describe('commerce PostgreSQL transaction invariants', { skip: !testUrl }, () =>
     await createPurchase(alice, payload());
     await assert.rejects(query("DELETE FROM product_variants WHERE id='v1'"));
   });
+  test('unversioned legacy bootstrap preserves old orders and migration failure rolls back', async () => {
+    await query('DROP SCHEMA public CASCADE; CREATE SCHEMA public');
+    await query(await readFile(new URL('../../db/migrations/001-initial.sql', import.meta.url), 'utf8'));
+    await query("INSERT INTO categories(id,name,slug) VALUES('legacy','Legacy','legacy'); INSERT INTO products(id,title,description,category_id) VALUES('legacy','Legacy','Retained','legacy'); INSERT INTO product_variants(id,product_id,metal_type,purity,price,stock) VALUES('legacy','legacy','Unknown','Unknown',0,2)");
+    await query("INSERT INTO orders(id,user_email,items,subtotal,shipping_cost,tax,total,status) VALUES('legacy-order','old@example.test','[]',100,0,0,100,'confirmed')");
+    await assert.rejects(migrate(testUrl!, true));
+    assert.equal((await query("SELECT to_regclass('public.auth_sessions') AS name")).rows[0].name, null);
+    assert.equal((await query("SELECT column_name FROM information_schema.columns WHERE table_name='product_variants' AND column_name='reserved_stock'")).rowCount, 0);
+    await query("UPDATE product_variants SET price=100 WHERE id='legacy'");
+    await migrate(testUrl!, true);
+    assert.equal((await query("SELECT * FROM orders WHERE id='legacy-order'")).rowCount, 1);
+    assert.equal((await query('SELECT * FROM commerce_orders')).rowCount, 0);
+  });
+
 });

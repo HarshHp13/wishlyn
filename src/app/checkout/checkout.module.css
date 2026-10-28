@@ -584,3 +584,4 @@
 .primaryBtn:disabled, .secondaryBtn:disabled { opacity: .65; cursor: not-allowed; }
 .summaryHeader h2 { font-size: 22px; }
 @media (max-width: 640px) { .page { padding-inline: 0; } .sectionTitle { font-size: 26px; } }
+.primaryBtn:hover:not(:disabled), .homeLink:hover { background: #352514; color: #fff; }

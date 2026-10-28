@@ -46,7 +46,7 @@ export default function OrdersView({ admin = false, id }: { admin?: boolean; id?
       .then(data => { if (!controller.signal.aborted) { setOrder(data.order || null); setOrders(data.orders || []); setNextOffset(data.nextOffset ?? null); setLoadedFor(owner); setLoading(false); setError(''); setUnauthenticated(false); } })
       .catch(error => { if (!controller.signal.aborted) { setError(error instanceof Error ? error.message : 'Orders could not be loaded. Please retry.'); setUnauthenticated(error instanceof CommerceRequestError && error.status === 401); setLoadedFor(owner); setLoading(false); } });
     return () => controller.abort();
-  }, [endpoint, revision, auth.status, auth.user?.id]);
+  }, [endpoint, revision, auth.status, auth.user]);
 
   const reload = () => { setLoading(true); setError(''); setRevision(value => value + 1); };
   const action = async (payload: Record<string, unknown>) => {

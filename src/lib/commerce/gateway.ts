@@ -46,7 +46,7 @@ export function paymentGateway(): PaymentGateway {
   }
   const payment = (input: unknown): GatewayPayment => {
     const p = input as Partial<GatewayPayment> | null;
-    if (!p || typeof p.id !== 'string' || typeof p.order_id !== 'string' || !Number.isSafeInteger(p.amount) || typeof p.currency !== 'string' || typeof p.status !== 'string' || typeof p.captured !== 'boolean' || !Number.isSafeInteger(p.amount_refunded)) throw new ApiError(503, 'invalid_provider_response', 'Payment status is temporarily unavailable.');
+    if (!p || typeof p.id !== 'string' || typeof p.order_id !== 'string' || (!Number.isSafeInteger(p.amount) || Number(p.amount) <= 0) || typeof p.currency !== 'string' || typeof p.status !== 'string' || typeof p.captured !== 'boolean' || (!Number.isSafeInteger(p.amount_refunded) || Number(p.amount_refunded) < 0 || Number(p.amount_refunded) > Number(p.amount))) throw new ApiError(503, 'invalid_provider_response', 'Payment status is temporarily unavailable.');
     return p as GatewayPayment;
   };
   return {
