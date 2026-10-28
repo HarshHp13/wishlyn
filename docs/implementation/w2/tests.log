@@ -1,0 +1,40 @@
+npm notice run wishlyn@0.1.0 npx
+npm notice run 'tsx' --test tests/commerce/database.test.ts tests/commerce/sdk.test.ts tests/commerce/validation.test.ts
+▶ commerce PostgreSQL transaction invariants
+  ✔ authoritative totals ignore client amount/email and persist personalization snapshots (83.71394ms)
+  ✔ invalid carts fail before any order or reservation is written (39.436484ms)
+  ✔ duplicate variant demand cannot exceed stock across different gift lines (23.854813ms)
+  ✔ concurrent last-unit purchases reserve only once (47.263031ms)
+  ✔ same-key simultaneous retries return one immutable order (71.838121ms)
+  ✔ provider creation serializes retries and never starts a different amount (72.804574ms)
+  ✔ ambiguous provider creation cannot create a second provider order and reconciles by receipt (48.798888ms)
+  ✔ duplicate callback/webhook/reconciliation commits payment and stock exactly once (48.832273ms)
+  ✔ wrong amount/currency and uncaptured proof never fulfill (39.306128ms)
+  ✔ failed reservation step rolls back the order and earlier stock writes (32.926033ms)
+  ✔ failed final persistence leaves a durable pending order and permits safe retry (78.045458ms)
+  ✔ cancellation releases once, and late capture enters review without selling stock (49.116426ms)
+  ✔ expiry releases reservations once and late payment cannot oversell another buyer (66.411691ms)
+  ✔ closed browser recovery uses provider facts and durable order ownership (49.242609ms)
+  ✔ extra capture or refund creates a review exception without a second inventory effect (37.297103ms)
+  ✔ refunded provider payment is not represented as successful fulfillment (37.76311ms)
+  ✔ only paid orders can follow sequential tracked fulfillment (55.489165ms)
+  ✔ real route guards distinguish disabled checkout, guest, CSRF, invalid input and ownership (101.140303ms)
+  ✔ real callback and signed webhook share ownership/binding/capture/idempotency boundary (72.673957ms)
+  ✔ migration reruns retain data and checksum history (60.584942ms)
+  ✔ database constraints reject impossible inventory and preserve referenced variants (52.202269ms)
+  ✔ unversioned legacy bootstrap preserves old orders and migration failure rolls back (208.350519ms)
+✔ commerce PostgreSQL transaction invariants (1614.22696ms)
+✔ SDK failure/timeout resolves within a bound and retry replaces failed elements (13.860386ms)
+✔ delivery details normalize Indian phone and reject unsupported formats (2.184195ms)
+✔ cart quantities are bounded safe integers; invalid lines are never skipped (0.845561ms)
+✔ personalization remains part of line identity and duplicates normalize deterministically (17.746972ms)
+✔ gift and shipping boundary calculations preserve configured integer paise totals (1.484268ms)
+✔ request keys and signatures validate strict identity and bytes (0.94763ms)
+ℹ tests 28
+ℹ suites 1
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1994.222578

@@ -1,0 +1,19 @@
+{
+  "mode": "Browser UI with synthetic auth/order responses; all application mutations and payment SDK network intercepted",
+  "validationFocused": true,
+  "requiresAcknowledgment": true,
+  "recoveredAfterFailure": true,
+  "sdkAttempt": 2,
+  "createRequests": 1,
+  "quoteRequests": 1,
+  "viewport": {
+    "width": 390,
+    "scrollWidth": 390
+  },
+  "orderRecovered": true,
+  "giftPersisted": true,
+  "adminViewport": {
+    "width": 320,
+    "scrollWidth": 320
+  }
+}
