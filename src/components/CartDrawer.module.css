@@ -347,3 +347,4 @@
 
 .itemMeta, .giftLabel { font-size: 13px; line-height: 1.6; }
 .itemHeader h3 a { text-decoration: underline; text-underline-offset: 3px; }
+.checkoutBtn, .shopBtn { font-size: 13px; }

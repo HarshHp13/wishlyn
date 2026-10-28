@@ -31,6 +31,7 @@ export const CartDrawer: React.FC = () => {
   useEffect(() => {
     if (!isCartOpen || cartStatus !== 'ready') return;
     let active = true;
+    queueMicrotask(() => { if (active) setRefreshed(false); });
     void refreshCart().then(ok => { if (active) setRefreshed(ok); });
     return () => { active = false; };
   }, [isCartOpen, cartStatus, refreshCart]);

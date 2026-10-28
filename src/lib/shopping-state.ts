@@ -1,3 +1,4 @@
+import { isProductImageUrl } from './productImages';
 import type { Product, ProductVariant } from '../data/db';
 
 export const SHOPPING_VERSION = 2;
@@ -25,18 +26,19 @@ export function lineId(variantId: string, giftWrap: boolean, message?: string): 
 }
 
 export function validProduct(value: unknown): value is Product {
-  if (!record(value) || !validId(value.id) || !text(value.title, 300) || typeof value.description !== 'string' || !validId(value.categoryId) || !finite(value.basePrice)) return false;
-  if (!Array.isArray(value.images) || !value.images.every((src) => typeof src === 'string' && src.length <= 2048 && (/^\/(?!\/)/.test(src) || /^https:\/\//.test(src)))) return false;
+  if (!record(value) || !validId(value.id) || !text(value.title, 300) || typeof value.description !== 'string' || value.description.length > 20000 || !validId(value.categoryId) || !finite(value.basePrice) || value.basePrice > 1000000) return false;
+  if (!Array.isArray(value.images) || value.images.length > 20 || !value.images.every(isProductImageUrl)) return false;
   return finite(value.rating) && finite(value.reviewsCount) && record(value.details) && Object.values(value.details).every(v => v === undefined || typeof v === 'string');
 }
 
 export function validVariant(value: unknown): value is ProductVariant {
   return record(value) && validId(value.id) && validId(value.productId) && text(value.metalType) && typeof value.purity === 'string' && value.purity.length <= 100 &&
-    (value.size === undefined || text(value.size, 100)) && finite(value.price) && Number.isSafeInteger(value.stock) && Number(value.stock) >= 0;
+    (value.size === undefined || text(value.size, 100)) && finite(value.price) && value.price <= 1000000 && Number.isSafeInteger(value.stock) && Number(value.stock) >= 0;
 }
 
 export function decodeCart(raw: string | null): { items: CartItem[]; recovered: boolean } {
   if (!raw) return { items: [], recovered: false };
+  if (raw.length > 1000000) return { items: [], recovered: true };
   try {
     const data: unknown = JSON.parse(raw);
     if (!record(data) || data.version !== SHOPPING_VERSION || !Array.isArray(data.items)) return { items: [], recovered: true };
@@ -58,6 +60,7 @@ export function decodeCart(raw: string | null): { items: CartItem[]; recovered: 
 
 export function decodeWishlist(raw: string | null): { items: string[]; recovered: boolean } {
   if (!raw) return { items: [], recovered: false };
+  if (raw.length > 1000000) return { items: [], recovered: true };
   try {
     const data: unknown = JSON.parse(raw);
     if (!record(data) || data.version !== SHOPPING_VERSION || !Array.isArray(data.items)) return { items: [], recovered: true };

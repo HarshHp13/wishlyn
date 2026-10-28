@@ -1,0 +1,32 @@
+npm notice run wishlyn@0.1.0 test:storefront
+npm notice run tsx --test tests/storefront/*.test.mjs tests/storefront/*.test.ts
+✔ SQL catalogue pages are bounded and filter all rows before pagination (69.892894ms)
+✔ unpublished products and empty categories are not advertised (6.96888ms)
+✔ public availability subtracts reservations and every purity SKU is returned (1.137021ms)
+[API] Request could not be completed.
+✔ newsletter succeeds only after persistence and canonical duplicates stay idempotent (40.156327ms)
+[API] Request could not be completed.
+✔ wishlist API rejects malformed IDs and reports database outage instead of empty (18.760861ms)
+✔ gold-ink on warm-ivory meets normal text contrast (1.294219ms)
+✔ pure-white on gold-ink meets normal text contrast (0.215159ms)
+✔ muted-sand on warm-ivory meets normal text contrast (0.26967ms)
+✔ gold-ink on soft-peach meets normal text contrast (0.19262ms)
+✔ deep-espresso on champagne-gold meets normal text contrast (0.213048ms)
+✔ unversioned and malformed cart data are recovered without preserving unsafe entries (4.221375ms)
+✔ gift personalization is exact line identity and round-trips independently (0.634472ms)
+✔ aggregate variant demand is bounded across wrapped/unwrapped lines (0.448294ms)
+✔ reconciliation reprices while preserving gift instructions and exposes shortages (0.492878ms)
+✔ account keys are distinct and wishlist validation is bounded (0.319029ms)
+✔ filter URLs preserve all independent controls and reset pagination deliberately (0.696092ms)
+✔ verified guest migration occurs once; empty account does not resurrect universal records (7.073932ms)
+✔ focus refresh hides private data without clearing it; logout then another account is isolated (1.973619ms)
+✔ concurrent tabs serialize mutations and converge; removal is not overwritten (2.420507ms)
+✔ storage write failure preserves a usable in-memory bag across subsequent changes (1.602425ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 724.287723

@@ -225,3 +225,4 @@
 .filterPanel button, .filterPanel a { min-height: 44px; }
 .resultCount, .sortGroup, .categoryTab, .priceFilter summary, .filterPanel, .more { font-size: 13px; }
 @media (max-width: 480px) { .tools { flex-wrap: wrap; gap: 14px; } .toolbar { align-items: flex-start; gap: 16px; } .filterPanel { max-width: calc(100vw - 32px); } }
+.sortGroup select, .filterPanel input, .filterPanel button, .noResults a { font-size: 13px; }

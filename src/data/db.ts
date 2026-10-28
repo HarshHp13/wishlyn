@@ -1,3 +1,4 @@
+import { isProductImageUrl } from '../lib/productImages';
 import { cache } from 'react';
 import type { DbProduct, DbVariant } from '../lib/neon';
 import { cataloguePage, catalogueCategories, catalogueProduct, catalogueProductsByIds, catalogueVariants, catalogueVariantsByIds, catalogueRelated, catalogueHighlights } from '../lib/catalogue';
@@ -50,7 +51,7 @@ function mapProduct(row: DbProduct): Product {
     description: row.description,
     categoryId: row.category_id,
     basePrice: Number(row.base_price || 0),
-    images: row.images ?? [],
+    images: (row.images ?? []).filter(isProductImageUrl),
     rating: Number(row.rating || 0),
     reviewsCount: Number(row.reviews_count || 0),
     details: {

@@ -40,6 +40,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const auth = getAuthState();
     if (start.status !== 'ready') return false;
     if (!start.items.length) return true;
+    const timer = setTimeout(() => controller.abort(), 10000);
     try {
       const response = await fetch('/api/cart-products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variantIds: [...new Set(start.items.map(item => item.variantId))] }), signal: controller.signal });
       if (!response.ok) throw new Error('Unavailable');
@@ -56,9 +57,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
       return true;
     } catch {
-      if (!controller.signal.aborted && cartStore.getSnapshot().accountId === start.accountId) cartStore.notify('We could not refresh prices and availability. Retry before checkout.');
+      if (pending.current === controller && getAuthState() === auth && cartStore.getSnapshot().accountId === start.accountId) cartStore.notify('We could not refresh prices and availability. Retry before checkout.');
       return false;
-    }
+    } finally { clearTimeout(timer); }
   }, []);
   return <CartContext.Provider value={{
     cartItems: snapshot.items, cartStatus: snapshot.status, cartNotice: snapshot.notice,
