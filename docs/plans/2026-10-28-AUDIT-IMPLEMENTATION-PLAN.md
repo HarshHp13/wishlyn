@@ -214,10 +214,10 @@ The engineering program is complete when all selected packages are merged into i
 
 | Package | Branch / PR | Head / approvals | Validation / status |
 | --- | --- | --- | --- |
-| Plan | `codex/audit-remediation` → `main` | Pending | Initial plan and audit evidence |
-| W1 | Pending | Pending | Not started |
-| W2 | Pending | Pending | Not started |
-| W3 | Pending | Pending | Not started |
+| Plan | [PR #1](https://github.com/HarshHp13/wishlyn/pull/1), `codex/audit-remediation` → `main` | `d86f276` initial plan | Draft umbrella; `main` unchanged |
+| W1 | `codex/audit-identity-security` | Pending review | Implementation in progress |
+| W2 | `codex/audit-commerce` | Pending review | Implementation in progress; integrates W1 |
+| W3 | `codex/audit-storefront` | Pending review | Implementation in progress; integrates W1/W2 |
 | W4 | Pending | Pending | Not started |
 | W5 | Pending | Pending | Not started |
 | W6 | Integration | Pending | Depends on implementation packages |
