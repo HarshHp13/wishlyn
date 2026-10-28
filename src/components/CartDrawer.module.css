@@ -336,3 +336,14 @@
 .checkoutBtn, .shopBtn { background: var(--gold-ink); border-radius: 0; text-transform: none; letter-spacing: 0.03em; font-size: 12px; }
 .progressBar { width: 100%; transform-origin: left; transition: transform 200ms var(--ease-out); }
 @media (prefers-reduced-motion: reduce) { .wrapper { transition: none; } .drawer { transition: none; } .overlay { transition: opacity 120ms ease; } .progressBar { transition: none; } }
+
+.notice { padding: 14px 20px; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.notice button, .refreshBtn { padding: 10px; text-decoration: underline; min-height: 44px; color: var(--text-primary); }
+.giftMessage { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; margin-top: 6px; }
+.itemTitle a { text-decoration: underline; text-underline-offset: 3px; }
+.taxNote, .trackerText, .itemVariant, .giftBadge { font-size: 13px; line-height: 1.6; }
+.itemPrice, .totalPrice { color: var(--gold-ink); }
+.checkoutBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.itemMeta, .giftLabel { font-size: 13px; line-height: 1.6; }
+.itemHeader h3 a { text-decoration: underline; text-underline-offset: 3px; }

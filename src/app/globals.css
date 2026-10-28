@@ -9,7 +9,7 @@
   --warm-ivory: #faf8f3;
   --deep-espresso: #3b312a;
   --muted-sand: #766e63;
-  --gold-ink: #947039;
+  --gold-ink: #795522;
   --border-tint: #e8dfd5;
   --pure-white: #ffffff;
 
@@ -26,7 +26,7 @@
 
   /* Legacy compatibility aliases */
   --rose-gold: var(--champagne-gold);
-  --rose-gold-dark: var(--champagne-gold-hover);
+  --rose-gold-dark: var(--gold-ink);
   --rose-gold-light: var(--soft-peach);
   --champagne: var(--champagne-gold);
   --champagne-dark: var(--champagne-gold-hover);
@@ -111,7 +111,7 @@ img {
 
 /* Focus outline styles for accessibility */
 *:focus-visible {
-  outline: 2px solid var(--champagne-gold);
+  outline: 2px solid var(--gold-ink);
   outline-offset: 4px;
 }
 
@@ -132,8 +132,8 @@ img {
   }
 }
 
-.eyebrow { font-size: 9px; font-weight: 500; letter-spacing: 0.18em; color: var(--gold-ink); }
-.text-link { display: inline-flex; align-items: center; justify-content: space-between; gap: 22px; font-size: 11px; padding-bottom: 8px; border-bottom: 1px solid var(--accent-gold); }
+.eyebrow { font-size: 12px; font-weight: 500; letter-spacing: 0.18em; color: var(--gold-ink); }
+.text-link { display: inline-flex; align-items: center; justify-content: space-between; gap: 22px; font-size: 13px; padding-bottom: 8px; border-bottom: 1px solid var(--accent-gold); }
 .skip-link { position: fixed; top: 12px; left: 16px; padding: 12px 20px; background: white; z-index: 3000; transform: translateY(-150%); }
 .skip-link:focus { transform: translateY(0); }
 button, input, select, textarea { font: inherit; }

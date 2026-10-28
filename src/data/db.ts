@@ -1,12 +1,7 @@
-import {
-  dbGetCategories,
-  dbGetProducts,
-  dbGetProductById,
-  dbGetProductsByIds,
-  dbGetVariantsByProductId,
-  DbProduct,
-  DbVariant
-} from '@/lib/neon';
+import { cache } from 'react';
+import type { DbProduct, DbVariant } from '../lib/neon';
+import { cataloguePage, catalogueCategories, catalogueProduct, catalogueProductsByIds, catalogueVariants, catalogueVariantsByIds, catalogueRelated, catalogueHighlights } from '../lib/catalogue';
+import type { CatalogueFilters } from '../lib/catalogue-filters';
 
 // ──────────────────────────────────────────────
 //  Type Definitions
@@ -56,8 +51,8 @@ function mapProduct(row: DbProduct): Product {
     categoryId: row.category_id,
     basePrice: Number(row.base_price || 0),
     images: row.images ?? [],
-    rating: Number(row.rating),
-    reviewsCount: Number(row.reviews_count),
+    rating: Number(row.rating || 0),
+    reviewsCount: Number(row.reviews_count || 0),
     details: {
       stone: row.stone ?? undefined,
       dimensions: row.dimensions ?? undefined,
@@ -82,33 +77,27 @@ function mapVariant(row: DbVariant): ProductVariant {
 //  Public Database API (Neon PostgreSQL Only - No Mock Fallbacks)
 // ──────────────────────────────────────────────
 
-export async function getCategories(): Promise<Category[]> {
-  const rows = await dbGetCategories();
-  if (!rows) return [];
-  return rows.map(r => ({ id: r.id, name: r.name, slug: r.slug }));
+export const getCategories = cache(async (): Promise<Category[]> => catalogueCategories());
+export const getProductById = cache(async (id: string): Promise<Product | undefined> => {
+  const row = await catalogueProduct(id);
+  return row ? mapProduct(row) : undefined;
+});
+export const getVariantsByProductId = cache(async (id: string): Promise<ProductVariant[]> => (await catalogueVariants(id)).map(mapVariant));
+export async function getCataloguePage(filters: CatalogueFilters) {
+  const result = await cataloguePage(filters);
+  return { products: result.rows.map(mapProduct), total: result.total, page: result.page, pageSize: result.pageSize };
 }
-
-export async function getProducts(): Promise<Product[]> {
-  const rows = await dbGetProducts();
-  if (!rows) return [];
-  return rows.map(mapProduct);
+export const getCatalogueHighlights = cache(async () => (await catalogueHighlights()).map(mapProduct));
+export async function getProductsByIds(ids: string[]): Promise<Product[]> { return (await catalogueProductsByIds(ids)).map(mapProduct); }
+export async function getCartProducts(ids: string[]) {
+  const variants = (await catalogueVariantsByIds(ids)).map(mapVariant);
+  const products = await getProductsByIds([...new Set(variants.map(variant => variant.productId))]);
+  return variants.flatMap(variant => {
+    const product = products.find(item => item.id === variant.productId);
+    return product ? [{ product, variant }] : [];
+  });
 }
-
-export async function getProductById(id: string): Promise<Product | undefined> {
-  const row = await dbGetProductById(id);
-  if (!row) return undefined;
-  return mapProduct(row);
-}
-
-export async function getVariantsByProductId(productId: string): Promise<ProductVariant[]> {
-  const rows = await dbGetVariantsByProductId(productId);
-  if (!rows) return [];
-  return rows.map(mapVariant);
-}
-
-export async function getProductsByIds(productIds: string[]): Promise<Product[]> {
-  if (productIds.length === 0) return [];
-  const rows = await dbGetProductsByIds(productIds);
-  if (!rows) return [];
-  return rows.map(mapProduct);
-}
+export const getRelatedProduct = cache(async (id: string, categoryId: string) => {
+  const row = await catalogueRelated(id, categoryId);
+  return row ? mapProduct(row) : undefined;
+});

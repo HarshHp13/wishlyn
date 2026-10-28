@@ -1,235 +1,72 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { Product, ProductVariant } from '../data/db';
-import { getAuthUser } from '../lib/authClient';
+import { createContext, useContext, useState, useCallback, useRef, useSyncExternalStore, type ReactNode } from 'react';
+import type { Product, ProductVariant } from '../data/db';
+import { addCartLine, changeQuantity, reconcileCart, validProduct, validVariant, type CartItem } from '../lib/shopping-state';
+import { getAuthState } from '../lib/authClient';
+import { cartStore } from '../lib/shopping-store';
 
-export interface CartItem {
-  id: string; // unique item id: variantId-giftOption
-  variantId: string;
-  product: Product;
-  variant: ProductVariant;
-  quantity: number;
-  giftWrap: boolean;
-  giftMessage?: string;
-}
-
+export type { CartItem } from '../lib/shopping-state';
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (
-    variantId: string,
-    quantity: number,
-    giftWrap: boolean,
-    giftMessage?: string,
-    passedProduct?: Product,
-    passedVariant?: ProductVariant
-  ) => void;
-  removeFromCart: (cartItemId: string) => void;
-  updateQuantity: (cartItemId: string, quantity: number) => void;
+  addToCart: (variantId: string, quantity: number, giftWrap: boolean, giftMessage?: string, product?: Product, variant?: ProductVariant) => void;
+  removeFromCart: (id: string) => void;
+  updateQuantity: (id: string, quantity: number) => void;
+  clearCart: () => void;
   isCartOpen: boolean;
   setIsCartOpen: (isOpen: boolean) => void;
   cartCount: number;
   cartTotal: number;
-  clearCart: () => void;
+  cartStatus: 'loading' | 'ready' | 'error';
+  cartNotice: string;
+  refreshCart: () => Promise<boolean>;
+  retryCart: () => Promise<void>;
 }
-
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-function getStorageKey(userEmailOrId?: string | null): string {
-  if (userEmailOrId) {
-    return `wishlyn-cart-profile-${userEmailOrId.toLowerCase()}`;
-  }
-  return 'wishlyn-cart-guest';
-}
-
-function parseCartItems(rawStr: string | null): CartItem[] {
-  if (!rawStr) return [];
-  try {
-    const parsed = JSON.parse(rawStr);
-    if (!Array.isArray(parsed)) return [];
-    const validItems: CartItem[] = [];
-    for (const item of parsed) {
-      if (
-        item &&
-        typeof item === 'object' &&
-        item.product &&
-        item.variant &&
-        typeof item.quantity === 'number'
-      ) {
-        validItems.push({
-          id: item.id || `${item.variantId}-${item.giftWrap ? 'gift' : 'standard'}`,
-          variantId: item.variantId,
-          product: item.product,
-          variant: item.variant,
-          quantity: Math.max(1, item.quantity),
-          giftWrap: !!item.giftWrap,
-          giftMessage: item.giftMessage || undefined,
-        });
-      }
-    }
-    return validItems;
-  } catch (e) {
-    console.error('[CartContext] Failed to parse cart items:', e);
-    return [];
-  }
-}
-
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+export function CartProvider({ children }: { children: ReactNode }) {
+  const snapshot = useSyncExternalStore(cartStore.subscribe, cartStore.getSnapshot, cartStore.getServerSnapshot);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
-
-  // Load and hydrate cart data based on active user profile
-  const syncProfileCart = useCallback(() => {
-    const user = getAuthUser();
-    const profileId = user?.email || user?.id || null;
-    const profileKey = getStorageKey(profileId);
-
-    setActiveProfileId(profileId);
-
-    let items = parseCartItems(localStorage.getItem(profileKey));
-
-    // Fallback check: if profile cart is empty but legacy 'wishlyn-cart' exists
-    if (items.length === 0 && profileId) {
-      const legacyCart = parseCartItems(localStorage.getItem('wishlyn-cart'));
-      const guestCart = parseCartItems(localStorage.getItem('wishlyn-cart-guest'));
-      items = legacyCart.length > 0 ? legacyCart : guestCart;
-    } else if (items.length === 0 && !profileId) {
-      items = parseCartItems(localStorage.getItem('wishlyn-cart'));
+  const pending = useRef<AbortController | null>(null);
+  const addToCart = useCallback((variantId: string, quantity: number, giftWrap: boolean, giftMessage?: string, product?: Product, variant?: ProductVariant) => {
+    if (!product || !variant) return;
+    void cartStore.mutate(items => addCartLine(items, { variantId, product, variant, quantity, giftWrap, giftMessage })).then(() => setIsCartOpen(true));
+  }, []);
+  const refreshCart = useCallback(async () => {
+    pending.current?.abort();
+    const controller = new AbortController();
+    pending.current = controller;
+    const start = cartStore.getSnapshot();
+    const auth = getAuthState();
+    if (start.status !== 'ready') return false;
+    if (!start.items.length) return true;
+    try {
+      const response = await fetch('/api/cart-products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ variantIds: [...new Set(start.items.map(item => item.variantId))] }), signal: controller.signal });
+      if (!response.ok) throw new Error('Unavailable');
+      const data: { items?: { product: Product; variant: ProductVariant }[] } = await response.json();
+      if (!Array.isArray(data.items) || !data.items.every(row => validProduct(row.product) && validVariant(row.variant))) throw new Error('Invalid catalogue');
+      if (controller.signal.aborted || getAuthState() !== auth || cartStore.getSnapshot().accountId !== start.accountId) return false;
+      const rows = data.items;
+      await cartStore.mutate(items => {
+        const requested = new Set(start.items.map(item => item.variantId));
+        const result = reconcileCart(items.filter(item => requested.has(item.variantId)), rows);
+        result.items = items.map(item => result.items.find(current => current.id === item.id) || item);
+        if (result.changed) queueMicrotask(() => cartStore.notify('Price or availability has changed. Please review your bag before checkout.'));
+        return result.items;
+      });
+      return true;
+    } catch {
+      if (!controller.signal.aborted && cartStore.getSnapshot().accountId === start.accountId) cartStore.notify('We could not refresh prices and availability. Retry before checkout.');
+      return false;
     }
-
-    setCartItems(items);
-    setIsLoaded(true);
   }, []);
-
-  useEffect(() => {
-    syncProfileCart();
-
-    const handleAuthChange = () => {
-      syncProfileCart();
-    };
-
-    window.addEventListener('wishlyn-auth-change', handleAuthChange);
-    return () => {
-      window.removeEventListener('wishlyn-auth-change', handleAuthChange);
-    };
-  }, [syncProfileCart]);
-
-  // Synchronize cart changes to active profile storage key and general fallback key
-  useEffect(() => {
-    if (isLoaded) {
-      const key = getStorageKey(activeProfileId);
-      const serialized = JSON.stringify(cartItems);
-      localStorage.setItem(key, serialized);
-      localStorage.setItem('wishlyn-cart', serialized);
-    }
-  }, [cartItems, isLoaded, activeProfileId]);
-
-  const addToCart = useCallback((
-    variantId: string, 
-    quantity: number, 
-    giftWrap: boolean, 
-    giftMessage?: string,
-    passedProduct?: Product,
-    passedVariant?: ProductVariant
-  ) => {
-    if (!passedProduct || !passedVariant) {
-      console.warn(`[Cart] Missing product or variant metadata for ${variantId}.`);
-      return;
-    }
-
-    const product = passedProduct;
-    const variant = passedVariant;
-    const cartItemId = `${variantId}-${giftWrap ? 'gift' : 'standard'}`;
-
-    setCartItems(prevItems => {
-      const existingItemIndex = prevItems.findIndex(item => item.id === cartItemId);
-      if (existingItemIndex > -1) {
-        const newItems = [...prevItems];
-        const currentQty = newItems[existingItemIndex].quantity;
-        const newQty = Math.min(currentQty + quantity, variant!.stock);
-        newItems[existingItemIndex].quantity = newQty;
-        return newItems;
-      } else {
-        const newQty = Math.min(quantity, variant!.stock);
-        if (newQty <= 0) return prevItems;
-        return [
-          ...prevItems,
-          {
-            id: cartItemId,
-            variantId,
-            product,
-            variant: variant!,
-            quantity: newQty,
-            giftWrap,
-            giftMessage: giftWrap ? giftMessage : undefined,
-          },
-        ];
-      }
-    });
-
-    setIsCartOpen(true);
-  }, []);
-
-  const removeFromCart = useCallback((cartItemId: string) => {
-    setCartItems(prevItems => prevItems.filter(item => item.id !== cartItemId));
-  }, []);
-
-  const updateQuantity = useCallback((cartItemId: string, quantity: number) => {
-    setCartItems(prevItems =>
-      prevItems.map(item => {
-        if (item.id === cartItemId) {
-          const newQty = Math.max(1, Math.min(quantity, item.variant.stock));
-          return { ...item, quantity: newQty };
-        }
-        return item;
-      })
-    );
-  }, []);
-
-  const clearCart = useCallback(() => {
-    setCartItems([]);
-    const key = getStorageKey(activeProfileId);
-    localStorage.removeItem(key);
-    localStorage.removeItem('wishlyn-cart');
-  }, [activeProfileId]);
-
-  const cartCount = useMemo(() => {
-    return cartItems.reduce((total, item) => total + item.quantity, 0);
-  }, [cartItems]);
-
-  const cartTotal = useMemo(() => {
-    return cartItems.reduce((total, item) => {
-      const itemBase = item.variant.price;
-      const itemSurcharge = item.giftWrap ? 350 : 0;
-      return total + (itemBase + itemSurcharge) * item.quantity;
-    }, 0);
-  }, [cartItems]);
-
-  return (
-    <CartContext.Provider
-      value={{
-        cartItems,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        isCartOpen,
-        setIsCartOpen,
-        cartCount,
-        cartTotal,
-        clearCart,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
-  );
-};
-
-export const useCart = () => {
-  const context = useContext(CartContext);
-  if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider');
-  }
-  return context;
-};
+  return <CartContext.Provider value={{
+    cartItems: snapshot.items, cartStatus: snapshot.status, cartNotice: snapshot.notice,
+    cartCount: snapshot.items.reduce((sum, item) => sum + item.quantity, 0),
+    cartTotal: snapshot.items.reduce((sum, item) => sum + (item.variant.price + (item.giftWrap ? 350 : 0)) * item.quantity, 0),
+    addToCart, removeFromCart: id => { void cartStore.mutate(items => items.filter(item => item.id !== id)); },
+    updateQuantity: (id, quantity) => { void cartStore.mutate(items => changeQuantity(items, id, quantity)); },
+    clearCart: () => { void cartStore.mutate(() => []); }, isCartOpen, setIsCartOpen, refreshCart, retryCart: cartStore.retry,
+  }}>{children}</CartContext.Provider>;
+}
+export function useCart() { const context = useContext(CartContext); if (!context) throw new Error('useCart requires CartProvider'); return context; }

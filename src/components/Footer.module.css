@@ -177,3 +177,7 @@
     font-size: 8px;
   }
 }
+
+.linkColumns button { color: inherit; text-align: left; font: inherit; }
+.formNote, .bottom, .linkColumns a, .linkColumns button { font-size: 13px; line-height: 1.6; }
+.linkColumns a, .linkColumns button { padding-block: 6px; }
