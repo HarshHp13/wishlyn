@@ -214,10 +214,10 @@ The engineering program is complete when all selected packages are merged into i
 
 | Package | Branch / PR | Head / approvals | Validation / status |
 | --- | --- | --- | --- |
-| Plan | [PR #1](https://github.com/HarshHp13/wishlyn/pull/1), `codex/audit-remediation` → `main` | `d86f276` initial plan | Draft umbrella; `main` unchanged |
-| W1 | `codex/audit-identity-security` | Pending review | Implementation in progress |
-| W2 | `codex/audit-commerce` | Pending review | Implementation in progress; integrates W1 |
-| W3 | `codex/audit-storefront` | Pending review | Implementation in progress; integrates W1/W2 |
+| Plan | [PR #1](https://github.com/HarshHp13/wishlyn/pull/1), `codex/audit-remediation` → `main` | `d86f276` initial plan | Open umbrella; `main` unchanged |
+| W1 | [PR #2](https://github.com/HarshHp13/wishlyn/pull/2) | `6bce669`; two recorded agent LGTMs | Merged into integration at `08024f6`; [review ledger](../implementation/REVIEW-LEDGER.md) |
+| W2 | [PR #3](https://github.com/HarshHp13/wishlyn/pull/3) | `d1141f0`; two recorded agent LGTMs | Merged into integration at `df12f8a`; [review ledger](../implementation/REVIEW-LEDGER.md) |
+| W3 | [PR #4](https://github.com/HarshHp13/wishlyn/pull/4) | `d05e92e`; two recorded agent LGTMs | Merged into integration at `9ac76be`; [review ledger](../implementation/REVIEW-LEDGER.md) |
 | W4 | Pending | Pending | Not started |
 | W5 | Pending | Pending | Not started |
-| W6 | Integration | Pending | Depends on implementation packages |
+| W6 | Integration | Pending | Final integrated validation and remaining W2/W3 contract work; depends on W4/W5 |

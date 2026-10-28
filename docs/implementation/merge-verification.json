@@ -1,0 +1,138 @@
+{
+  "verifiedAt": "2026-10-28T13:17:43.417719+00:00",
+  "scope": "GitHub merge/check/comment and Git-parent verification; no new code-review or test-run claim",
+  "integrationBranch": "codex/audit-remediation",
+  "mainHead": "d11e46b31b1cce7aa609622b7581b0779e558f05",
+  "umbrella": {
+    "baseRefName": "main",
+    "headRefOid": "605a770fc8e78754f3d140bfc28444a702c5708c",
+    "isDraft": false,
+    "state": "OPEN",
+    "url": "https://github.com/HarshHp13/wishlyn/pull/1"
+  },
+  "pullRequests": [
+    {
+      "pr": 2,
+      "url": "https://github.com/HarshHp13/wishlyn/pull/2",
+      "head": "6bce669222fc91e043226c9529bbf5cad805fc26",
+      "base": "a242811c1869fa77f076f861936b65498550304b",
+      "merge": "08024f61853b311779e10fa4634a68aa22115baf",
+      "mergedAt": "2026-10-28T10:27:42Z",
+      "comments": [
+        {
+          "reviewer": "Reviewer 1",
+          "url": "https://github.com/HarshHp13/wishlyn/pull/2#issuecomment-6466591383",
+          "createdAt": "2026-10-28T10:27:32Z",
+          "githubAuthor": "HarshHp13",
+          "attribution": "Existing GitHub comment attributed to the named agent; this reconciliation did not rerun that review."
+        },
+        {
+          "reviewer": "Reviewer 2",
+          "url": "https://github.com/HarshHp13/wishlyn/pull/2#issuecomment-6466591887",
+          "createdAt": "2026-10-28T10:27:33Z",
+          "githubAuthor": "HarshHp13",
+          "attribution": "Existing GitHub comment attributed to the named agent; this reconciliation did not rerun that review."
+        }
+      ],
+      "checks": [
+        {
+          "name": "verify",
+          "state": "SUCCESS",
+          "url": "https://github.com/HarshHp13/wishlyn/actions/runs/40667472387/job/122745508526"
+        },
+        {
+          "name": "Vercel",
+          "state": "SUCCESS",
+          "url": "https://vercel.com/pratikharsh13-5879s-projects/wishlyn/E3paVjToGUvukWkm1UBLQZRGqdQr"
+        },
+        {
+          "name": "Vercel Preview Comments",
+          "state": "SUCCESS",
+          "url": "https://vercel.com/github"
+        }
+      ]
+    },
+    {
+      "pr": 3,
+      "url": "https://github.com/HarshHp13/wishlyn/pull/3",
+      "head": "d1141f017f128db2008001699dab33ef9e857a2f",
+      "base": "e3abf740ea94560113f50f088a6835b3ae3e7ad5",
+      "merge": "df12f8a89e97d763db633bbf99f8cc50a174e498",
+      "mergedAt": "2026-10-28T10:32:05Z",
+      "comments": [
+        {
+          "reviewer": "Reviewer 1",
+          "url": "https://github.com/HarshHp13/wishlyn/pull/3#issuecomment-6466672985",
+          "createdAt": "2026-10-28T10:31:46Z",
+          "githubAuthor": "HarshHp13",
+          "attribution": "Existing GitHub comment attributed to the named agent; this reconciliation did not rerun that review."
+        },
+        {
+          "reviewer": "Reviewer 2",
+          "url": "https://github.com/HarshHp13/wishlyn/pull/3#issuecomment-6466673613",
+          "createdAt": "2026-10-28T10:31:48Z",
+          "githubAuthor": "HarshHp13",
+          "attribution": "Existing GitHub comment attributed to the named agent; this reconciliation did not rerun that review."
+        }
+      ],
+      "checks": [
+        {
+          "name": "verify",
+          "state": "SUCCESS",
+          "url": "https://github.com/HarshHp13/wishlyn/actions/runs/40672664425/job/122763115565"
+        },
+        {
+          "name": "Vercel",
+          "state": "SUCCESS",
+          "url": "https://vercel.com/pratikharsh13-5879s-projects/wishlyn/2h6WnaSGoHnau46qaiYvf5mJSaL4"
+        },
+        {
+          "name": "Vercel Preview Comments",
+          "state": "SUCCESS",
+          "url": "https://vercel.com/github"
+        }
+      ]
+    },
+    {
+      "pr": 4,
+      "url": "https://github.com/HarshHp13/wishlyn/pull/4",
+      "head": "d05e92eda1be78d27b3be97bf04efa3b5e71f071",
+      "base": "6bc122b88906f0985ddb16ba2025456c922372b8",
+      "merge": "9ac76bea0a5832d1c245c20b7ace6a874a21b990",
+      "mergedAt": "2026-10-28T10:43:06Z",
+      "comments": [
+        {
+          "reviewer": "Reviewer 1",
+          "url": "https://github.com/HarshHp13/wishlyn/pull/4#issuecomment-6466892409",
+          "createdAt": "2026-10-28T10:42:49Z",
+          "githubAuthor": "HarshHp13",
+          "attribution": "Existing GitHub comment attributed to the named agent; this reconciliation did not rerun that review."
+        },
+        {
+          "reviewer": "Reviewer 2",
+          "url": "https://github.com/HarshHp13/wishlyn/pull/4#issuecomment-6466892929",
+          "createdAt": "2026-10-28T10:42:51Z",
+          "githubAuthor": "HarshHp13",
+          "attribution": "Existing GitHub comment attributed to the named agent; this reconciliation did not rerun that review."
+        }
+      ],
+      "checks": [
+        {
+          "name": "verify",
+          "state": "SUCCESS",
+          "url": "https://github.com/HarshHp13/wishlyn/actions/runs/40674115649/job/122768029684"
+        },
+        {
+          "name": "Vercel",
+          "state": "SUCCESS",
+          "url": "https://vercel.com/pratikharsh13-5879s-projects/wishlyn/7233RLTkair8Tc4noBWeYr7eLsyE"
+        },
+        {
+          "name": "Vercel Preview Comments",
+          "state": "SUCCESS",
+          "url": "https://vercel.com/github"
+        }
+      ]
+    }
+  ]
+}
