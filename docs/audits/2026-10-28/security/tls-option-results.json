@@ -1,0 +1,14 @@
+{
+  "networkCalls": 0,
+  "databaseQueries": 0,
+  "mode": "Construct pg.Client and inspect parsed options only; no connection is opened.",
+  "syntheticUrlWithoutSslOptions": {
+    "tlsEnabled": true,
+    "certificateVerificationExplicitlyDisabled": true
+  },
+  "configuredLocalUrl": {
+    "tlsEnabled": true,
+    "certificateVerificationExplicitlyDisabled": false
+  },
+  "scope": "Configured local environment only. URLs, usernames, passwords and hosts are not recorded."
+}

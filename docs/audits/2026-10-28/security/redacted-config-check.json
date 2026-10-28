@@ -1,0 +1,8 @@
+{
+  "jwtConfigured": true,
+  "jwtEqualsTrackedFallback": true,
+  "cloudinarySecretConfigured": true,
+  "cloudinarySecretEqualsTrackedLiteral": true,
+  "cloudinaryKeyEqualsTrackedLiteral": true,
+  "checkedWithoutNetwork": true
+}

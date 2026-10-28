@@ -1,0 +1,19 @@
+{
+  "local_link_count": 195,
+  "invalid_links": [],
+  "anchor_count": 39,
+  "duplicate_anchors": [],
+  "invalid_anchors": [],
+  "mapping_count": 49,
+  "missing_domain_entries": [],
+  "duplicate_domain_entries": [],
+  "current_counts": {
+    "P0": 1,
+    "P1": 8,
+    "P2": 21,
+    "P3": 1
+  },
+  "conditional_count": 4,
+  "recommendation_count": 4,
+  "source_application_modified_by_this_reviewer": false
+}

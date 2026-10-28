@@ -1,0 +1,83 @@
+{
+  "method": "WCAG relative luminance: sRGB channel linearization, then (Llighter + 0.05)/(Ldarker + 0.05). Values are computed from current CSS tokens; this is source-based color evidence, not a full rendered-page contrast scan.",
+  "concreteIvoryConsumerChecked": true,
+  "note": "The Hero's own eyebrow uses --text-secondary, so it is not evidence for the gold-ink-on-ivory row.",
+  "pairs": [
+    {
+      "foreground": "#c6a46a",
+      "background": "#ffffff",
+      "minimum": 3,
+      "consumer": "Global keyboard focus outline against a white page surface",
+      "sources": [
+        "src/app/globals.css:113-115",
+        "src/app/globals.css:5",
+        "src/app/globals.css:14-18"
+      ],
+      "ratio": 2.354403,
+      "passes": false
+    },
+    {
+      "foreground": "#c6a46a",
+      "background": "#ffffff",
+      "minimum": 4.5,
+      "consumer": "12px Add Metal Variant text on the white admin card",
+      "sources": [
+        "src/app/admin/page.tsx:719-738",
+        "src/app/admin/admin.module.css:38-40",
+        "src/app/globals.css:5,14,18"
+      ],
+      "ratio": 2.354403,
+      "passes": false
+    },
+    {
+      "foreground": "#b39054",
+      "background": "#ffffff",
+      "minimum": 4.5,
+      "consumer": "15px bold cart item price against the white drawer",
+      "sources": [
+        "src/components/CartDrawer.module.css:250-253",
+        "src/components/CartDrawer.module.css:30",
+        "src/app/globals.css:6,14,18"
+      ],
+      "ratio": 2.985472,
+      "passes": false
+    },
+    {
+      "foreground": "#b39054",
+      "background": "#ffffff",
+      "minimum": 3,
+      "consumer": "20px bold cart total against the white drawer footer",
+      "sources": [
+        "src/components/CartDrawer.module.css:257-260",
+        "src/components/CartDrawer.module.css:272-275"
+      ],
+      "ratio": 2.985472,
+      "passes": false
+    },
+    {
+      "foreground": "#947039",
+      "background": "#faf8f3",
+      "minimum": 4.5,
+      "consumer": "9px MORE THAN A FINISHING TOUCH eyebrow within Brand Story",
+      "sources": [
+        "src/components/Editorial.tsx:114-126",
+        "src/app/globals.css:135",
+        "src/components/Editorial.module.css:94-96",
+        "src/app/globals.css:9,12"
+      ],
+      "ratio": 4.267962,
+      "passes": false
+    },
+    {
+      "foreground": "#947039",
+      "background": "#ffffff",
+      "minimum": 4.5,
+      "consumer": "Reference pair: dark gold is sufficient for normal text on pure white",
+      "sources": [
+        "src/app/globals.css:12,14"
+      ],
+      "ratio": 4.529836,
+      "passes": true
+    }
+  ]
+}

@@ -1,0 +1,467 @@
+{
+  "observedAt": "2026-10-28T05:51:26.787Z",
+  "scope": "Database configured in local .env/.env.local; not independently established as production. Read-only metadata and aggregate catalogue counts. No user/order records.",
+  "columns": [
+    {
+      "table_name": "categories",
+      "column_name": "id",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "categories",
+      "column_name": "name",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "categories",
+      "column_name": "slug",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "newsletter_subscribers",
+      "column_name": "id",
+      "data_type": "bigint",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "newsletter_subscribers",
+      "column_name": "email",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "newsletter_subscribers",
+      "column_name": "subscribed_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "id",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "user_email",
+      "data_type": "character varying",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "shipping_address",
+      "data_type": "jsonb",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "items",
+      "data_type": "jsonb",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "subtotal",
+      "data_type": "numeric",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "shipping_cost",
+      "data_type": "numeric",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "tax",
+      "data_type": "numeric",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "total",
+      "data_type": "numeric",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "status",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "razorpay_order_id",
+      "data_type": "character varying",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "razorpay_payment_id",
+      "data_type": "character varying",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "razorpay_signature",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "orders",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "product_variants",
+      "column_name": "id",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "product_variants",
+      "column_name": "product_id",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "product_variants",
+      "column_name": "size",
+      "data_type": "character varying",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "product_variants",
+      "column_name": "metal_type",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "product_variants",
+      "column_name": "purity",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "product_variants",
+      "column_name": "stock",
+      "data_type": "integer",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "product_variants",
+      "column_name": "price",
+      "data_type": "numeric",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "products",
+      "column_name": "id",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "products",
+      "column_name": "title",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "products",
+      "column_name": "description",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "products",
+      "column_name": "category_id",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "products",
+      "column_name": "images",
+      "data_type": "ARRAY",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "products",
+      "column_name": "rating",
+      "data_type": "numeric",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "products",
+      "column_name": "reviews_count",
+      "data_type": "integer",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "products",
+      "column_name": "stone",
+      "data_type": "character varying",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "products",
+      "column_name": "dimensions",
+      "data_type": "character varying",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "products",
+      "column_name": "care_instructions",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "table_name": "products",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "id",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "email",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "password_hash",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "role",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "table_name": "profiles",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    }
+  ],
+  "constraints": [
+    {
+      "table_name": "orders",
+      "constraint_name": "orders_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "table_name": "orders",
+      "constraint_name": "orders_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "table_name": "orders",
+      "constraint_name": "orders_items_not_null",
+      "type": "n",
+      "definition": "NOT NULL items"
+    },
+    {
+      "table_name": "orders",
+      "constraint_name": "orders_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "orders",
+      "constraint_name": "orders_shipping_cost_not_null",
+      "type": "n",
+      "definition": "NOT NULL shipping_cost"
+    },
+    {
+      "table_name": "orders",
+      "constraint_name": "orders_status_not_null",
+      "type": "n",
+      "definition": "NOT NULL status"
+    },
+    {
+      "table_name": "orders",
+      "constraint_name": "orders_subtotal_not_null",
+      "type": "n",
+      "definition": "NOT NULL subtotal"
+    },
+    {
+      "table_name": "orders",
+      "constraint_name": "orders_tax_not_null",
+      "type": "n",
+      "definition": "NOT NULL tax"
+    },
+    {
+      "table_name": "orders",
+      "constraint_name": "orders_total_not_null",
+      "type": "n",
+      "definition": "NOT NULL total"
+    },
+    {
+      "table_name": "product_variants",
+      "constraint_name": "product_variants_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "table_name": "product_variants",
+      "constraint_name": "product_variants_metal_type_not_null",
+      "type": "n",
+      "definition": "NOT NULL metal_type"
+    },
+    {
+      "table_name": "product_variants",
+      "constraint_name": "product_variants_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "product_variants",
+      "constraint_name": "product_variants_price_not_null",
+      "type": "n",
+      "definition": "NOT NULL price"
+    },
+    {
+      "table_name": "product_variants",
+      "constraint_name": "product_variants_product_id_fkey",
+      "type": "f",
+      "definition": "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "product_variants",
+      "constraint_name": "product_variants_product_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL product_id"
+    },
+    {
+      "table_name": "product_variants",
+      "constraint_name": "product_variants_purity_not_null",
+      "type": "n",
+      "definition": "NOT NULL purity"
+    },
+    {
+      "table_name": "product_variants",
+      "constraint_name": "product_variants_stock_not_null",
+      "type": "n",
+      "definition": "NOT NULL stock"
+    },
+    {
+      "table_name": "profiles",
+      "constraint_name": "profiles_created_at_not_null",
+      "type": "n",
+      "definition": "NOT NULL created_at"
+    },
+    {
+      "table_name": "profiles",
+      "constraint_name": "profiles_email_key",
+      "type": "u",
+      "definition": "UNIQUE (email)"
+    },
+    {
+      "table_name": "profiles",
+      "constraint_name": "profiles_email_not_null",
+      "type": "n",
+      "definition": "NOT NULL email"
+    },
+    {
+      "table_name": "profiles",
+      "constraint_name": "profiles_id_not_null",
+      "type": "n",
+      "definition": "NOT NULL id"
+    },
+    {
+      "table_name": "profiles",
+      "constraint_name": "profiles_password_hash_not_null",
+      "type": "n",
+      "definition": "NOT NULL password_hash"
+    },
+    {
+      "table_name": "profiles",
+      "constraint_name": "profiles_pkey",
+      "type": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "profiles",
+      "constraint_name": "profiles_role_check",
+      "type": "c",
+      "definition": "CHECK (((role)::text = ANY ((ARRAY['customer'::character varying, 'admin'::character varying])::text[])))"
+    },
+    {
+      "table_name": "profiles",
+      "constraint_name": "profiles_role_not_null",
+      "type": "n",
+      "definition": "NOT NULL role"
+    }
+  ],
+  "indexes": [
+    {
+      "tablename": "orders",
+      "indexname": "idx_orders_user_email",
+      "indexdef": "CREATE INDEX idx_orders_user_email ON public.orders USING btree (user_email)"
+    },
+    {
+      "tablename": "orders",
+      "indexname": "orders_pkey",
+      "indexdef": "CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (id)"
+    },
+    {
+      "tablename": "product_variants",
+      "indexname": "idx_variants_product",
+      "indexdef": "CREATE INDEX idx_variants_product ON public.product_variants USING btree (product_id)"
+    },
+    {
+      "tablename": "product_variants",
+      "indexname": "product_variants_pkey",
+      "indexdef": "CREATE UNIQUE INDEX product_variants_pkey ON public.product_variants USING btree (id)"
+    },
+    {
+      "tablename": "products",
+      "indexname": "idx_products_category",
+      "indexdef": "CREATE INDEX idx_products_category ON public.products USING btree (category_id)"
+    },
+    {
+      "tablename": "products",
+      "indexname": "products_pkey",
+      "indexdef": "CREATE UNIQUE INDEX products_pkey ON public.products USING btree (id)"
+    },
+    {
+      "tablename": "profiles",
+      "indexname": "idx_profiles_email",
+      "indexdef": "CREATE INDEX idx_profiles_email ON public.profiles USING btree (email)"
+    },
+    {
+      "tablename": "profiles",
+      "indexname": "profiles_email_key",
+      "indexdef": "CREATE UNIQUE INDEX profiles_email_key ON public.profiles USING btree (email)"
+    },
+    {
+      "tablename": "profiles",
+      "indexname": "profiles_pkey",
+      "indexdef": "CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)"
+    }
+  ],
+  "triggers": [],
+  "catalog": [
+    {
+      "product_count": "25",
+      "variant_count": "25",
+      "products_without_variants": "0",
+      "non_positive_prices": "0",
+      "negative_stock": "0"
+    }
+  ]
+}
