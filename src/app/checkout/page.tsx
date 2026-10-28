@@ -1,491 +1,191 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
-import { useCart } from '../../context/CartContext';
-import Script from 'next/script';
-import { refreshAuthSession, getAuthUser } from '../../lib/authClient';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import { useCart } from '@/context/CartContext';
+import { refreshAuthSession, type AuthUser } from '@/lib/authClient';
+import { commerceTotals, formatMoney } from '@/lib/commerce-rules';
+import { CommerceRequestError, commerceRequest } from '@/lib/commerce/client';
+import { loadRazorpay } from '@/lib/commerce/razorpay-client';
+import { CheckoutValidationError, INDIAN_STATES, validateShipping } from '@/lib/commerce/validation';
+import type { Purchase, ShippingAddress } from '@/lib/commerce/types';
 import styles from './checkout.module.css';
 
-type Step = 'shipping' | 'payment' | 'confirmation';
+const emptyShipping: ShippingAddress = { firstName: '', lastName: '', phone: '', address: '', city: '', state: '', zipCode: '', country: 'India' };
+const message = (error: unknown) => error instanceof Error ? error.message : 'This request could not be completed. Please retry.';
 
-interface ShippingForm {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-}
-
-const loadRazorpayScript = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined') return resolve(false);
-    if ((window as any).Razorpay) return resolve(true);
-    const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
-    if (existing) {
-      existing.addEventListener('load', () => resolve(true));
-      existing.addEventListener('error', () => resolve(false));
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
-
-export default function CheckoutPage() {
-  const { cartItems, cartTotal, clearCart } = useCart();
-  const [savedAddresses, setSavedAddresses] = useState<ShippingForm[]>([]);
-  const [selectedSavedIdx, setSelectedSavedIdx] = useState<number | null>(null);
-  const [currentStep, setCurrentStep] = useState<Step>('shipping');
-  const [orderId, setOrderId] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [shipping, setShipping] = useState<ShippingForm>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'India',
-  });
-
+function Checkout() {
   const router = useRouter();
+  const params = useSearchParams();
+  const orderParam = params.get('order');
+  const { cartItems, cartTotal, clearCart } = useCart();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [shipping, setShipping] = useState<ShippingAddress>(emptyShipping);
+  const [order, setOrder] = useState<Purchase | null>(null);
+  const [error, setError] = useState('');
+  const [fields, setFields] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [approved, setApproved] = useState(false);
+  const [authRetry, setAuthRetry] = useState(0);
+  const account = useRef<string | null>(null);
+  const requestKey = useRef({ fingerprint: '', key: '' });
+  const itemsRef = useRef(cartItems);
+  useEffect(() => { itemsRef.current = cartItems; }, [cartItems]);
 
-  // Enforce authentication on checkout mount & load saved addresses
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    let cancelled = false;
-    void refreshAuthSession().then(user => {
-      if (cancelled) return;
-      if (!user) { router.push('/login?redirect=/checkout'); return; }
-      setShipping(prev => ({ ...prev, email: user.email }));
+    let live = true;
+    const sync = async () => {
       try {
-        const savedStr = localStorage.getItem(`wishlyn-saved-addresses:${user.id}`);
-        const list = savedStr ? JSON.parse(savedStr) : [];
-        if (Array.isArray(list) && list.length > 0) setSavedAddresses(list);
-      } catch { /* Ignore incompatible saved addresses. */ }
+        const current = await refreshAuthSession();
+        if (!live) return;
+        if (account.current && account.current !== current?.id) { setOrder(null); setShipping(emptyShipping); setApproved(false); setBusy(false); requestKey.current = { fingerprint: '', key: '' }; }
+        account.current = current?.id || null;
+        setUser(current);
+        setAuthLoading(false);
+        if (!current) router.replace(`/login?redirect=${encodeURIComponent(orderParam ? `/checkout?order=${orderParam}` : '/checkout')}`);
+      } catch { if (live) { setError('Your account could not be verified. Retry before continuing.'); setAuthLoading(false); } }
+    };
+    void sync();
+    const changed = (event: Event) => {
+      const detail = (event as CustomEvent<{ user: AuthUser | null; status?: string }>).detail;
+      if (detail?.status === 'loading') { setAuthLoading(true); return; }
       setAuthLoading(false);
-    }).catch(() => {
-      if (!cancelled) { setPaymentError('Your account could not be verified. Please reload and try again.'); setAuthLoading(false); }
-    });
-    return () => { cancelled = true; };
+      if (detail?.status === 'error') { setUser(null); setError('Your account could not be verified. Retry before continuing.'); return; }
+      const next = detail?.user;
+      if (next?.id === account.current) { setUser(next || null); return; }
+      account.current = next?.id || null;
+      setUser(next || null); setOrder(null); setShipping(emptyShipping); setApproved(false); setBusy(false);
+      requestKey.current = { fingerprint: '', key: '' };
+      if (!next) router.replace('/login?redirect=%2Fcheckout');
+    };
+    window.addEventListener('wishlyn-auth-change', changed);
+    return () => { live = false; window.removeEventListener('wishlyn-auth-change', changed); };
+  }, [router, orderParam, authRetry]);
 
-  }, [router]);
+  useEffect(() => {
+    if (!user || !orderParam || order?.id === orderParam) return;
+    const controller = new AbortController();
+    const owner = user.id;
+    commerceRequest<{ order: Purchase }>(`/api/orders/${encodeURIComponent(orderParam)}`, undefined, controller.signal)
+      .then(result => { if (account.current === owner) { setOrder(result.order); setShipping(result.order.shipping); setApproved(false); } })
+      .catch(error => { if (!controller.signal.aborted && account.current === owner) setError(message(error)); });
+    return () => controller.abort();
+  }, [user, orderParam, order?.id]);
 
-  const shippingCost = cartTotal >= 3000 ? 0 : 250;
-  const tax = Math.round(cartTotal * 0.03);
-  const total = cartTotal + shippingCost + tax;
-
-  const handleShippingChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setShipping({ ...shipping, [e.target.name]: e.target.value });
-    setSelectedSavedIdx(null);
-  };
-
-  const handleShippingSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Save shipping address into localStorage
-    if (typeof window !== 'undefined') {
-      const savedStr = localStorage.getItem(`wishlyn-saved-addresses:${getAuthUser()?.id ?? 'guest'}`);
-      let list: ShippingForm[] = [];
-      if (savedStr) {
-        try { list = JSON.parse(savedStr); } catch (err) {}
-      }
-
-      list = list.filter(a => !(a.address.toLowerCase() === shipping.address.toLowerCase() && a.zipCode === shipping.zipCode));
-      list.unshift(shipping);
-      localStorage.setItem(`wishlyn-saved-addresses:${getAuthUser()?.id ?? 'guest'}`, JSON.stringify(list.slice(0, 5)));
+  const lines = () => itemsRef.current.map(item => ({ variantId: item.variantId, quantity: item.quantity, giftWrap: item.giftWrap, giftMessage: item.giftMessage || '' }));
+  const review = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!user) return;
+    setFields({}); setError('');
+    let validShipping: ShippingAddress;
+    try { validShipping = validateShipping(shipping); }
+    catch (error) {
+      if (error instanceof CheckoutValidationError) { setFields(error.fields); document.getElementById(Object.keys(error.fields)[0])?.focus(); }
+      setError(message(error)); return;
     }
-
-    setCurrentStep('payment');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handlePaymentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setPaymentError(null);
-    const generatedOrderId = `WISHLYN-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
+    setBusy(true);
+    const owner = user.id;
     try {
-      const scriptReady = await loadRazorpayScript();
-      if (!scriptReady && typeof (window as any).Razorpay === 'undefined') {
-        throw new Error('Razorpay Checkout SDK failed to load. Please verify your connection.');
-      }
-
-      const cartPayload = cartItems.map(item => ({
-        variantId: item.variant.id,
-        quantity: item.quantity,
-        giftWrap: item.giftWrap,
-        giftMessage: item.giftMessage,
-      }));
-
-      const res = await fetch('/api/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: Math.round(total * 100),
-          currency: 'INR',
-          items: cartPayload,
-        }),
-      });
-
-      const orderData = await res.json();
-
-      if (!res.ok || orderData.error) {
-        throw new Error(orderData.error || 'Failed to create payment order');
-      }
-
-      const activeOrderId = orderData.order_id || orderData.orderId;
-
-      // Open the actual Razorpay Checkout Modal
-      const options = {
-        key: orderData.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount,
-        currency: orderData.currency || 'INR',
-        name: 'Wishlyn Fine Jewellery',
-        description: `Checkout Order for ${shipping.firstName} ${shipping.lastName}`,
-        order_id: activeOrderId,
-        handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
-          try {
-            const verifyRes = await fetch('/api/verify-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                orderId: generatedOrderId,
-                shipping,
-                items: cartPayload,
-              }),
-            });
-
-            const verifyData = await verifyRes.json();
-
-            if (!verifyRes.ok || !verifyData.verified) {
-              setPaymentError(verifyData.error || 'Payment verification failed. Signature mismatch.');
-              setIsSubmitting(false);
-              return;
-            }
-
-            setOrderId(generatedOrderId);
-            clearCart();
-            setCurrentStep('confirmation');
-          } catch (dbErr) {
-            console.error('[Checkout] Verification Error:', dbErr);
-            setPaymentError('An error occurred verifying your payment. Please contact support.');
-          } finally {
-            setIsSubmitting(false);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }
-        },
-        prefill: {
-          name: `${shipping.firstName} ${shipping.lastName}`,
-          email: shipping.email,
-          contact: shipping.phone,
-        },
-        notes: {
-          address: `${shipping.address}, ${shipping.city}, ${shipping.state} - ${shipping.zipCode}`,
-        },
-        theme: {
-          color: '#3B312A',
-        },
-        modal: {
-          ondismiss: function () {
-            setIsSubmitting(false);
-            setPaymentError('Payment window was closed before completing payment.');
-          }
-        }
-      };
-
-      const rzp = new (window as any).Razorpay(options);
-
-      rzp.on('payment.failed', function (response: any) {
-        const errObj = response?.error || response;
-        const reason = errObj?.description || errObj?.reason;
-        if (reason) {
-          console.warn('[Razorpay] Payment failed:', reason);
-          setPaymentError(`Payment failed: ${reason}`);
-        } else {
-          console.warn('[Razorpay] Payment flow cancelled or failed');
-          setPaymentError('Payment was not completed. Please try again.');
-        }
-        setIsSubmitting(false);
-      });
-
-      rzp.open();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'An unexpected error occurred';
-      console.error('[Checkout] Payment flow failed:', message);
-      setIsSubmitting(false);
-      setPaymentError(`Payment could not be initialized: ${message}.`);
-    }
+      const payload = { items: lines(), shipping: validShipping };
+      const fingerprint = JSON.stringify(payload);
+      if (requestKey.current.fingerprint !== fingerprint) requestKey.current = { fingerprint, key: crypto.randomUUID() };
+      const result = await commerceRequest<{ order: Purchase }>('/api/checkout/quote', { ...payload, requestKey: requestKey.current.key });
+      if (account.current !== owner) return;
+      setOrder(result.order); setApproved(false);
+      router.replace(`/checkout?order=${result.order.id}`);
+    } catch (error) {
+      if (account.current !== owner) return;
+      if (error instanceof CommerceRequestError && error.fields) setFields(error.fields);
+      setError(message(error));
+    } finally { if (account.current === owner) setBusy(false); }
   };
 
-  if (authLoading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--alabaster)' }}>
-        <p style={{ color: 'var(--muted-text)', fontSize: '15px', fontFamily: 'var(--font-sans)' }}>Verifying secure checkout session...</p>
-      </div>
-    );
-  }
+  const pay = async () => {
+    if (!user || !order || !approved) return;
+    setBusy(true); setError('');
+    const owner = user.id, orderId = order.id, cartAtPayment = JSON.stringify(lines());
+    try {
+      const Razorpay = await loadRazorpay();
+      const data = await commerceRequest<{ key: string; amount: number; currency: string; providerOrderId: string }>('/api/create-order', { orderId });
+      if (account.current !== owner) return;
+      if (data.amount !== order.totalPaise || data.currency !== order.currency) throw new Error('Payment details changed. Reopen the order to review them.');
+      const checkout = new Razorpay({
+        key: data.key, amount: data.amount, currency: data.currency, order_id: data.providerOrderId,
+        name: 'Wishlyn', description: `Order ${orderId}`,
+        prefill: { name: `${order.shipping.firstName} ${order.shipping.lastName}`, email: user.email, contact: order.shipping.phone },
+        theme: { color: '#3b312a' },
+        modal: { ondismiss: () => { if (account.current === owner) { setBusy(false); setError('The payment window closed. Check this order before paying again.'); } } },
+        handler: async proof => {
+          if (account.current !== owner) return;
+          try {
+            const result = await commerceRequest<{ order: Purchase; verified: boolean }>('/api/verify-payment', { orderId, ...proof });
+            if (account.current !== owner) return;
+            setOrder(result.order);
+            if (result.verified) {
+              if (JSON.stringify(lines()) === cartAtPayment) clearCart();
+              router.push(`/orders/${orderId}`);
+            } else setError('Your payment requires review. Open this order for its current status and support.');
+          } catch { if (account.current === owner) setError('Payment status could not be confirmed. Your order reference is saved. Check the order before attempting another payment.'); }
+          finally { if (account.current === owner) setBusy(false); }
+        },
+      });
+      checkout.on('payment.failed', () => { if (account.current === owner) { setBusy(false); setError('Payment was not confirmed. Open this order to check its status before retrying.'); } });
+      checkout.open();
+    } catch (error) { if (account.current === owner) { setError(message(error)); setBusy(false); } }
+  };
 
-  if (currentStep === 'confirmation') {
-    return (
-      <>
-        <Header />
-        <main id="main-content" className={styles.page}>
-          <div className={`container ${styles.confirmation}`}>
-            <div className={styles.confirmIcon}>✓</div>
-            <h1>Order Confirmed!</h1>
-            <p>Thank you for your purchase, {shipping.firstName}. Please save your order number for your records.</p>
-            <p>Your jewellery will be carefully packaged and dispatched within 1–2 business days.</p>
-            <div className={styles.orderId}>Order #{orderId}</div>
-            <br />
-            <Link href="/" className={styles.homeLink}>Continue Shopping</Link>
-          </div>
-        </main>
-        <Footer />
-      </>
-    );
-  }
+  const edit = async () => {
+    if (!order || !user) return;
+    const owner = user.id;
+    setBusy(true); setError('');
+    try {
+      await commerceRequest(`/api/orders/${order.id}`, { action: 'cancel' });
+      if (account.current !== owner) return;
+      setOrder(null); setApproved(false); requestKey.current = { fingerprint: '', key: '' };
+      router.replace('/checkout');
+    } catch (error) { if (account.current === owner) setError(message(error)); }
+    finally { if (account.current === owner) setBusy(false); }
+  };
 
-  if (cartItems.length === 0) {
-    return (
-      <>
-        <Header />
-        <main id="main-content" className={styles.page}>
-          <div className={`container ${styles.emptyState}`}>
-            <p>Your cart is empty. Add some items before checking out.</p>
-            <Link href="/" className={styles.homeLink}>Browse Collections</Link>
-          </div>
-        </main>
-        <Footer />
-      </>
-    );
-  }
+  const provisional = commerceTotals(Math.round(cartTotal * 100));
+  const totals = order || provisional;
+  const summaryLines = order?.items || cartItems.map(item => ({ variantId: item.variantId, productId: item.product.id, title: item.product.title, metalType: item.variant.metalType, purity: item.variant.purity, size: item.variant.size, quantity: item.quantity, giftWrap: item.giftWrap, giftMessage: item.giftMessage || '', lineTotalPaise: Math.round((item.variant.price + (item.giftWrap ? 350 : 0)) * item.quantity * 100) }));
+  const addressFields = [
+    { key: 'firstName', label: 'First name', auto: 'given-name', max: 80 },
+    { key: 'lastName', label: 'Last name', auto: 'family-name', max: 80 },
+    { key: 'phone', label: 'Mobile number', auto: 'tel', max: 20, type: 'tel' },
+    { key: 'address', label: 'Street address', auto: 'street-address', max: 300 },
+    { key: 'city', label: 'City', auto: 'address-level2', max: 80 },
+    { key: 'zipCode', label: 'PIN code', auto: 'postal-code', max: 6 },
+  ] as const;
 
-  return (
-    <>
-      <Header />
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
-      <main id="main-content" className={styles.page}>
-        <div className="container">
-          {/* Step Indicator */}
-          <div className={styles.steps}>
-            <div className={`${styles.step} ${currentStep === 'shipping' ? styles.stepActive : styles.stepDone}`}>
-              <span className={styles.stepNumber}>{currentStep === 'shipping' ? '1' : '✓'}</span>
-              <span>Shipping</span>
-            </div>
-            <div className={styles.stepDivider} />
-            <div className={`${styles.step} ${currentStep === 'payment' ? styles.stepActive : ''}`}>
-              <span className={styles.stepNumber}>2</span>
-              <span>Payment</span>
-            </div>
-            <div className={styles.stepDivider} />
-            <div className={styles.step}>
-              <span className={styles.stepNumber}>3</span>
-              <span>Confirmation</span>
-            </div>
-          </div>
-
-          <div className={styles.grid}>
-            {/* Left: Form Panel */}
-            <div className={styles.formPanel}>
-              {currentStep === 'shipping' && (
-                <form onSubmit={handleShippingSubmit}>
-                  <h2 className={styles.sectionTitle}>Shipping Address</h2>
-
-                  {/* Saved Addresses Selector */}
-                  {savedAddresses.length > 0 && (
-                    <div className={styles.savedAddressesSection}>
-                      <div className={styles.savedAddressHeader}>
-                        <span className={styles.savedAddressTitle}>📍 Saved Delivery Addresses</span>
-                      </div>
-                      <div className={styles.savedAddressGrid}>
-                        {savedAddresses.map((addr, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            className={`${styles.savedAddressCard} ${selectedSavedIdx === idx ? styles.savedAddressCardActive : ''}`}
-                            onClick={() => {
-                              setSelectedSavedIdx(idx);
-                              setShipping(prev => ({
-                                ...addr,
-                                email: prev.email || addr.email,
-                              }));
-                            }}
-                          >
-                            <div className={styles.savedAddressName}>{addr.firstName} {addr.lastName}</div>
-                            <div className={styles.savedAddressDetails}>
-                              {addr.address}, {addr.city}, {addr.state} {addr.zipCode}
-                            </div>
-                            <div className={styles.savedAddressDetails} style={{ marginTop: '4px', fontWeight: 600 }}>
-                              📞 {addr.phone}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className={styles.fieldRow}>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor="firstName">First Name *</label>
-                      <input className={styles.input} type="text" id="firstName" name="firstName" required value={shipping.firstName} onChange={handleShippingChange} placeholder="Jane" />
-                    </div>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor="lastName">Last Name *</label>
-                      <input className={styles.input} type="text" id="lastName" name="lastName" required value={shipping.lastName} onChange={handleShippingChange} placeholder="Doe" />
-                    </div>
-                  </div>
-                  <div className={styles.fieldRow}>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor="email">Email *</label>
-                      <input className={styles.input} type="email" id="email" name="email" required disabled value={shipping.email} onChange={handleShippingChange} placeholder="jane@example.com" style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }} />
-                    </div>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor="phone">Phone *</label>
-                      <input className={styles.input} type="tel" id="phone" name="phone" required value={shipping.phone} onChange={handleShippingChange} placeholder="+91 98765 43210" />
-                    </div>
-                  </div>
-                  <div className={styles.fieldRow}>
-                    <div className={`${styles.field} ${styles.fieldFull}`}>
-                      <label className={styles.label} htmlFor="address">Street Address *</label>
-                      <input className={styles.input} type="text" id="address" name="address" required value={shipping.address} onChange={handleShippingChange} placeholder="123 Rose Lane, Apartment 4B" />
-                    </div>
-                  </div>
-                  <div className={styles.fieldRow}>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor="city">City *</label>
-                      <input className={styles.input} type="text" id="city" name="city" required value={shipping.city} onChange={handleShippingChange} placeholder="Mumbai" />
-                    </div>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor="state">State *</label>
-                      <input className={styles.input} type="text" id="state" name="state" required value={shipping.state} onChange={handleShippingChange} placeholder="Maharashtra" />
-                    </div>
-                  </div>
-                  <div className={styles.fieldRow}>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor="zipCode">Postal Code *</label>
-                      <input className={styles.input} type="text" id="zipCode" name="zipCode" required value={shipping.zipCode} onChange={handleShippingChange} placeholder="400001" />
-                    </div>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor="country">Country</label>
-                      <select className={styles.input} id="country" name="country" value={shipping.country} onChange={handleShippingChange}>
-                        <option value="India">India</option>
-                        <option value="United States">United States</option>
-                        <option value="United Kingdom">United Kingdom</option>
-                        <option value="Canada">Canada</option>
-                        <option value="Australia">Australia</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className={styles.btnRow}>
-                    <Link href="/" className={styles.secondaryBtn}>← Back to Shop</Link>
-                    <button type="submit" className={styles.primaryBtn}>Continue to Payment</button>
-                  </div>
-                </form>
-              )}
-
-              {currentStep === 'payment' && (
-                <form onSubmit={handlePaymentSubmit}>
-                  <h2 className={styles.sectionTitle}>Payment Details</h2>
-                  <div className={styles.paymentSection}>
-                    <div className={styles.paymentBadges}>
-                      <span className={styles.badge}>🔒 256-bit SSL Encryption</span>
-                      <span className={styles.badge}>💳 UPI / Cards / NetBanking</span>
-                      <span className={styles.badge}>🛡️ Buyer Protection</span>
-                    </div>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: '16px 0 8px 0' }}>
-                      Your payment will be processed securely via Razorpay in INR (₹{Math.round(total).toLocaleString('en-IN')}). You will be redirected to the secure payment window to complete your order.
-                    </p>
-
-                    {process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID?.startsWith('rzp_test_') && (
-                      <div style={{ margin: '12px 0 16px 0', padding: '12px 14px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 'var(--radius-sm)', fontSize: '13px', color: '#6b21a8', lineHeight: '1.5' }}>
-                        💡 <strong>Razorpay Test Mode Tip:</strong> Select <strong>Netbanking</strong> (choose any bank &amp; click &quot;Success&quot;) or <strong>UPI</strong> (enter <code>success@razorpay</code>). For cards, use domestic test card <code>4514 0100 0000 0001</code>.
-                      </div>
-                    )}
-
-                    {paymentError && (
-                      <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-sm)', color: '#991b1b', fontSize: '14px', margin: '8px 0 16px 0' }}>
-                        {paymentError}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles.btnRow}>
-                    <button type="button" onClick={() => { setCurrentStep('shipping'); setPaymentError(null); }} className={styles.secondaryBtn} disabled={isSubmitting}>← Back</button>
-                    <button type="submit" className={styles.primaryBtn} disabled={isSubmitting}>
-                      {isSubmitting ? 'Processing...' : `Pay via Razorpay — ₹${Math.round(total).toLocaleString('en-IN')}`}
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
-
-            {/* Right: Order Summary */}
-            <div className={styles.summaryPanel}>
-              <div className={styles.summaryHeader}>
-                <h3>Order Summary ({cartItems.reduce((a, i) => a + i.quantity, 0)} items)</h3>
-              </div>
-              <ul className={styles.summaryItems}>
-                {cartItems.map((item) => {
-                  const unitPrice = item.variant.price + (item.giftWrap ? 350 : 0);
-                  return (
-                    <li key={item.id} className={styles.summaryItem}>
-                      <div className={styles.summaryItemImg}>
-                        <Image src={item.product.images[0]} alt={item.product.title} width={56} height={56} />
-                      </div>
-                      <div className={styles.summaryItemInfo}>
-                        <span className={styles.summaryItemTitle}>{item.product.title}</span>
-                        <span className={styles.summaryItemMeta}>{item.variant.metalType} × {item.quantity}</span>
-                      </div>
-                      <span className={styles.summaryItemPrice}>₹{(unitPrice * item.quantity).toLocaleString('en-IN')}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-              <div className={styles.summaryFooter}>
-                <div className={styles.summaryRow}>
-                  <span>Subtotal</span>
-                  <span>₹{cartTotal.toLocaleString('en-IN')}</span>
-                </div>
-                <div className={styles.summaryRow}>
-                  <span>Shipping</span>
-                  <span>{shippingCost === 0 ? 'Free' : `₹${shippingCost.toLocaleString('en-IN')}`}</span>
-                </div>
-                <div className={styles.summaryRow}>
-                  <span>Tax (3% GST)</span>
-                  <span>₹{tax.toLocaleString('en-IN')}</span>
-                </div>
-                <div className={styles.summaryTotal}>
-                  <span>Total</span>
-                  <span>₹{Math.round(total).toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-      <Footer />
-    </>
-  );
+  return <><Header /><main id="main-content" className={styles.page}><div className="container">
+    <div className={styles.heading}><p>YOUR PURCHASE</p><h1>Checkout</h1><Link href="/orders">View saved orders</Link></div>
+    {error && <div role="alert" className={styles.error}>{error}{order && <> <Link href={`/orders/${order.id}`}>Check order {order.id}</Link></>}</div>}
+    {authLoading ? <p role="status">Verifying your account…</p> : !user ? <div><p>Sign in to continue with your purchase.</p><button className={styles.secondaryBtn} onClick={() => { setAuthLoading(true); setAuthRetry(value => value + 1); }}>Retry account check</button><Link href="/login?redirect=%2Fcheckout">Sign in</Link></div> :
+      !cartItems.length && !order && !orderParam ? <div className={styles.emptyState}><p>Your bag is empty.</p><Link href="/" className={styles.homeLink}>Browse jewellery</Link></div> :
+      orderParam && !order ? <p role="status">Loading your saved order. You can also find it in <Link href="/orders">your orders</Link>.</p> :
+      <div className={styles.grid}><section className={styles.formPanel} aria-label="Delivery and payment">
+        {!order ? <form onSubmit={review} noValidate><h2 className={styles.sectionTitle}>Delivery details</h2><p className={styles.note}>Account: {user.email}. Checkout currently supports India. Delivery eligibility and service policies must be confirmed for your destination.</p>
+          <div className={styles.fieldRow}>{addressFields.map(field => <div className={styles.field} key={field.key}><label className={styles.label} htmlFor={field.key}>{field.label}</label><input className={styles.input} id={field.key} name={field.key} autoComplete={field.auto} type={'type' in field ? field.type : 'text'} inputMode={field.key === 'zipCode' ? 'numeric' : undefined} maxLength={field.max} required value={shipping[field.key]} onChange={event => setShipping(value => ({ ...value, [field.key]: event.target.value }))} aria-invalid={Boolean(fields[field.key])} aria-describedby={fields[field.key] ? `${field.key}-error` : undefined} />{fields[field.key] && <span className={styles.fieldError} id={`${field.key}-error`}>{fields[field.key]}</span>}</div>)}
+          <div className={styles.field}><label className={styles.label} htmlFor="state">State / union territory</label><select className={styles.input} id="state" autoComplete="address-level1" value={shipping.state} onChange={event => setShipping(value => ({ ...value, state: event.target.value }))} aria-invalid={Boolean(fields.state)} aria-describedby={fields.state ? 'state-error' : undefined}><option value="">Choose your state</option>{INDIAN_STATES.map(state => <option key={state}>{state}</option>)}</select>{fields.state && <span id="state-error" className={styles.fieldError}>{fields.state}</span>}</div>
+          <div className={styles.field}><label className={styles.label} htmlFor="country">Country</label><input id="country" className={styles.input} value="India" readOnly autoComplete="country-name" /></div></div>
+          <div className={styles.btnRow}><Link href="/" className={styles.secondaryBtn}>Back to shop</Link><button className={styles.primaryBtn} disabled={busy}>{busy ? 'Checking prices and stock…' : 'Review current total'}</button></div></form> :
+          <><h2 className={styles.sectionTitle}>Review your order</h2><p className={styles.reference}>Reference: <Link href={`/orders/${order.id}`}>{order.id}</Link></p>
+            <address className={styles.address}>{order.shipping.firstName} {order.shipping.lastName}<br />{order.shipping.address}<br />{order.shipping.city}, {order.shipping.state} {order.shipping.zipCode}<br />{order.shipping.phone}</address>
+            {order.status === 'pending_payment' ? <><p className={styles.note}>These prices and gift instructions are saved with your order. The stock reservation ends {new Date(order.expiresAt).toLocaleString('en-IN')}. Payment is confirmed only after verification.</p>
+              {order.subtotalPaise !== provisional.subtotalPaise && <p className={styles.changed} role="status">The current catalogue total differs from your bag. Review the prices shown here before continuing.</p>}
+              <label className={styles.approval}><input type="checkbox" checked={approved} onChange={event => setApproved(event.target.checked)} disabled={busy} />I have reviewed the delivery details, gift instructions and total of {formatMoney(order.totalPaise)}.</label>
+              <div className={styles.btnRow}><button className={styles.secondaryBtn} onClick={edit} disabled={busy}>Cancel this quote and edit</button><button className={styles.primaryBtn} disabled={busy || !approved} onClick={pay}>{busy ? 'Opening or verifying payment…' : `Pay ${formatMoney(order.totalPaise)}`}</button></div>
+              <p className={styles.note}>If payment is interrupted, open <Link href={`/orders/${order.id}`}>this saved order</Link> to check its status before trying again.</p></> : <p>This order is {order.status.replaceAll('_', ' ')}. <Link href={`/orders/${order.id}`}>Open its details and next steps</Link>.</p>}
+          </>}
+      </section><aside className={styles.summaryPanel} aria-label="Purchase summary"><div className={styles.summaryHeader}><h2>Purchase summary</h2></div><ul className={styles.summaryItems}>{summaryLines.map((line, index) => <li key={`${line.variantId}-${index}`} className={styles.summaryItem}><div className={styles.summaryItemInfo}><Link href={`/product/${line.productId}`} className={styles.summaryItemTitle}>{line.title}</Link><span className={styles.summaryItemMeta}>{line.metalType} · {line.purity}{line.size ? ` · Size ${line.size}` : ''} · Quantity {line.quantity}</span>{line.giftWrap && <span className={styles.summaryItemMeta}>Gift wrapping: {formatMoney(35_000)} per piece{line.giftMessage ? ` · “${line.giftMessage}”` : ''}</span>}</div><span className={styles.summaryItemPrice}>{formatMoney(line.lineTotalPaise)}</span></li>)}</ul>
+        <div className={styles.summaryFooter}><div className={styles.summaryRow}><span>Items and gift wrapping</span><span>{formatMoney(totals.subtotalPaise)}</span></div><div className={styles.summaryRow}><span>Shipping</span><span>{totals.shippingPaise ? formatMoney(totals.shippingPaise) : 'Included'}</span></div><div className={styles.summaryRow}><span>Tax (3%, rounded)</span><span>{formatMoney(totals.taxPaise)}</span></div><div className={styles.summaryTotal}><span>Total</span><span>{formatMoney(totals.totalPaise)}</span></div>{!order && <p className={styles.note}>Estimated from your bag. Current prices and available stock are checked before payment.</p>}<p className={styles.note}>Shipping is {formatMoney(25_000)} below {formatMoney(300_000)}; included at or above that subtotal. Gift wrapping is optional.</p></div></aside></div>}
+  </div></main><Footer /></>;
 }
+
+export default function CheckoutPage() { return <Suspense fallback={<p role="status">Loading checkout…</p>}><Checkout /></Suspense>; }
