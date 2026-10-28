@@ -21,24 +21,12 @@ import {
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
-import { getAuthUser } from "../lib/authClient";
+import { getAuthState, getServerAuthState, subscribeAuth, refreshAuthSession } from "../lib/authClient";
 import styles from "./Header.module.css";
 
 interface HeaderProps {
   onSearchChange?: (term: string) => void;
 }
-const subscribeAuth = (notify: () => void) => {
-  window.addEventListener("storage", notify);
-  window.addEventListener("wishlyn-auth-change", notify);
-  return () => {
-    window.removeEventListener("storage", notify);
-    window.removeEventListener("wishlyn-auth-change", notify);
-  };
-};
-const authSnapshot = () => {
-  const user = getAuthUser();
-  return user ? JSON.stringify({ email: user.email, role: user.role }) : null;
-};
 const subscribeScroll = (notify: () => void) => {
   window.addEventListener("scroll", notify, { passive: true });
   return () => window.removeEventListener("scroll", notify);
@@ -64,7 +52,10 @@ function SearchForm({
         ).trim();
         onSearchChange?.(term);
         onSubmit();
-        router.push(`/?search=${encodeURIComponent(term)}#shop`);
+        const next = new URLSearchParams(params.toString());
+        if (term) next.set('search', term); else next.delete('search');
+        next.delete('page');
+        router.push(`/${next.size ? `?${next}` : ''}#shop`);
       }}
     >
       <Search size={19} />
@@ -88,10 +79,8 @@ function SearchForm({
 export default function Header({ onSearchChange }: HeaderProps) {
   const { setIsCartOpen, cartCount } = useCart();
   const { wishlistCount } = useWishlist();
-  const rawUser = useSyncExternalStore(subscribeAuth, authSnapshot, () => null);
-  const user = rawUser
-    ? (JSON.parse(rawUser) as { email: string; role: string })
-    : null;
+  useEffect(() => { void refreshAuthSession().catch(() => undefined); }, []);
+  const { user } = useSyncExternalStore(subscribeAuth, getAuthState, getServerAuthState);
   const isScrolled = useSyncExternalStore(
     subscribeScroll,
     () => window.scrollY > 20,
@@ -126,7 +115,7 @@ export default function Header({ onSearchChange }: HeaderProps) {
       >
         <div className={styles.announcement}>
           A little shine, delivered.{" "}
-          <span>Complimentary shipping on orders over ₹3,000</span>
+          <span>Complimentary shipping on orders of ₹3,000 or more</span>
         </div>
         <div className={`${styles.container} container`}>
           <button

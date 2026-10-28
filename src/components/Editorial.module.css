@@ -288,3 +288,6 @@
     transform: rotate(-7deg);
   }
 }
+
+.promises span, .collectionCaption span, .storyCopy p { font-size: 13px; line-height: 1.7; }
+.promises span { white-space: normal; }

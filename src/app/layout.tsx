@@ -20,8 +20,8 @@ const montserrat = Montserrat({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://wishlyn.com'),
-  title: "Wishlyn | Made to Match You | Fine Jewellery",
-  description: "Explore handcrafted premium sterling silver, gold, and fine diamond jewellery designed to match your unique style. Everyday luxury by Wishlyn.",
+  title: "Wishlyn | Jewellery for every version of you",
+  description: "Explore earrings, necklaces and bracelets. Discover product materials, care information and thoughtful gift options at Wishlyn.",
 };
 
 export default function RootLayout({

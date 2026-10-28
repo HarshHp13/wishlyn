@@ -9,7 +9,7 @@ import { productImage } from '../lib/productImages';
 import styles from "./ProductCard.module.css";
 
 export default function ProductCard({ product }: { product: Product }) {
-  const { isInWishlist, toggleWishlist } = useWishlist();
+  const { isInWishlist, toggleWishlist, wishlistStatus } = useWishlist();
   const wishlisted = isInWishlist(product.id);
   return (
     <article className={styles.card}>
@@ -44,6 +44,7 @@ export default function ProductCard({ product }: { product: Product }) {
           className={`${styles.wishlistHeart} ${wishlisted ? styles.wishlistHeartActive : ""}`}
           aria-label={`${wishlisted ? "Remove" : "Add"} ${product.title} ${wishlisted ? "from" : "to"} wishlist`}
           aria-pressed={wishlisted}
+          disabled={wishlistStatus !== 'ready'}
         >
           <Heart
             size={17}
