@@ -70,30 +70,20 @@ export default function AdminPage() {
     catch { setStatus({ type: 'error', message: 'Sign out could not be confirmed. Please retry.' }); }
   };
 
-  const loadData = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/product', { credentials: 'same-origin', cache: 'no-store' });
-      if (!res.ok) {
-        throw new Error('Failed to fetch catalog from server');
-      }
-      const data = await res.json();
-      setProducts(data.products || []);
-      
-      const categoriesList = data.categories && data.categories.length > 0
-        ? data.categories
-        : [
-            { id: 'necklaces', name: 'Necklaces', slug: 'necklaces' },
-            { id: 'rings', name: 'Rings', slug: 'rings' },
-            { id: 'earrings', name: 'Earrings', slug: 'earrings' },
-            { id: 'bracelets', name: 'Bracelets', slug: 'bracelets' }
-          ];
-      setCategories(categoriesList);
-      if (categoriesList.length > 0) setCategoryId(current => current || categoriesList[0].id);
-    } catch (err: unknown) {
-      setStatus({ type: 'error', message: err instanceof Error ? err.message : 'The catalogue could not be loaded. Please retry.' });
-    } finally {
-      setLoading(false);
-    }
+  const loadData = useCallback(() => {
+    return fetch('/api/admin/product', { credentials: 'same-origin', cache: 'no-store' })
+      .then(async response => {
+        if (!response.ok) throw new Error('The catalogue could not be loaded. Please retry.');
+        return response.json();
+      })
+      .then(data => {
+        setProducts(data.products || []);
+        const list = Array.isArray(data.categories) ? data.categories : [];
+        setCategories(list);
+        if (list.length > 0) setCategoryId(current => current || list[0].id);
+      })
+      .catch(error => setStatus({ type: 'error', message: error instanceof Error ? error.message : 'The catalogue could not be loaded. Please retry.' }))
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { if (userRole === 'admin') void loadData(); }, [userRole, loadData]);

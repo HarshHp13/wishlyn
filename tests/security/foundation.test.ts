@@ -172,3 +172,41 @@ test('separate application processes share one request budget', async () => {
   assert.equal(results.reduce((sum, row) => sum + row.allowed, 0), 5);
   assert.equal(results.reduce((sum, row) => sum + row.denied, 0), 15);
 });
+
+
+test('canonical-email collision migration aborts before changing legacy profiles', async () => {
+  const name = `wishlyn_collision_${randomUUID().replaceAll('-', '')}_test`;
+  const url = new URL(baseTestUrl!); url.pathname = `/${name}`;
+  const admin = new pg.Client(databaseConfig(baseTestUrl)); await admin.connect();
+  let fixture: pg.Client | undefined;
+  try {
+    await admin.query(`CREATE DATABASE ${name}`);
+    fixture = new pg.Client(databaseConfig(url.toString())); await fixture.connect();
+    await fixture.query("CREATE TABLE profiles(id varchar(128) PRIMARY KEY,email varchar(255) UNIQUE NOT NULL,password_hash text NOT NULL,role varchar(32) DEFAULT 'customer',created_at timestamptz DEFAULT now())");
+    await fixture.query("INSERT INTO profiles(id,email,password_hash) VALUES('one','User@example.test','fixture'),('two',' user@EXAMPLE.test ','fixture')");
+    await assert.rejects(() => migrate(url.toString(), true), /collisions/);
+    assert.equal((await fixture.query('SELECT count(*)::int n FROM profiles')).rows[0].n, 2);
+    assert.equal((await fixture.query("SELECT to_regclass('schema_migrations') name")).rows[0].name, null);
+    assert.equal((await fixture.query("SELECT email FROM profiles WHERE id='one'")).rows[0].email, 'User@example.test');
+  } finally { await fixture?.end(); await admin.query(`DROP DATABASE IF EXISTS ${name}`); await admin.end(); }
+});
+
+test('upload configuration and image validation fail before any provider call', async () => {
+  const upload = (await import('../../src/app/api/cloudinary/upload/route')).POST;
+  const profile = (await query("SELECT id FROM profiles WHERE role='admin' LIMIT 1")).rows[0];
+  const response = NextResponse.json({}); await createSession(profile.id, response);
+  assert.equal((await upload(request('/api/cloudinary/upload'))).status, 401);
+  const original = { cloud: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME, key: process.env.CLOUDINARY_API_KEY, secret: process.env.CLOUDINARY_API_SECRET };
+  delete process.env.CLOUDINARY_API_SECRET;
+  try {
+    assert.equal((await upload(request('/api/cloudinary/upload', {}, cookie(response)))).status, 503);
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME = 'test-cloud'; process.env.CLOUDINARY_API_KEY = 'test-key'; process.env.CLOUDINARY_API_SECRET = 'test-secret';
+    const form = new FormData(); form.set('file', new Blob(['not an image'], { type: 'image/png' }), 'fake.png');
+    const req = new Request(`${origin}/api/cloudinary/upload`, { method: 'POST', headers: { Origin: origin, Cookie: cookie(response) }, body: form });
+    assert.equal((await upload(req)).status, 400);
+  } finally {
+    for (const [key, value] of Object.entries({ NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: original.cloud, CLOUDINARY_API_KEY: original.key, CLOUDINARY_API_SECRET: original.secret })) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
+});

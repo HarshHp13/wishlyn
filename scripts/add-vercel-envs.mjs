@@ -3,12 +3,14 @@ import { parseEnv } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const allowed = new Set(['APP_ORIGIN', 'DATABASE_URL', 'DATABASE_CA_CERT', 'TRUSTED_CLIENT_IP_HEADER', 'NEXT_PUBLIC_APP_URL', 'NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'NEXT_PUBLIC_RAZORPAY_KEY_ID']);
+const allowed = new Set(['APP_ORIGIN', 'DATABASE_URL', 'DATABASE_CA_CERT', 'DB_ALLOW_LOCAL_PLAINTEXT', 'TRUSTED_CLIENT_IP_HEADER', 'NEXT_PUBLIC_APP_URL', 'NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET', 'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET', 'NEXT_PUBLIC_RAZORPAY_KEY_ID']);
 const isolated = ['DATABASE_URL', 'CLOUDINARY_API_SECRET', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'];
 export function planEnvironment(target, values, otherEnvironments = []) {
   if (!['development', 'preview', 'production'].includes(target) || values.WISHLYN_ENVIRONMENT !== target) throw new Error('Choose one matching explicit environment profile.');
-  const entries = Object.entries(values).filter(([name]) => name !== 'WISHLYN_ENVIRONMENT');
-  if (!entries.length || entries.some(([name, value]) => !allowed.has(name) || !value)) throw new Error('Environment profile contains empty or unsupported variables.');
+  const configured = Object.entries(values).filter(([name]) => name !== 'WISHLYN_ENVIRONMENT');
+  if (configured.some(([name]) => !allowed.has(name))) throw new Error('Environment profile contains unsupported variables.');
+  const entries = configured.filter(([, value]) => value !== '');
+  if (values.DB_ALLOW_LOCAL_PLAINTEXT && (values.DB_ALLOW_LOCAL_PLAINTEXT !== 'false' && (target !== 'development' || values.DB_ALLOW_LOCAL_PLAINTEXT !== 'true'))) throw new Error('Plaintext database access is restricted to explicit local development.');
   if (!values.DATABASE_URL || !values.APP_ORIGIN) throw new Error('Environment profile requires DATABASE_URL and APP_ORIGIN.');
   const origin = new URL(values.APP_ORIGIN);
   if (origin.origin !== values.APP_ORIGIN || (target !== 'development' && origin.protocol !== 'https:')) throw new Error('Use an exact HTTPS APP_ORIGIN for preview/production.');

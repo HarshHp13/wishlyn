@@ -1,0 +1,33 @@
+npm notice run wishlyn@0.1.0 test:security
+npm notice run tsx --test tests/security/*.test.ts
+✔ cached browser claims never authenticate and session notifications carry no credential (144.479971ms)
+✔ stale anonymous responses cannot overwrite a newer successful sign-in (17.223943ms)
+✔ pending/error refresh is distinguishable from confirmed logout (13.371203ms)
+✔ failed logout never claims server revocation succeeded (14.310147ms)
+✔ schema-only bootstrap reruns without sample users/products and checksums are stable (221.954479ms)
+✔ public signup ignores privileged input and issues only an HttpOnly opaque session (416.568272ms)
+✔ case/whitespace variants racing signup create exactly one canonical identity (583.703259ms)
+✔ current role, password changes, disable and logout revoke issued sessions permanently (1397.390625ms)
+✔ legacy bearer tokens, absent cookies and forged local claims do not authenticate (0.619074ms)
+✔ cross-origin/missing-Origin mutations and unsupported content fail before work (1.637628ms)
+✔ chunked payload budgets do not rely on Content-Length (1.057368ms)
+✔ password/email validation bounds hashing input without silent bcrypt truncation (0.360996ms)
+[API] Request could not be completed.
+✔ distributed rate limits are atomic across concurrent connections and expire (26.375429ms)
+[API] Request could not be completed.
+✔ infrastructure failures are retryable service errors, not invalid login or secret output (10.629404ms)
+✔ transaction failure rolls back profile and session together (3.507752ms)
+✔ production cookies are Secure and remote TLS never bypasses verification (3.542919ms)
+✔ deployment plans isolate one target, reject unsupported keys/shared secrets and redact at execution (0.654834ms)
+✔ separate application processes share one request budget (302.18418ms)
+✔ canonical-email collision migration aborts before changing legacy profiles (195.74683ms)
+✔ upload configuration and image validation fail before any provider call (105.715332ms)
+✔ shared database TLS settings reject untrusted/wrong-host certificates and accept trusted matching TLS (220.529651ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3777.653504
