@@ -7,6 +7,7 @@ Two independent implementation reviewers: `/root/implementation_reviewer_one` an
 | Package | PR | Reviewed head | Integration base | Reviewer 1 | Reviewer 2 | Checks | Merge commit |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | W1 — Identity & Security | [#2](https://github.com/HarshHp13/wishlyn/pull/2) | `6bce669222fc91e043226c9529bbf5cad805fc26` | `a242811c1869fa77f076f861936b65498550304b` | +1 LGTM ([#6466591383](https://github.com/HarshHp13/wishlyn/pull/2#issuecomment-6466591383)) | +1 LGTM ([#6466591887](https://github.com/HarshHp13/wishlyn/pull/2#issuecomment-6466591887)) | 36/36 tests, Typecheck, Build, CI, Vercel | `08024f63c8702b85e0545f4df21966a3efb34385` |
+| W2 — Commerce & Orders | [#3](https://github.com/HarshHp13/wishlyn/pull/3) | `d1141f017f128db2008001699dab33ef9e857a2f` | `e3abf7422f2b3ec3d778d9134a66a1882c235fa7` | +1 LGTM ([#6466672985](https://github.com/HarshHp13/wishlyn/pull/3#issuecomment-6466672985)) | +1 LGTM ([#6466673613](https://github.com/HarshHp13/wishlyn/pull/3#issuecomment-6466673613)) | 31/31 commerce tests, 36/36 sec tests, Build, CI | `df12f8a846ad2911b3bc24e83c2725e22709aa8e` |
 
 ## Review cycles
 
@@ -15,6 +16,13 @@ Two independent implementation reviewers: `/root/implementation_reviewer_one` an
 - **Author Revision (Locke, Head `6bce669`):** Addressed all 5 findings plus C1. Extended tests from 21 to 36 cases. Published implementation response comment #4.
 - **Cycle 2 (Head `6bce669`):** Independent re-review by Reviewer 1 and Reviewer 2 verified all fixes. Both reviewers issued formal approvals (+2 LGTM).
 - **Merge:** Merged into `codex/audit-remediation` at commit `08024f63c8702b85e0545f4df21966a3efb34385`.
+
+### W2 — Commerce & Orders (PR #3)
+- **Preliminary Cycle (Head `8a3c433`):** Reviewer 1 identified R1-W2-01 (OrdersView account-switch privacy leak) and R1-W2-02 (unrelated cart cleared on paying older quote).
+- **Author Revision & Rebase (Sartre, Head `d1141f0`):** Created `bag-match.ts` with 3 unit tests, isolated OrdersView state across accounts, and rebased onto `codex/audit-remediation` (`e3abf74`).
+- **Cycle 2 (Head `d1141f0`):** Independent re-review by Reviewer 1 and Reviewer 2 confirmed all findings resolved, 31/31 commerce tests pass on PostgreSQL, 36/36 security tests pass, and CI Quality passed. Both issued formal approvals (+2 LGTM).
+- **Merge:** Merged into `codex/audit-remediation` at commit `df12f8a846ad2911b3bc24e83c2725e22709aa8e`.
+
 
 
 ## Hosted-check baseline
