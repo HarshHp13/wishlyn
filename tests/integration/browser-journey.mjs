@@ -152,7 +152,7 @@ async page => {
   await page.locator('#browser-variant-b-stock').fill('3');
   await page.getByLabel('Stock adjustment reason', { exact: true }).fill('Disposable integration restock');
   await page.getByRole('checkbox', { name: 'I have checked that the images' }).check();
-  const stockSave = page.waitForResponse(response => new URL(response.url()).pathname === '/api/admin/product' && response.request().method() === 'POST');
+  const stockSave = page.waitForResponse(response => new URL(response.url()).pathname === '/api/admin/product' && response.request().method() === 'PUT');
   await page.getByRole('button', { name: 'Save product', exact: true }).click();
   check([200, 201].includes((await stockSave).status()), 'Merchant save failed');
   await page.locator('li').getByText('Disposable integration restock', { exact: true }).waitFor();
