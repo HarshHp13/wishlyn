@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "staleSavedOrderHidden": true,
+  "failedSavedOrderRetry": true,
+  "supersededAuthStaysInCheckout": true,
+  "largeBagAdjustment": true,
+  "savedPurchaseWithLargeBag": true,
+  "savedAddressQuote": true,
+  "layouts": [
+    {
+      "width": 320,
+      "scrollWidth": 320
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "width": 768,
+      "scrollWidth": 768
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440
+    }
+  ],
+  "pageErrors": [],
+  "paymentRequests": [],
+  "provenance": "Isolated production Next application; API/provider traffic intercepted with synthetic data; no live purchase",
+  "sourceCheckpoint": "4df8d68 (captured-account source); 33bc49e (settled screenshot harness)",
+  "acceptance": "Intermediate W6 evidence; final revised W5 integration and reviews remain required"
+}

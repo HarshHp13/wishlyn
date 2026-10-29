@@ -14,22 +14,22 @@ async function authorize(request: Request) {
 const response = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 export async function GET(request: Request) {
   try {
-    await authorize(request);
+    const user = await authorize(request);
     const params = new URL(request.url).searchParams;
-    if (params.has('id')) return response({ product: await getMerchantProduct(merchantId(params.get('id'))) });
-    return response(await listMerchantProducts({ search: params.get('search') || '', status: params.get('status') || '', lowStock: params.get('lowStock') === 'true', offset: Number(params.get('offset') || 0) }));
+    if (params.has('id')) return response({ viewerId: user.id, product: await getMerchantProduct(merchantId(params.get('id'))) });
+    return response({ ...await listMerchantProducts({ search: params.get('search') || '', status: params.get('status') || '', lowStock: params.get('lowStock') === 'true', offset: Number(params.get('offset') || 0) }), viewerId: user.id });
   } catch (error) { return apiError(error); }
 }
 export async function POST(request: Request) {
   try {
     const user = await authorize(request);
-    return response({ product: await saveMerchantProduct(user.id, await readJson(request, 131072)) }, 201);
+    return response({ viewerId: user.id, product: await saveMerchantProduct(user.id, await readJson(request, 131072)) }, 201);
   } catch (error) { return apiError(error); }
 }
 export async function PUT(request: Request) {
   try {
     const user = await authorize(request);
     const body = requireObject(await readJson(request, 131072));
-    return response({ product: await saveMerchantProduct(user.id, body, merchantId(body.id)) });
+    return response({ viewerId: user.id, product: await saveMerchantProduct(user.id, body, merchantId(body.id)) });
   } catch (error) { return apiError(error); }
 }

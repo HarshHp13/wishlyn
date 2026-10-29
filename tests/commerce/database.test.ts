@@ -3,9 +3,9 @@ import { before, beforeEach, after, describe, test } from 'node:test';
 import { createHmac } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { createSession, SESSION_COOKIE } from '../../src/lib/session';
-import { quotePOST, verifyPOST, customerOrderGET, adminOrderPOST } from '../../src/lib/commerce/http';
+import { quotePOST, verifyPOST, customerOrdersGET, customerOrderGET, customerOrderPOST, adminOrderGET, adminOrderPOST } from '../../src/lib/commerce/http';
 import { POST as webhookPOST } from '../../src/app/api/razorpay/webhook/route';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { migrate } from '../../scripts/migrate.mjs';
 import { query, closeDatabase } from '../../src/lib/database';
 import { createPurchase, startPayment, applyPayment, getPurchase, cancelPurchase, expireReservations, reconcilePurchase, updateFulfillment } from '../../src/lib/commerce/service';
@@ -35,9 +35,10 @@ describe('commerce PostgreSQL transaction invariants', { skip: !testUrl }, () =>
     assert.equal(url.pathname, '/wishlyn_test_commerce');
     process.env.DATABASE_URL = testUrl;
     process.env.DB_ALLOW_LOCAL_PLAINTEXT = 'true';
-    Object.assign(process.env, { NODE_ENV: 'test' });
+    Object.assign(process.env, { NODE_ENV: 'test', APP_ORIGIN: 'http://localhost:3000' });
     await query('DROP SCHEMA public CASCADE; CREATE SCHEMA public');
-    assert.deepEqual(await migrate(testUrl!, true), ['001-initial.sql', '002-identity.sql', '003-commerce.sql']);
+    const migrations = (await readdir(new URL('../../db/migrations/', import.meta.url))).filter(name => /^\d{3}-[a-z0-9-]+\.sql$/.test(name)).sort();
+    assert.deepEqual(await migrate(testUrl!, true), migrations);
     assert.deepEqual(await migrate(testUrl!, true), []);
   });
   beforeEach(async () => {
@@ -250,11 +251,32 @@ describe('commerce PostgreSQL transaction invariants', { skip: !testUrl }, () =>
       assert.deepEqual(await inventory(), { stock: 4, reserved_stock: 1 });
     } finally { globalThis.fetch = oldFetch; }
   });
+  test('account preconditions reject stale shared cookies before private reads or commerce writes', async () => {
+    const session = NextResponse.json({}); await createSession(bob.id, session);
+    const cookie = `${SESSION_COOKIE}=${session.cookies.get(SESSION_COOKIE)!.value}`;
+    const order = await createPurchase(bob, payload());
+    const request = (path: string, body?: unknown, expected = alice.id) => new Request(`http://localhost:3000${path}`, { method: body ? 'POST' : 'GET', headers: { cookie, origin: 'http://localhost:3000', 'content-type': 'application/json', 'X-Wishlyn-Account-ID': expected }, ...(body ? { body: JSON.stringify(body) } : {}) });
+    process.env.COMMERCE_CHECKOUT_ENABLED = 'true';
+    for (const response of [await customerOrdersGET(request('/api/orders')), await customerOrderGET(request('/api/orders'), order.id), await quotePOST(request('/api/checkout/quote', payload())), await customerOrderPOST(request('/api/orders', { action: 'cancel' }), order.id)]) {
+      assert.equal(response.status, 409); assert.equal((await response.json()).code, 'account_changed');
+    }
+    assert.equal((await query('SELECT * FROM commerce_orders')).rowCount, 1);
+    assert.equal((await getPurchase(order.id, bob.id)).status, 'pending_payment');
+    const matching = await customerOrderGET(request('/api/orders', undefined, bob.id), order.id);
+    assert.equal(matching.status, 200); assert.equal((await matching.json()).viewerId, bob.id);
+    // A matching header never grants admin authority.
+    assert.equal((await adminOrderGET(request('/api/admin/orders', undefined, bob.id), order.id)).status, 403);
+    const adminSession = NextResponse.json({}); await createSession('test-admin', adminSession);
+    const adminRead = await adminOrderGET(new Request('http://localhost:3000/api/admin/orders', { headers: { cookie: `${SESSION_COOKIE}=${adminSession.cookies.get(SESSION_COOKIE)!.value}`, 'X-Wishlyn-Account-ID': 'test-admin' } }), order.id);
+    const adminData = await adminRead.json();
+    assert.equal(adminRead.status, 200); assert.equal(adminData.viewerId, 'test-admin'); assert.equal(adminData.order.ownerId, bob.id);
+  });
   test('migration reruns retain data and checksum history', async () => {
     const order = await createPurchase(alice, payload());
     assert.deepEqual(await migrate(testUrl!, true), []);
     assert.equal((await getPurchase(order.id, alice.id)).id, order.id);
-    assert.equal((await query('SELECT * FROM schema_migrations')).rowCount, 3);
+    const migrations = (await readdir(new URL('../../db/migrations/', import.meta.url))).filter(name => /^\d{3}-[a-z0-9-]+\.sql$/.test(name));
+    assert.equal((await query('SELECT * FROM schema_migrations')).rowCount, migrations.length);
   });
   test('database constraints reject impossible inventory and preserve referenced variants', async () => {
     await assert.rejects(query("UPDATE product_variants SET stock=-1 WHERE id='v1'"));

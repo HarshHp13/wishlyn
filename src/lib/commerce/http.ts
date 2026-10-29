@@ -26,7 +26,7 @@ export async function quotePOST(request: Request) {
   try {
     requireCheckoutEnabled();
     const user = await customerMutation(request, 'checkout-quote');
-    return privateJson({ order: await createPurchase(user, requireObject(await readJson(request, 32_768))) }, 201);
+    return privateJson({ viewerId: user.id, order: await createPurchase(user, requireObject(await readJson(request, 32_768))) }, 201);
   } catch (error) { return commerceError(error); }
 }
 
@@ -36,7 +36,7 @@ export async function paymentPOST(request: Request) {
     const user = await customerMutation(request, 'checkout-payment');
     const body = requireObject(await readJson(request));
     assertPaymentReady();
-    return privateJson(await startPayment(validateOrderId(body.orderId), user.id, paymentGateway()));
+    return privateJson({ ...await startPayment(validateOrderId(body.orderId), user.id, paymentGateway()), viewerId: user.id });
   } catch (error) { return commerceError(error); }
 }
 
@@ -52,7 +52,7 @@ export async function verifyPOST(request: Request) {
     const payment = await paymentGateway().fetchPayment(paymentId);
     if (payment.order_id !== order.providerOrderId || payment.id !== paymentId) throw new ApiError(409, 'payment_mismatch', 'Payment does not belong to this purchase.');
     const updated = await applyPayment(payment, 'callback');
-    return privateJson({ verified: updated.status === 'paid', order: updated });
+    return privateJson({ viewerId: user.id, verified: updated.status === 'paid', order: updated });
   } catch (error) { return commerceError(error); }
 }
 
@@ -60,14 +60,14 @@ export async function customerOrdersGET(request: Request) {
   try {
     const user = await requireSession(request);
     const params = new URL(request.url).searchParams;
-    return privateJson(await listPurchases(user.id, { offset: Number(params.get('offset') || 0) }));
+    return privateJson({ ...await listPurchases(user.id, { offset: Number(params.get('offset') || 0) }), viewerId: user.id });
   } catch (error) { return commerceError(error); }
 }
 
 export async function customerOrderGET(request: Request, id: string) {
   try {
     const user = await requireSession(request);
-    return privateJson({ order: await getPurchase(id, user.id) });
+    return privateJson({ viewerId: user.id, order: await getPurchase(id, user.id) });
   } catch (error) { return commerceError(error); }
 }
 
@@ -75,22 +75,22 @@ export async function customerOrderPOST(request: Request, id: string) {
   try {
     const user = await customerMutation(request, 'order-action');
     const body = requireObject(await readJson(request));
-    if (body.action === 'cancel') return privateJson({ order: await cancelPurchase(id, user.id) });
-    if (body.action === 'reconcile') return privateJson({ order: await reconcilePurchase(id, user.id, paymentGateway()) });
+    if (body.action === 'cancel') return privateJson({ viewerId: user.id, order: await cancelPurchase(id, user.id) });
+    if (body.action === 'reconcile') return privateJson({ viewerId: user.id, order: await reconcilePurchase(id, user.id, paymentGateway()) });
     throw new ApiError(400, 'invalid_action', 'Choose a supported order action.');
   } catch (error) { return commerceError(error); }
 }
 
 export async function adminOrdersGET(request: Request) {
   try {
-    await requireAdmin(request);
+    const admin = await requireAdmin(request);
     const params = new URL(request.url).searchParams;
-    return privateJson(await listPurchases(null, { offset: Number(params.get('offset') || 0), status: params.get('status') || undefined }));
+    return privateJson({ ...await listPurchases(null, { offset: Number(params.get('offset') || 0), status: params.get('status') || undefined }), viewerId: admin.id });
   } catch (error) { return commerceError(error); }
 }
 
 export async function adminOrderGET(request: Request, id: string) {
-  try { await requireAdmin(request); return privateJson({ order: await getPurchase(id) }); }
+  try { const admin = await requireAdmin(request); return privateJson({ viewerId: admin.id, order: await getPurchase(id) }); }
   catch (error) { return commerceError(error); }
 }
 
@@ -100,8 +100,8 @@ export async function adminOrderPOST(request: Request, id: string) {
     const admin = await requireAdmin(request);
     await rateLimit(request, { scope: 'admin-order-action', identity: admin.id, limit: 60, windowSeconds: 60 });
     const body = requireObject(await readJson(request));
-    if (body.action === 'reconcile') return privateJson({ order: await reconcilePurchase(id, undefined, paymentGateway()) });
-    if (body.action === 'fulfillment') return privateJson({ order: await updateFulfillment(id, admin.id, body) });
+    if (body.action === 'reconcile') return privateJson({ viewerId: admin.id, order: await reconcilePurchase(id, undefined, paymentGateway()) });
+    if (body.action === 'fulfillment') return privateJson({ viewerId: admin.id, order: await updateFulfillment(id, admin.id, body) });
     throw new ApiError(400, 'invalid_action', 'Choose a supported order action.');
   } catch (error) { return commerceError(error); }
 }

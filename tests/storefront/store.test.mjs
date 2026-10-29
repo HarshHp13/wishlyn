@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { webcrypto } from 'node:crypto';
 import ts from 'typescript';
+import * as bagMatch from '../../src/lib/commerce/bag-match.ts';
 import * as state from '../../src/lib/shopping-state.ts';
 
 const source = ts.transpileModule(readFileSync(new URL('../../src/lib/shopping-store.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -21,7 +22,7 @@ function environment() {
     const exports = {};
     const storage = { getItem: key => data.get(key) ?? null, setItem(key, value) { data.set(key, value); for (const other of tabs) if (other.dispatch !== dispatch) other.dispatch('storage', { key }); }, removeItem(key) { data.delete(key); for (const other of tabs) if (other.dispatch !== dispatch) other.dispatch('storage', { key }); } };
     vm.runInNewContext(source, {
-      exports, require: name => name === './shopping-state' ? state : {
+      exports, require: name => name === './shopping-state' ? state : name === './commerce/bag-match' ? bagMatch : {
         getAuthState: () => auth,
         subscribeAuth: fn => { authListeners.add(fn); return () => authListeners.delete(fn); },
         refreshAuthSession: async () => auth.user,
@@ -31,7 +32,7 @@ function environment() {
       crypto: webcrypto,
       navigator: { locks: { request(_name, fn) { const task = locked.then(fn); locked = task.catch(() => {}); return task; } } },
     });
-    const result = { dispatch, storage, store: exports.cartStore, auth(next) { auth = next; authListeners.forEach(fn => fn()); } };
+    const result = { dispatch, storage, store: exports.cartStore, complete: exports.clearPurchasedCart, auth(next) { auth = next; authListeners.forEach(fn => fn()); } };
     tabs.push(result); result.store.subscribe(() => {}); return result;
   }
   return { data, tab };
@@ -119,3 +120,21 @@ test('visit-only guest picks are consumed once and merge with the same account m
   a.auth(account('a')); await wait();
   assert.deepEqual(a.store.getSnapshot().items.map(item => item.giftMessage).sort(), ['New guest gift', 'Private gift']);
 });
+
+test('paid cleanup compares the latest bag inside the queued mutation and account lock', async () => {
+  const env = environment(); const a = env.tab(account('a')); const b = env.tab(account('a')); await wait();
+  await a.store.mutate(items => state.addCartLine(items, line));
+  const purchase = { ownerId: 'a', items: [line] };
+  const add = b.store.mutate(items => state.addCartLine(items, { ...line, giftMessage: 'New gift' }));
+  await Promise.all([add, a.complete(purchase)]); await wait();
+  assert.equal(a.store.getSnapshot().items.length, 2);
+  await a.store.mutate(items => items.filter(item => item.giftMessage === 'Private gift'));
+  await a.complete(purchase); await wait();
+  assert.equal(b.store.getSnapshot().items.length, 0);
+  await a.store.mutate(items => state.addCartLine(items, line));
+  const pending = a.complete(purchase);
+  a.auth(account('b')); await pending; await wait();
+  a.auth(account('a')); await wait();
+  assert.equal(a.store.getSnapshot().items.length, 1);
+});
+

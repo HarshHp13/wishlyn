@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import { getAuthState, getServerAuthState, refreshAuthSession, subscribeAuth } from '../../lib/authClient';
+import { assertCurrentAccount } from '../../lib/commerce/client';
 import type { MerchantProduct, MerchantSummary, ProductStatus } from '../../lib/merchant/types';
 import styles from './admin.module.css';
 
@@ -16,14 +17,27 @@ type Catalogue = { products: MerchantSummary[]; categories: { id: string; name: 
 const variant = (): VariantForm => ({ key: crypto.randomUUID(), metalType: '', purity: '', size: '', price: '', stockAdjustment: '0', stock: 0, reservedStock: 0, active: true });
 const emptyEditor = (categoryId = ''): Editor => ({ requestKey: crypto.randomUUID(), revision: 0, title: '', description: '', categoryId, images: [], stone: '', dimensions: '', careInstructions: '', factsConfirmed: false, status: 'draft', stockReason: '', variants: [variant()] });
 const fromProduct = (product: MerchantProduct): Editor => ({ ...product, requestKey: '', stockReason: '', variants: product.variants.map(row => ({ ...row, key: row.id, price: String(row.price), stockAdjustment: '0' })) });
-async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, { ...init, credentials: 'same-origin', cache: 'no-store', signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000) });
-  const result = await response.json();
-  if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'The request failed. Please retry.');
-  return result;
+async function request<T>(url: string, intendedAccountId: string, init: RequestInit = {}): Promise<T> {
+  assertCurrentAccount(intendedAccountId);
+  let invalidated = false;
+  const unsubscribe = subscribeAuth(() => {
+    const auth = getAuthState();
+    if (auth.status === 'guest' || (auth.status === 'authenticated' && auth.user?.id !== intendedAccountId)) invalidated = true;
+  });
+  try {
+    const headers = new Headers(init.headers);
+    headers.set('X-Wishlyn-Account-ID', intendedAccountId);
+    const response = await fetch(url, { ...init, headers, credentials: 'same-origin', cache: 'no-store', signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : 'The request failed. Please retry.');
+    if (invalidated) throw new Error('Your account changed. Verify your account before continuing.');
+    assertCurrentAccount(intendedAccountId);
+    if (result.viewerId !== intendedAccountId) throw new Error('This response could not be verified for your account. Please reload.');
+    return result;
+  } finally { unsubscribe(); }
 }
 
-function MerchantWorkspace({ verified }: { verified: boolean }) {
+function MerchantWorkspace({ verified, ownerId }: { verified: boolean; ownerId: string }) {
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [saved, setSaved] = useState<MerchantProduct | null>(null);
@@ -53,13 +67,13 @@ function MerchantWorkspace({ verified }: { verified: boolean }) {
     if (!verified) return;
     const controller = new AbortController();
     const params = new URLSearchParams({ search, status, lowStock: String(lowStock), offset: String(offset) });
-    request<Catalogue>(`/api/admin/product?${params}`, { signal: controller.signal }).then(data => {
+    request<Catalogue>(`/api/admin/product?${params}`, ownerId, { signal: controller.signal }).then(data => {
       if (controller.signal.aborted) return;
       setCatalogue(data); setListError(''); setLoading(false);
       setEditor(current => current || emptyEditor(data.categories[0]?.id));
     }).catch(() => { if (!controller.signal.aborted) { setListError('The catalogue could not be loaded. Retry to see current products.'); setLoading(false); } });
     return () => controller.abort();
-  }, [search, status, lowStock, offset, reload, verified]);
+  }, [search, status, lowStock, offset, reload, verified, ownerId]);
   const changeUploads = useCallback((next: Upload[]) => { uploadsRef.current = next; setUploads(next); }, []);
   function clearUploads() { uploadsRef.current.forEach(item => URL.revokeObjectURL(item.preview)); changeUploads([]); }
   function newProduct() {
@@ -70,7 +84,7 @@ function MerchantWorkspace({ verified }: { verified: boolean }) {
     if (dirty && !window.confirm('Discard unsaved changes and load the saved product?')) return;
     setBusy(true); setError(''); setMessage('');
     try {
-      const data = await request<{ product: MerchantProduct }>(`/api/admin/product?id=${encodeURIComponent(id)}`);
+      const data = await request<{ product: MerchantProduct }>(`/api/admin/product?id=${encodeURIComponent(id)}`, ownerId);
       if (!alive.current) return;
       clearUploads(); setEditor(fromProduct(data.product)); setSaved(data.product); setDirty(false); heading.current?.focus();
     } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : 'This product could not be loaded.'); }
@@ -90,7 +104,7 @@ function MerchantWorkspace({ verified }: { verified: boolean }) {
         let url = upload.url;
         if (!url) {
           const body = new FormData(); body.set('file', upload.file);
-          const data = await request<{ url: string }>('/api/cloudinary/upload', { method: 'POST', body });
+          const data = await request<{ url: string }>('/api/cloudinary/upload', ownerId, { method: 'POST', body });
           url = data.url;
           if (!alive.current) return;
           changeUploads(uploadsRef.current.map(item => item.key === upload.key ? { ...item, url } : item));
@@ -98,7 +112,7 @@ function MerchantWorkspace({ verified }: { verified: boolean }) {
         images.push(url);
       }
       const body = { ...editor, images, variants: editor.variants.map(row => ({ id: row.id, metalType: row.metalType, purity: row.purity, size: row.size, price: Number(row.price), stockAdjustment: Number(row.stockAdjustment), active: row.active })) };
-      const data = await request<{ product: MerchantProduct }>('/api/admin/product', { method: editor.id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await request<{ product: MerchantProduct }>('/api/admin/product', ownerId, { method: editor.id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!alive.current) return;
       clearUploads(); setEditor(fromProduct(data.product)); setSaved(data.product); setDirty(false);
       setMessage(`Product saved as ${data.product.status}.`); setReload(value => value + 1);
@@ -168,6 +182,6 @@ export default function AdminPage() {
     {auth.status === 'error' && <div role="alert"><p>Your account could not be verified.</p><button onClick={() => void refreshAuthSession(true).catch(() => undefined)}>Retry account</button></div>}
     {auth.status === 'guest' && <p><Link href="/login?redirect=/admin">Sign in</Link> with an administrator account to maintain the catalogue.</p>}
     {auth.status === 'authenticated' && auth.user?.role !== 'admin' && <p>This workspace requires an administrator account. <Link href="/profile">Go to your account</Link>.</p>}
-    {owner && <MerchantWorkspace key={owner} verified={auth.status === 'authenticated' && auth.user?.id === owner && auth.user.role === 'admin'} />}
+    {owner && <MerchantWorkspace key={owner} ownerId={owner} verified={auth.status === 'authenticated' && auth.user?.id === owner && auth.user.role === 'admin'} />}
   </main><Footer /></>;
 }

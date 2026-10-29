@@ -4,6 +4,7 @@ import { query, closeDatabase } from '../../src/lib/database';
 import { catalogueCategories, catalogueHighlights, cataloguePage, catalogueProduct, catalogueRelated, catalogueVariants } from '../../src/lib/catalogue';
 import { POST as newsletter } from '../../src/app/api/newsletter/route';
 import { POST as wishlist } from '../../src/app/api/wishlist-products/route';
+import { migrate } from '../../scripts/migrate.mjs';
 
 const configured = process.env.STOREFRONT_TEST_DATABASE_URL;
 if (configured) {
@@ -16,6 +17,7 @@ if (configured) {
 const options = { skip: !configured };
 before(async () => {
   if (!configured) return;
+  await migrate(configured, true);
   await query("ALTER TABLE products ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'published'");
   await query('ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS reserved_stock integer NOT NULL DEFAULT 0');
   await query("INSERT INTO categories(id,name,slug) VALUES ('earrings','Earrings','earrings'),('necklaces','Necklaces','necklaces'),('rings','Rings','rings') ON CONFLICT DO NOTHING");

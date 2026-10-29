@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { CommerceRequestError, commerceRequest } from '@/lib/commerce/client';
-import { getAuthState, getServerAuthState, subscribeAuth, refreshAuthSession } from '@/lib/authClient';
+import { CommerceRequestError, commerceRequest, assertPurchaseOwner } from '@/lib/commerce/client';
+import { getAuthState, getServerAuthState, subscribeAuth, refreshAuthSession, type AuthState } from '@/lib/authClient';
 import { formatMoney } from '@/lib/commerce-rules';
 import type { Purchase } from '@/lib/commerce/types';
 import styles from './orders.module.css';
@@ -21,6 +21,17 @@ const descriptions = {
 
 export default function OrdersView({ admin = false, id }: { admin?: boolean; id?: string }) {
   const auth = useSyncExternalStore(subscribeAuth, getAuthState, getServerAuthState);
+  const [owner, setOwner] = useState<string | null>(null);
+  if (auth.status === 'authenticated' && auth.user && auth.user.id !== owner) setOwner(auth.user.id);
+  if (auth.status === 'guest' && owner !== null) setOwner(null);
+  useEffect(() => { void refreshAuthSession().catch(() => undefined); }, []);
+  return <AccountOrders key={JSON.stringify([owner, admin, id])} auth={auth} admin={admin} id={id} />;
+}
+
+function AccountOrders({ auth, admin, id }: { auth: AuthState; admin: boolean; id?: string }) {
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
+  const isCurrent = (owner: string) => active.current && getAuthState().status === 'authenticated' && getAuthState().user?.id === owner;
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [orders, setOrders] = useState<Purchase[]>([]);
   const [order, setOrder] = useState<Purchase | null>(null);
@@ -38,24 +49,28 @@ export default function OrdersView({ admin = false, id }: { admin?: boolean; id?
 
   const requestKey = auth.status === 'authenticated' && auth.user ? JSON.stringify([auth.user.id, auth.user.role, endpoint]) : null;
 
-  useEffect(() => { void refreshAuthSession().catch(() => undefined); }, []);
-
   useEffect(() => {
-    if (!requestKey) return;
+    if (!requestKey || !auth.user) return;
     const key = requestKey;
+    const owner = auth.user.id;
     const controller = new AbortController();
-    commerceRequest<{ order?: Purchase; orders?: Purchase[]; nextOffset?: number | null }>(endpoint, undefined, controller.signal)
-      .then(data => { if (!controller.signal.aborted) { setOrder(data.order || null); setOrders(data.orders || []); setNextOffset(data.nextOffset ?? null); setLoadedKey(key); setLoading(false); setError(''); setUnauthenticated(false); } })
+    commerceRequest<{ order?: Purchase; orders?: Purchase[]; nextOffset?: number | null }>(endpoint, owner, undefined, controller.signal)
+      .then(data => {
+        if (!admin) for (const purchase of data.order ? [data.order] : data.orders || []) assertPurchaseOwner(purchase, owner);
+        if (!controller.signal.aborted && isCurrent(owner)) { setOrder(data.order || null); setOrders(data.orders || []); setNextOffset(data.nextOffset ?? null); setLoadedKey(key); setLoading(false); setError(''); setUnauthenticated(false); }
+      })
       .catch(error => { if (!controller.signal.aborted) { setOrder(null); setOrders([]); setNextOffset(null); setError(error instanceof Error ? error.message : 'Orders could not be loaded. Please retry.'); setUnauthenticated(error instanceof CommerceRequestError && error.status === 401); setLoadedKey(key); setLoading(false); } });
     return () => controller.abort();
-  }, [endpoint, revision, requestKey]);
+  }, [endpoint, revision, requestKey, auth.user, admin]);
 
   const reload = () => { setLoading(true); setError(''); setRevision(value => value + 1); };
   const action = async (payload: Record<string, unknown>) => {
+    if (auth.status !== 'authenticated' || !auth.user || loadedKey !== requestKey) return;
+    const owner = auth.user.id;
     setBusy(true); setError('');
-    try { await commerceRequest(endpoint, payload); reload(); }
-    catch (error) { setError(error instanceof Error ? error.message : 'The order update could not be confirmed. Refresh before retrying.'); }
-    finally { setBusy(false); }
+    try { await commerceRequest(endpoint, owner, payload); if (isCurrent(owner)) reload(); }
+    catch (error) { if (isCurrent(owner)) setError(error instanceof Error ? error.message : 'The order update could not be confirmed. Refresh before retrying.'); }
+    finally { if (active.current) setBusy(false); }
   };
   const nextFulfillment = order ? ({ unfulfilled: 'processing', processing: 'shipped', shipped: 'delivered', delivered: null } as const)[order.fulfillmentStatus] : null;
 

@@ -217,8 +217,16 @@ describe('merchant PostgreSQL invariants', { skip: !baseUrl }, () => {
     assert.equal((await GET(make('GET', undefined, customer))).status, 403);
     assert.equal((await POST(make('POST', input(), administrator, 'https://evil.example'))).status, 403);
     assert.equal((await POST(make('POST', { text: 'x'.repeat(140000) }))).status, 413);
-    const created = await POST(make('POST', input())); assert.equal(created.status, 201);
-    const product = (await created.json()).product as MerchantProduct;
+    for (const method of ['GET', 'POST']) {
+      const stale = make(method, method === 'POST' ? input() : undefined);
+      stale.headers.set('X-Wishlyn-Account-ID', 'other-admin');
+      assert.equal((await (method === 'GET' ? GET(stale) : POST(stale))).status, 409);
+    }
+    assert.equal((await query('SELECT * FROM products')).rowCount, 0);
+    const matching = make('POST', input()); matching.headers.set('X-Wishlyn-Account-ID', 'admin');
+    const created = await POST(matching); assert.equal(created.status, 201);
+    const createdData = await created.json(); assert.equal(createdData.viewerId, 'admin');
+    const product = createdData.product as MerchantProduct;
     const saved = await PUT(make('PUT', { ...edit(product), title: 'Saved title' })); assert.equal(saved.status, 200);
     assert.equal((await PUT(make('PUT', edit(product)))).status, 409);
     await query("UPDATE profiles SET role='customer' WHERE id='admin'");
