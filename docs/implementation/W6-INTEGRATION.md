@@ -1,6 +1,6 @@
 # W6 — Cross-package integration and validation
 
-Date: 29 October 2026. Branch `codex/audit-integration-completion`, [PR #7](https://github.com/HarshHp13/wishlyn/pull/7); implementation target `codex/audit-remediation`. W1–W5 are merged. W6 awaits its final exact-head/base reviews; umbrella PR #1 remains open and `main` is unchanged.
+Date: 29 October 2026. Branch `codex/audit-integration-completion`, [PR #7](https://github.com/HarshHp13/wishlyn/pull/7); implementation target `codex/audit-remediation`. W1–W5 are merged. W6 is merged after two final exact-head/base approvals; umbrella PR #1 remains open and `main` is unchanged.
 
 ## Integrated behavior
 
@@ -44,7 +44,7 @@ Separate interim closure records: [order readiness](reviews/W6-R1-ORDER-READINES
 
 Evidence: [manifest and input fingerprints](evidence/integration/verification.json), [clean install](evidence/integration/clean-install.log), [full verification log](evidence/integration/verify-all-packages.log), [actual journey](evidence/integration/browser-journey.json), [retry](evidence/integration/retry-recovery.json), [mocked matrix](evidence/integration/browser-regressions.json), [mobile](evidence/integration/checkout-mobile.png), [desktop](evidence/integration/checkout-desktop.png), [customer/staff journey](evidence/integration/customer-staff-journey.png).
 
-Checks ran at local source `da368b5e63dc2683351f7b3bf64de0342be71d2e`, incorporating approved W5 head `2b504ca4c16a431c1a0e9733fec1380e31e568ff`. Rebase onto merged integration/ledger base `c1813b34891d578ac62e9b07cd908dae84f3c766` changed no application, test, asset or build input; the manifest records that comparison. Later evidence/documentation commits do not claim a new runtime test run. Final published-head CI and two independent reviews remain required before W6 merge.
+Checks ran at local source `da368b5e63dc2683351f7b3bf64de0342be71d2e`, incorporating approved W5 head `2b504ca4c16a431c1a0e9733fec1380e31e568ff`. Rebase onto merged integration/ledger base `c1813b34891d578ac62e9b07cd908dae84f3c766` changed no application, test, asset or build input; the manifest records that comparison. Later evidence/documentation commits do not claim a new runtime test run. The final published head passed GitHub Quality, including 244/244 tests with zero skips and the complete static/build/dependency checks. Both final reviewers independently passed all 244 tests; their reports and the verified merge pair are recorded below.
 
 ## Reproduction and fixture boundaries
 
@@ -60,3 +60,9 @@ Local verification uses dedicated loopback PostgreSQL with synthetic records and
 ## Operational prerequisites
 
 All E1–E5 remain owner-operated release gates: secret rotation/admin review; environment isolation/backups/live migrations/schedules; approved commercial/service policies/contact details; real product/material/care/media facts; payment sandbox/webhooks/refunds/invoicing/email/carrier/consent/analytics operations. Fixture evidence does not establish live payments, notifications or fulfillment. [Audit disposition](AUDIT-DISPOSITION.md) maps every finding and deferred recommendation. Preserve durable business history and use forward repair after real purchases; keep the documented safe defaults until operational evidence exists. No merge into `main` is authorized by this workflow.
+
+## Final review and integration record
+
+Approved head `db55f388538777096034b50f2fec43c0b90f13c1` against base `c1813b34891d578ac62e9b07cd908dae84f3c766` was merged at `dc25e6de8221e94cfa436c31bc180fb851c9d9b1`. Reports: [Reviewer 1](reviews/W6-R1-FINAL.md) and [Reviewer 2](reviews/W6-R2-FINAL.md). Both attributed public approvals preceded the merge; Git merge parents establish the exact pair. [Review ledger](REVIEW-LEDGER.md) and [machine-readable merge evidence](merge-verification.json) retain the public links and checks.
+
+The Vercel context reported success for an ignored deployment, so this program does not claim a successful hosted application build. The successful local/CI production build and synthetic browser evidence above are independently identified. Final whole-umbrella reviews are tracked on [PR #1](https://github.com/HarshHp13/wishlyn/pull/1); it remains open and E1–E5 remain outstanding.

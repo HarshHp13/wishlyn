@@ -3,7 +3,7 @@
   "validatedSourceHead": "da368b5e63dc2683351f7b3bf64de0342be71d2e",
   "W5Head": "2b504ca4c16a431c1a0e9733fec1380e31e568ff",
   "W5Base": "81df15a21281791cd3b2b95d44e77c5e98b8d0cf",
-  "status": "W1-W5 merged; complete W6 candidate checks pass; final W6 exact-pair PR reviews and merge pending",
+  "status": "W1-W6 merged after two exact-pair implementation reviews per PR; umbrella review evidence tracked on PR #1; E1-E5 outstanding",
   "tests": {
     "total": 244,
     "passed": 244,
@@ -222,5 +222,49 @@
   "finalIntegrationBase": "c1813b34891d578ac62e9b07cd908dae84f3c766",
   "applicationInputsUnchangedAfterRebase": true,
   "W5Merge": "fbe0a04b7dd52bbdcfa854d3080a6928fa2ad473",
-  "pullRequest": "https://github.com/HarshHp13/wishlyn/pull/7"
+  "pullRequest": "https://github.com/HarshHp13/wishlyn/pull/7",
+  "finalReviewedHead": "db55f388538777096034b50f2fec43c0b90f13c1",
+  "finalIntegrationMerge": "dc25e6de8221e94cfa436c31bc180fb851c9d9b1",
+  "finalReviewReports": [
+    "../../reviews/W6-R1-FINAL.md",
+    "../../reviews/W6-R2-FINAL.md"
+  ],
+  "finalHeadCI": {
+    "tests": {
+      "total": 244,
+      "passed": 244,
+      "failed": 0,
+      "skipped": 0
+    },
+    "checks": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-29T09:40:04Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/HarshHp13/wishlyn/actions/runs/40851262563/job/123371024168",
+        "name": "verify",
+        "startedAt": "2026-10-29T09:38:49Z",
+        "status": "COMPLETED",
+        "workflowName": "Quality"
+      },
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-10-29T09:38:45Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/pratikharsh13-5879s-projects/wishlyn/5oUcaxgh4eUCXbugZjMmY3yNPjLS"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-29T09:38:46Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-10-29T09:38:46Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ],
+    "hostedDeployment": "Vercel context successful; deployment ignored; hosted build unverified"
+  }
 }
