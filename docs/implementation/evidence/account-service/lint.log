@@ -1,0 +1,2 @@
+npm notice run wishlyn@0.1.0 npx
+npm notice run 'eslint' src/lib/account src/app/api/account src/app/api/support src/app/api/admin/support src/app/profile src/app/support src/app/admin/support src/app/forgot-password src/app/reset-password src/components/account src/components/support src/context/WishlistContext.tsx tests/account-service

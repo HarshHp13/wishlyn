@@ -1,0 +1,32 @@
+npm notice run wishlyn@0.1.0 npx
+npm notice run 'tsx' --test tests/account-service/database.test.ts tests/account-service/wishlist-client.test.mjs
+▶ account/service PostgreSQL ownership and recovery
+  ✔ current migrations rerun and account profile persists without revoking its session (387.403937ms)
+  ✔ stale concurrent profile edits preserve exactly one revision (328.361655ms)
+  ✔ address create/read/edit/delete is owned and optimistic versions prevent stale overwrite (330.323268ms)
+  ✔ invalid addresses and cross-origin or anonymous writes do not persist (313.446306ms)
+  ✔ wishlist import is once-only, atomic concurrent operations converge and another account stays isolated (343.230151ms)
+  ✔ password change requires current credential, rejects UTF-8 truncation and revokes all sessions (1913.054278ms)
+[API] Request could not be completed.
+  ✔ password transaction rollback leaves old password and sessions usable (1392.442403ms)
+  ✔ disabled recovery reports unavailable and never returns a token (307.947657ms)
+  ✔ configured recovery hashes tokens, makes them single-use and invalidates old sessions (1132.850151ms)
+  ✔ failed delivery invalidates token and unknown account has same acceptance response (585.688776ms)
+  ✔ expired and password-version-mismatched recovery tokens are rejected (1128.105115ms)
+  ✔ support requests bind owned durable orders, retry once, and never alter payment/fulfillment (344.594951ms)
+  ✔ staff replies have history, customer replies reopen resolved requests and stale updates fail (339.785013ms)
+  ✔ concurrent replies and detail reads preserve a coherent version, status and event history (397.749962ms)
+[API] Request could not be completed.
+  ✔ support event failure rolls back request creation and permits same-key retry (335.522854ms)
+✔ account/service PostgreSQL ownership and recovery (9784.725877ms)
+✔ stale account A load cannot overwrite verified account B even when fetch ignores cancellation (31.257703ms)
+✔ uncertain auth hides server data and a delayed mutation does not return after an A→B→A cycle (2.923344ms)
+✔ storage-denied browser still loads and saves authenticated wishlist through the server (2.171801ms)
+ℹ tests 18
+ℹ suites 1
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10046.236975

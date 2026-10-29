@@ -1,0 +1,181 @@
+.page {
+  padding: 48px 0 80px;
+  min-height: 70vh;
+  background: var(--warm-ivory);
+  color: var(--deep-espresso);
+}
+.page h1 {
+  font: clamp(2rem, 5vw, 3rem) var(--font-serif);
+  margin: 20px 0 28px;
+}
+.page h2 {
+  font: 1.45rem var(--font-serif);
+  margin: 0 0 18px;
+}
+.page p {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.panel {
+  min-width: 0;
+  background: white;
+  border: 1px solid var(--border-color);
+  padding: 28px;
+  margin-bottom: 24px;
+}
+.form {
+  display: grid;
+  gap: 16px;
+}
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.field {
+  display: grid;
+  gap: 7px;
+  font-size: 14px;
+  min-width: 0;
+}
+.field input,
+.field textarea,
+.field select,
+.form > textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #9a938b;
+  border-radius: 2px;
+  background: white;
+  color: var(--deep-espresso);
+  font: inherit;
+  padding: 12px;
+  min-height: 44px;
+}
+.field textarea {
+  min-height: 120px;
+}
+.field input:focus-visible,
+.field textarea:focus-visible,
+.field select:focus-visible,
+.page button:focus-visible,
+.page a:focus-visible {
+  outline: 3px solid #8f7141;
+  outline-offset: 3px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.page button,
+.button {
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  padding: 12px 18px;
+  border: 1px solid #3b312a;
+  background: #3b312a;
+  color: white;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+.page button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.page a {
+  color: #745a31;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.notice {
+  padding: 14px;
+  background: #f5eee2;
+  border-left: 3px solid #8f7141;
+  margin: 16px 0;
+}
+.error {
+  padding: 14px;
+  background: #fff1ef;
+  border-left: 3px solid #98372d;
+  margin: 16px 0;
+}
+.list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+.item {
+  border: 1px solid var(--border-color);
+  padding: 18px;
+  overflow-wrap: anywhere;
+}
+.item address {
+  font-style: normal;
+  line-height: 1.5;
+  margin: 12px 0;
+}
+.meta {
+  font-size: 14px;
+  color: #675e54;
+}
+.conversation {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+.conversation li {
+  background: var(--warm-ivory);
+  padding: 16px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.conversation time {
+  display: block;
+  font-size: 13px;
+  color: #675e54;
+  margin-bottom: 8px;
+}
+.full {
+  grid-column: 1/-1;
+}
+.page form > p {
+  margin: 0;
+}
+.intro {
+  max-width: 760px;
+  margin-bottom: 24px;
+}
+@media (max-width: 700px) {
+  .grid,
+  .fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .panel {
+    padding: 20px;
+  }
+  .page {
+    padding-top: 28px;
+  }
+  .actions > * {
+    max-width: 100%;
+  }
+  .full {
+    grid-column: auto;
+  }
+}

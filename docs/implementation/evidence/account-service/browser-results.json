@@ -1,0 +1,20 @@
+{
+  "provenance": "Local development server and actual disposable PostgreSQL; synthetic users/orders; remote requests blocked; no email/payment/provider action.",
+  "addressPersisted": true,
+  "failedPasswordRetained": true,
+  "savedPieceVisible": true,
+  "accountIsolated": true,
+  "requestIsolated": true,
+  "recoveryUnavailable": true,
+  "staffReply": true,
+  "narrowAccount": {
+    "width": 320,
+    "scrollWidth": 320,
+    "unlabelled": 0
+  },
+  "narrowSupport": {
+    "width": 320,
+    "scrollWidth": 320
+  },
+  "errors": []
+}
