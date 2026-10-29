@@ -40,6 +40,10 @@ export async function getSession(request: Request): Promise<SessionUser | null> 
 export async function requireSession(request: Request): Promise<SessionUser> {
   const user = await getSession(request);
   if (!user) throw new ApiError(401, 'unauthenticated', 'Please sign in to continue.');
+  // This precondition detects a shared-cookie account switch. Ownership and
+  // authorization still come exclusively from the verified server session.
+  const intendedAccount = request.headers.get('X-Wishlyn-Account-ID');
+  if (intendedAccount !== null && intendedAccount !== user.id) throw new ApiError(409, 'account_changed', 'Your account changed. Verify your account before continuing.');
   return user;
 }
 export async function requireAdmin(request: Request): Promise<SessionUser> {

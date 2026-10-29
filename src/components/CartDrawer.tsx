@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { cartHasUnavailable } from '../lib/shopping-state';
+import { estimateTotals } from '../lib/cart-pricing';
+import { formatMoney, GIFT_WRAP_PAISE, FREE_SHIPPING_THRESHOLD_PAISE, MAX_ORDER_PAISE } from '../lib/commerce-rules';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../context/CartContext';
 import { productImage } from '../lib/productImages';
@@ -49,12 +51,13 @@ export const CartDrawer: React.FC = () => {
     return () => { document.body.style.overflow = previousOverflow; };
   }, [isCartOpen]);
 
-  const freeShippingThreshold = 3000;
+  const totals = estimateTotals(Math.round(cartTotal * 100));
+  const freeShippingThreshold = FREE_SHIPPING_THRESHOLD_PAISE / 100;
   const progressToFreeShipping = Math.min((cartTotal / freeShippingThreshold) * 100, 100);
   const remainingForFreeShipping = freeShippingThreshold - cartTotal;
 
   const handleCheckout = () => {
-    if (!refreshed || unavailable || cartStatus !== 'ready') return;
+    if (!refreshed || unavailable || !totals || cartStatus !== 'ready') return;
     setIsCartOpen(false);
     router.push('/checkout');
   };
@@ -121,9 +124,7 @@ export const CartDrawer: React.FC = () => {
           ) : (
             <ul className={styles.itemsList}>
               {cartItems.map((item) => {
-                const itemPrice = item.variant.price;
-                const giftWrapPrice = item.giftWrap ? 350 : 0;
-                const unitPrice = itemPrice + giftWrapPrice;
+                const unitPricePaise = Math.round(item.variant.price * 100) + (item.giftWrap ? GIFT_WRAP_PAISE : 0);
 
                 return (
                   <li key={item.id} className={styles.item}>
@@ -158,7 +159,7 @@ export const CartDrawer: React.FC = () => {
                       )}
                       {item.giftWrap && (
                         <p className={styles.giftLabel}>
-                          Gift packaging (+ ₹350 per item)
+                          Gift packaging (+ {formatMoney(GIFT_WRAP_PAISE)} per item)
                         </p>
                       )}
                       
@@ -188,7 +189,7 @@ export const CartDrawer: React.FC = () => {
                         </div>
                         {/* Item Total Price */}
                         <span className={styles.itemPrice}>
-                          ₹{(unitPrice * item.quantity).toLocaleString('en-IN')}
+                          {formatMoney(unitPricePaise * item.quantity)}
                         </span>
                       </div>
                     </div>
@@ -206,11 +207,10 @@ export const CartDrawer: React.FC = () => {
               <span>Subtotal</span>
               <span className={styles.totalPrice}>₹{cartTotal.toLocaleString('en-IN')}</span>
             </div>
-            <p className={styles.taxNote}>Shipping: {cartTotal >= 3000 ? 'Free' : '₹250'} in India. Estimated tax: ₹{Math.round(cartTotal * 0.03).toLocaleString('en-IN')}. Final price and stock are checked before payment.</p>
-            <p className={styles.taxNote}>Estimated total: ₹{(cartTotal + (cartTotal >= 3000 ? 0 : 250) + Math.round(cartTotal * 0.03)).toLocaleString('en-IN')}</p>
+            {totals ? <><p className={styles.taxNote}>Shipping: {formatMoney(totals.shippingPaise)} in India. Estimated tax: {formatMoney(totals.taxPaise)}. Final price and stock are checked before payment.</p><p className={styles.taxNote}>Estimated total: {formatMoney(totals.totalPaise)}</p></> : <p role="alert" className={styles.notice}>Reduce your bag to a subtotal of {formatMoney(MAX_ORDER_PAISE)} or less before checkout.</p>}
             {unavailable && <p role="alert" className={styles.notice}>Some quantities are unavailable. Adjust or remove those items before checkout.</p>}
             {!refreshed && <button className={styles.refreshBtn} disabled={refreshing} onClick={() => { void refresh(); }}>{refreshing ? 'Refreshing…' : 'Refresh prices and availability'}</button>}
-            <button onClick={handleCheckout} disabled={!refreshed || unavailable || cartStatus !== 'ready'} className={styles.checkoutBtn}>
+            <button onClick={handleCheckout} disabled={!refreshed || unavailable || !totals || cartStatus !== 'ready'} className={styles.checkoutBtn}>
               Review checkout
             </button>
           </div>

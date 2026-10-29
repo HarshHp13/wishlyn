@@ -24,13 +24,24 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run test:security
+      - name: Create isolated suite databases
+        run: |
+          node --input-type=module <<'JS'
+          import pg from 'pg';
+          const client = new pg.Client({ host: '127.0.0.1', port: 5432, user: 'wishlyn_test', password: 'fixture_only', database: 'wishlyn_test' });
+          await client.connect();
+          try {
+            for (const name of ['wishlyn_test_commerce', 'wishlyn_ci_storefront_test', 'wishlyn_ci_account_service_test']) {
+              await client.query(`CREATE DATABASE ${name}`);
+            }
+          } finally { await client.end(); }
+          JS
+      - name: Verify all packages with mandatory PostgreSQL coverage
+        run: npm run verify
         env:
           TEST_DATABASE_URL: postgresql://wishlyn_test:fixture_only@127.0.0.1:5432/wishlyn_test
-      - run: npm run check:secrets
-      - run: npm run lint:security
-      - run: npm run typecheck
-      - run: npm run build
-        env:
+          COMMERCE_TEST_DATABASE_URL: postgresql://wishlyn_test:fixture_only@127.0.0.1:5432/wishlyn_test_commerce
+          STOREFRONT_TEST_DATABASE_URL: postgresql://wishlyn_test:fixture_only@127.0.0.1:5432/wishlyn_ci_storefront_test
+          MERCHANT_TEST_DATABASE_URL: postgresql://wishlyn_test:fixture_only@127.0.0.1:5432/wishlyn_test
+          ACCOUNT_SERVICE_TEST_DATABASE_URL: postgresql://wishlyn_test:fixture_only@127.0.0.1:5432/wishlyn_ci_account_service_test
           APP_ORIGIN: https://preview.example.invalid
-      - run: npm audit --omit=dev --audit-level=moderate

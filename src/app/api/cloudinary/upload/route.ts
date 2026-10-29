@@ -39,6 +39,6 @@ export async function POST(request: Request) {
     const upstream = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/image/upload`, { method: 'POST', body, signal: AbortSignal.timeout(15000) });
     const data = await upstream.json();
     if (!upstream.ok || typeof data.secure_url !== 'string' || !data.secure_url.startsWith(`https://res.cloudinary.com/${cloud}/image/upload/`)) throw new ApiError(502, 'media_unavailable', 'The image service could not complete the upload. Please retry.');
-    return NextResponse.json({ url: data.secure_url }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ viewerId: user.id, url: data.secure_url }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) { return apiError(error); }
 }

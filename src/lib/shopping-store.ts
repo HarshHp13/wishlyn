@@ -1,6 +1,8 @@
 'use client';
 
 import { getAuthState, refreshAuthSession, subscribeAuth } from './authClient';
+import { bagMatchesPurchase } from './commerce/bag-match';
+import type { Purchase } from './commerce/types';
 import { addCartLine, decodeCart, decodeWishlist, encodeShopping, shoppingKey, type CartItem } from './shopping-state';
 
 type GuestTransfer<T> = { id: string; items: T[] };
@@ -485,3 +487,10 @@ export const cartStore = createStore<CartItem>('cart', decodeCart, (current, gue
   return previous ? [{ ...item, quantity: Math.min(previous.quantity, item.quantity) }] : [];
 }));
 export const wishlistStore = createStore<string>('wishlist', decodeWishlist, (current, guest) => [...new Set([...current, ...guest])].slice(0, 50), (before, after, local) => after.filter(item => local.includes(item) || !before.includes(item)), (a, b) => a === b, (a, b) => a === b, (before, after) => after.filter(item => before.includes(item)));
+
+/** Compare within the same cross-tab lock as the mutation, using the latest bag. */
+export async function clearPurchasedCart(purchase: Pick<Purchase, 'ownerId' | 'items'>): Promise<void> {
+  const auth = getAuthState();
+  if (auth.status !== 'authenticated' || auth.user?.id !== purchase.ownerId) return;
+  await cartStore.mutate(items => bagMatchesPurchase(items, purchase.items) ? [] : items);
+}

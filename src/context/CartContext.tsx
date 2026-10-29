@@ -5,6 +5,7 @@ import type { Product, ProductVariant } from '../data/db';
 import { addCartLine, changeQuantity, reconcileCart, validProduct, validVariant, type CartItem } from '../lib/shopping-state';
 import { getAuthState } from '../lib/authClient';
 import { cartStore } from '../lib/shopping-store';
+import { cartSubtotalPaise } from '../lib/cart-pricing';
 
 export type { CartItem } from '../lib/shopping-state';
 interface CartContextType {
@@ -64,7 +65,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   return <CartContext.Provider value={{
     cartItems: snapshot.items, cartStatus: snapshot.status, cartNotice: snapshot.notice,
     cartCount: snapshot.items.reduce((sum, item) => sum + item.quantity, 0),
-    cartTotal: snapshot.items.reduce((sum, item) => sum + (item.variant.price + (item.giftWrap ? 350 : 0)) * item.quantity, 0),
+    cartTotal: cartSubtotalPaise(snapshot.items) / 100,
     addToCart, removeFromCart: id => { void cartStore.mutate(items => items.filter(item => item.id !== id)); },
     updateQuantity: (id, quantity) => { void cartStore.mutate(items => changeQuantity(items, id, quantity)); },
     clearCart: () => { void cartStore.mutate(() => []); }, isCartOpen, setIsCartOpen, refreshCart, retryCart: cartStore.retry,

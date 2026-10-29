@@ -205,8 +205,8 @@ export async function dbDeleteProduct(id: string): Promise<boolean> {
 export async function dbInsertOrder(order: {
   id: string;
   user_email?: string | null;
-  shipping_address: any;
-  items: any;
+  shipping_address: unknown;
+  items: unknown;
   subtotal: number;
   shipping_cost: number;
   tax: number;

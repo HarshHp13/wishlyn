@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import pg from 'pg';
 import { NextResponse } from 'next/server';
+import { databaseConfig } from '../../src/lib/databaseConfig.mjs';
 import { migrate } from '../../scripts/migrate.mjs';
 import { query, closeDatabase } from '../../src/lib/database';
 import { productInput, validateMerchantImages } from '../../src/lib/merchant/validation';
@@ -52,12 +53,12 @@ describe('merchant PostgreSQL invariants', { skip: !baseUrl }, () => {
     const url = new URL(baseUrl!);
     assert.ok(['127.0.0.1','localhost'].includes(url.hostname));
     assert.match(url.pathname, /^\/wishlyn_.*test$/);
+    Object.assign(process.env, { NODE_ENV: 'test', DB_ALLOW_LOCAL_PLAINTEXT: 'true', APP_ORIGIN: 'http://localhost:3144', NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: 'merchant-fixture' });
     databaseName = `wishlyn_merchant_${randomUUID().replaceAll('-', '')}_test`;
-    admin = new pg.Client({ connectionString: url.toString() }); await admin.connect();
+    admin = new pg.Client(databaseConfig(url.toString(), process.env)); await admin.connect();
     await admin.query(`CREATE DATABASE "${databaseName}"`);
     url.pathname = `/${databaseName}`; databaseUrl = url.toString();
     process.env.DATABASE_URL = databaseUrl; process.env.DB_ALLOW_LOCAL_PLAINTEXT = 'true';
-    Object.assign(process.env, { NODE_ENV: 'test', APP_ORIGIN: 'http://localhost:3144', NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: 'merchant-fixture' });
     const names = await migrate(databaseUrl, true);
     assert.ok(names.includes('004-merchant.sql')); assert.deepEqual(await migrate(databaseUrl, true), []);
   });
@@ -177,7 +178,7 @@ describe('merchant PostgreSQL invariants', { skip: !baseUrl }, () => {
   });
   test('quote waits for a product archive transaction and sees its committed status', async () => {
     const product = await saveMerchantProduct('admin', input());
-    const blocker = new pg.Client({ connectionString: databaseUrl }); await blocker.connect(); await blocker.query('BEGIN');
+    const blocker = new pg.Client(databaseConfig(databaseUrl, process.env)); await blocker.connect(); await blocker.query('BEGIN');
     await blocker.query("UPDATE products SET status='archived' WHERE id=$1", [product.id]);
     const pending = quote(product.variants[0].id).then(() => 'unexpected', () => 'rejected');
     let waiting = false;
@@ -217,8 +218,16 @@ describe('merchant PostgreSQL invariants', { skip: !baseUrl }, () => {
     assert.equal((await GET(make('GET', undefined, customer))).status, 403);
     assert.equal((await POST(make('POST', input(), administrator, 'https://evil.example'))).status, 403);
     assert.equal((await POST(make('POST', { text: 'x'.repeat(140000) }))).status, 413);
-    const created = await POST(make('POST', input())); assert.equal(created.status, 201);
-    const product = (await created.json()).product as MerchantProduct;
+    for (const method of ['GET', 'POST']) {
+      const stale = make(method, method === 'POST' ? input() : undefined);
+      stale.headers.set('X-Wishlyn-Account-ID', 'other-admin');
+      assert.equal((await (method === 'GET' ? GET(stale) : POST(stale))).status, 409);
+    }
+    assert.equal((await query('SELECT * FROM products')).rowCount, 0);
+    const matching = make('POST', input()); matching.headers.set('X-Wishlyn-Account-ID', 'admin');
+    const created = await POST(matching); assert.equal(created.status, 201);
+    const createdData = await created.json(); assert.equal(createdData.viewerId, 'admin');
+    const product = createdData.product as MerchantProduct;
     const saved = await PUT(make('PUT', { ...edit(product), title: 'Saved title' })); assert.equal(saved.status, 200);
     assert.equal((await PUT(make('PUT', edit(product)))).status, 409);
     await query("UPDATE profiles SET role='customer' WHERE id='admin'");

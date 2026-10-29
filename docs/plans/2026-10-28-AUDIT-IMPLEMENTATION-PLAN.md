@@ -220,4 +220,4 @@ The engineering program is complete when all selected packages are merged into i
 | W3 | [PR #4](https://github.com/HarshHp13/wishlyn/pull/4) | `d05e92e`; two recorded agent LGTMs | Merged into integration at `9ac76be`; [review ledger](../implementation/REVIEW-LEDGER.md) |
 | W4 | [PR #5](https://github.com/HarshHp13/wishlyn/pull/5) | `545be87`; two final agent LGTMs | Merged at `77291c4`; 16/16 tests; one concurrency review finding fixed |
 | W5 | [PR #6](https://github.com/HarshHp13/wishlyn/pull/6) | `2b504ca`; two final agent LGTMs | Merged at `fbe0a04`; 124/124 tests; [review ledger](../implementation/REVIEW-LEDGER.md) |
-| W6 | `codex/audit-integration-completion` | Pending final PR/exact-pair reviews | Five-package candidate passes 244/244 tests, zero skips, full static/build/audit and three production-browser matrices; final review/merge remains |
+| W6 | [PR #7](https://github.com/HarshHp13/wishlyn/pull/7) | Pending final exact-pair reviews | 244/244 tests, zero skips, full static/build/audit and three production-browser matrices pass; final review/merge remains |
