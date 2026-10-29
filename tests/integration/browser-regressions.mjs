@@ -10,6 +10,7 @@ async page => {
   const product = { id: 'fixture-01', title: 'Synthetic checkout piece', description: 'Fixture only', categoryId: 'earrings', basePrice: 199, images: [], rating: 0, reviewsCount: 0, details: {} };
   const variant = { id: 'variant-1', productId: product.id, metalType: 'Fixture material', purity: 'Plated', price: 199, stock: 100 };
   const order = { id: first, ownerId: user.id, email: user.email, items: [{ variantId: variant.id, productId: product.id, title: 'First saved order piece', metalType: variant.metalType, purity: variant.purity, size: null, image: null, quantity: 1, giftWrap: false, giftMessage: '', unitPricePaise: 19900, giftWrapPaise: 0, lineTotalPaise: 19900 }], shipping, currency: 'INR', subtotalPaise: 19900, shippingPaise: 25000, taxPaise: 600, totalPaise: 45500, status: 'pending_payment', reservationState: 'active', paymentSetupState: 'idle', providerOrderId: null, providerPaymentId: null, fulfillmentStatus: 'unfulfilled', trackingCarrier: null, trackingNumber: null, trackingUrl: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 900000).toISOString() };
+  let holdOrderRead = false, releaseOrderRead, notifyOrderRead;
   let failedSecond = 0, quotePayload, orderStatus = 'pending_payment', secondAvailable = false;
   const paymentRequests = [], pageErrors = [];
   let releaseSdk, notifySdk;
@@ -30,7 +31,10 @@ async page => {
         }
         return route.fulfill({ json: { user } });
       }
-      if (url.pathname === `/api/orders/${first}`) return route.fulfill({ json: { viewerId: user.id, order: { ...order, status: orderStatus } } });
+      if (url.pathname === `/api/orders/${first}`) {
+        if (holdOrderRead) { notifyOrderRead(); await new Promise(resolve => { releaseOrderRead = resolve; }); }
+        return route.fulfill({ json: { viewerId: user.id, order: { ...order, status: orderStatus } } });
+      }
       if (url.pathname === `/api/orders/${second}`) {
         if (secondAvailable) return route.fulfill({ json: { viewerId: user.id, order: { ...order, id: second, items: [{ ...order.items[0], title: 'Recovered second saved piece' }] } } });
         failedSecond++; return route.fulfill({ status: 503, json: { error: 'Second order is temporarily unavailable' } });
@@ -83,6 +87,19 @@ async page => {
   await page.getByText('This order is cancelled.', { exact: false }).waitFor();
   check(await page.getByRole('button', { name: /^Pay / }).count() === 0, 'Same-account revalidation left cancelled order payable');
   orderStatus = 'pending_payment';
+  await page.goto(`${origin}/orders/${first}`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: 'Awaiting payment', exact: true }).waitFor();
+  orderStatus = 'paid'; holdOrderRead = true;
+  const orderReadStarted = new Promise(resolve => { notifyOrderRead = resolve; });
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await orderReadStarted;
+  await page.getByText('Loading order details…', { exact: true }).waitFor();
+  check(await page.getByRole('button', { name: 'Cancel unpaid order', exact: true }).count() === 0, 'Stale cancel action appeared before refreshed order status');
+  check(await page.getByRole('link', { name: 'Review and pay', exact: true }).count() === 0, 'Stale payment link appeared before refreshed order status');
+  releaseOrderRead(); holdOrderRead = false;
+  await page.getByRole('heading', { name: 'Payment confirmed', exact: true }).waitFor();
+  check(await page.getByRole('button', { name: 'Cancel unpaid order', exact: true }).count() === 0, 'Paid order remains cancellable');
+  orderStatus = 'pending_payment';
 
   const key = `wishlyn-v2-cart-account-${user.id}`;
   const line = { id: JSON.stringify([variant.id, false, '']), variantId: variant.id, product, variant: { ...variant, price: 20000 }, quantity: 99, giftWrap: false };
@@ -118,5 +135,5 @@ async page => {
   await page.waitForFunction(() => scrollY === 0);
   await page.screenshot({ path: '/tmp/wishlyn-completion-checkout-mobile.png', fullPage: true });
   check(pageErrors.length === 0, `Runtime errors: ${pageErrors.join('; ')}`);
-  return { status: 'PASS', staleSavedOrderHidden: true, retiredSdkActionDoesNotStartPayment: true, failedSavedOrderRetry: true, savedOrderRetryLoads: true, supersededAuthStaysInCheckout: true, sameAccountOrderStatusRefreshed: true, largeBagAdjustment: true, savedPurchaseWithLargeBag: true, savedAddressQuote: true, layouts, pageErrors, paymentRequests, provenance: 'Isolated production Next application; API/provider traffic intercepted with synthetic data; no live purchase' };
+  return { status: 'PASS', staleSavedOrderHidden: true, retiredSdkActionDoesNotStartPayment: true, failedSavedOrderRetry: true, savedOrderRetryLoads: true, supersededAuthStaysInCheckout: true, sameAccountOrderStatusRefreshed: true, sameAccountOrderReadHidesActions: true, largeBagAdjustment: true, savedPurchaseWithLargeBag: true, savedAddressQuote: true, layouts, pageErrors, paymentRequests, provenance: 'Isolated production Next application; API/provider traffic intercepted with synthetic data; no live purchase' };
 }

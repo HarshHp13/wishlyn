@@ -25,6 +25,8 @@ Date: 29 October 2026. Branch `codex/audit-integration-completion`; every implem
 | R1-W6-05 | Combined abort/deadline signals; stalled external-controller fetch and navigation-cancellation tests. |
 | R1-W6-06 | Mandatory five-suite DB configuration and full verification in Quality workflow; final full-matrix results recorded below after W4/W5 integration. |
 | R2-W6-01 | New saved-order reference resets order and approval state; browser B failure shows retry and sends no payment for earlier A. |
+| R1-W6-07 | Orders readiness/actions bind to the exact verified auth-user generation; customer/staff actual-component tests and a held fresh-status browser read hide obsolete controls. |
+| R2-W6-03 | Merchant fixture connections use validated database options before construction/DDL; actual-source hostile-parameter regressions run without network or mutations. |
 | R2-W6-02 | Installed framework `retry()` API; actual fixture-table outage/recovery browser check succeeds without full-page navigation. |
 
 ## Evidence collected before W4/W5 rebase
