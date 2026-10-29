@@ -3,6 +3,7 @@ async page => {
   const origin = 'http://localhost:3126', context = page.context();
   await context.unrouteAll({ behavior: 'wait' });
   await context.clearCookies();
+  await page.evaluate(() => localStorage.clear());
   const check = (condition, message) => { if (!condition) throw new Error(message); };
   const errors = [], blocked = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -143,7 +144,7 @@ async page => {
   await page.locator('main').getByText('Integration gift for Asha', { exact: false }).waitFor();
   await go(`/admin/support/${requestId}`);
   await page.getByLabel('Reply to customer', { exact: true }).fill('Synthetic staff reply: gift instructions are retained with the saved order.');
-  await page.getByLabel('Request status', { exact: true }).selectOption('in_progress');
+  await page.getByRole('combobox', { name: 'Request status', exact: true }).selectOption('in_progress');
   await page.getByRole('button', { name: 'Save reply', exact: true }).click();
   await page.getByText('Synthetic staff reply:', { exact: false }).waitFor();
   await go('/admin');
@@ -160,7 +161,7 @@ async page => {
   check(stockRead.status === 200, 'Merchant aggregate read failed');
   const updated = stockRead.data.product.variants.find(variant => variant.id === 'browser-variant-b');
   check(updated.stock === 13 && updated.reservedStock === 1, 'Replenishment overwrote reservation');
-  await page.getByLabel('Save product as', { exact: true }).selectOption('archived');
+  await page.getByRole('combobox', { name: 'Save product as', exact: true }).selectOption('archived');
   await page.getByRole('button', { name: 'Save product', exact: true }).click();
   await page.getByText('Product saved as archived.', { exact: true }).waitFor();
   await go('/profile');
