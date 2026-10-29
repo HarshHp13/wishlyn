@@ -185,12 +185,53 @@ async (page) => {
     path: "/tmp/wishlyn-w5-support-desktop.png",
     fullPage: true,
   });
+  // Real browser tabs share cookies/storage, with only auth verification delayed.
+  await page.request.post(origin + "/api/auth/logout", { headers: { origin } });
+  await signIn("browser-a@example.test");
+  await page.request.post(origin + "/api/account/wishlist", { headers: { origin, "X-Wishlyn-Account-ID": "browser-a" }, data: { action: "remove", productId: "browser-product" } });
+  await page.request.post(origin + "/api/auth/logout", { headers: { origin } });
+  await page.goto(origin + "/product/browser-product");
+  await page.getByRole("button", { name: "Add to wishlist", exact: true }).click();
+  await page.getByRole("button", { name: "Remove from wishlist", exact: true }).waitFor();
+  await page.getByLabel("Add gift packaging (+ ₹350 per item)", { exact: true }).check();
+  await page.getByLabel("Gift message (optional)", { exact: true }).fill("Synthetic migration gift");
+  await page.getByRole("button", { name: "Add to shopping bag", exact: true }).click();
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-guest") || '{"items":[]}').items.some(item => item.quantity === 1));
+  const slow = await page.context().newPage();
+  slow.on("pageerror", error => errors.push(error.message));
+  await slow.route("**/*", route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
+  await slow.goto(origin + "/product/browser-product");
+  await slow.getByRole("button", { name: "Remove from wishlist", exact: true }).waitFor();
+  let releaseAuth, authStarted;
+  const authGate = new Promise(resolve => { releaseAuth = resolve; });
+  const authObserved = new Promise(resolve => { authStarted = resolve; });
+  await slow.route("**/api/auth/me", async route => {
+    authStarted();
+    await authGate;
+    await route.fulfill({ response: await slow.request.get(origin + "/api/auth/me") });
+  });
+  await slow.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await authObserved;
+  const fastTransfer = page.waitForResponse(response => response.url().endsWith("/api/account/wishlist") && response.request().method() === "POST" && response.request().postDataJSON()?.action === "transfer");
+  await signIn("browser-a@example.test");
+  await fastTransfer;
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-account-browser-a") || '{"items":[]}').items.length > 0);
+  const migratedCart = await page.evaluate(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-account-browser-a") || '{"items":[]}').items);
+  const guestCartExactMigration = migratedCart.length === 1 && migratedCart[0].quantity === 1 && migratedCart[0].variantId === "browser-variant" && migratedCart[0].giftWrap === true && migratedCart[0].giftMessage === "Synthetic migration gift";
+  await page.request.post(origin + "/api/account/wishlist", { headers: { origin, "X-Wishlyn-Account-ID": "browser-a" }, data: { action: "remove", productId: "browser-product" } });
+  releaseAuth();
+  await slow.waitForFunction(() => [...document.querySelectorAll("button")].some(button => button.getAttribute("aria-label") === "Add to wishlist" && !button.disabled));
+  const afterDelayed = await (await slow.request.get(origin + "/api/account/wishlist", { headers: { "X-Wishlyn-Account-ID": "browser-a" } })).json();
+  const sharedGuestReplayBlocked = !afterDelayed.items.includes("browser-product");
+  await slow.close();
   return {
     provenance:
       "Local development server and actual disposable PostgreSQL; synthetic users/orders; remote requests blocked; no email/payment/provider action.",
     addressPersisted,
     guestTransferSaved,
     staleCookieWriteBlocked,
+    guestCartExactMigration,
+    sharedGuestReplayBlocked,
     failedPasswordRetained,
     savedPieceVisible: true,
     accountIsolated,

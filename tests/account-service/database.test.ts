@@ -246,6 +246,21 @@ describe(
       assert.deepEqual(bList.items, []);
       assert.equal(bList.browserImported, false);
     });
+    test("batched guest keys skip spent selections, apply new selections once and roll back changed-key batches", async () => {
+      await query("INSERT INTO products(id,title,description,category_id,images) VALUES('product-2','Second fixture','Test only','test',ARRAY['/editorial/gold-leaf.webp'])");
+      const first = { id: randomUUID(), productIds: ["product"] }, second = { id: randomUUID(), productIds: ["product-2"] };
+      assert.equal((await wishlistPOST(req("/api/account/wishlist", { action: "transfer", transfers: [first] }))).status, 200);
+      await wishlistPOST(req("/api/account/wishlist", { action: "remove", productId: "product" }));
+      const batch = { action: "transfer", transfers: [first, second] };
+      const rs = await Promise.all([wishlistPOST(req("/api/account/wishlist", batch)), wishlistPOST(req("/api/account/wishlist", batch))]);
+      assert.ok(rs.every(response => response.status === 200));
+      assert.deepEqual((await rs[0].json()).items, ["product-2"]);
+      assert.equal((await query("SELECT * FROM account_wishlist_transfers")).rowCount, 2);
+      const changed = { action: "transfer", transfers: [{ id: randomUUID(), productIds: ["product"] }, { ...first, productIds: [] }] };
+      assert.equal((await wishlistPOST(req("/api/account/wishlist", changed))).status, 409);
+      assert.equal((await query("SELECT * FROM account_wishlist_transfers")).rowCount, 2);
+      assert.deepEqual((await (await wishlistGET(req("/api/account/wishlist"))).json()).items, ["product-2"]);
+    });
     test("stale concurrent profile edits preserve exactly one revision", async () => {
       const rs = await Promise.all([
         profilePOST(

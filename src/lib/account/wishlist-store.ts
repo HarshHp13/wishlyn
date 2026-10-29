@@ -124,13 +124,17 @@ async function load() {
       data = await request(id, { action: "import", productIds: browser.items }, active.signal);
       if (!current()) return;
     }
-    for (const transfer of browser.guestTransfers || []) {
-      data = await request(id, { action: "transfer", transferId: transfer.id, productIds: transfer.items }, active.signal);
+    const transfers = browser.guestTransfers || [];
+    for (let index = 0; index < transfers.length; index += 50) {
+      const batch = transfers.slice(index, index + 50);
+      data = await request(id, { action: "transfer", transfers: batch.map(transfer => ({ id: transfer.id, productIds: transfer.items })) }, active.signal);
       if (!current()) return;
-      await browserStore.acknowledgeGuestTransfer(id, transfer.id);
-      if (!current()) return;
-      announce(id);
+      for (const transfer of batch) {
+        await browserStore.acknowledgeGuestTransfer(id, transfer.id);
+        if (!current()) return;
+      }
     }
+    if (transfers.length) announce(id);
     publish({ items: data.items, status: "ready", accountId: id, notice: "" });
   } catch (error) {
     if (current()) publish({ ...initial, accountId: id, status: "error", notice: error instanceof Error ? error.message : "Saved pieces could not be loaded. Retry." });

@@ -1,8 +1,10 @@
 {
-  "provenance": "Local development server and actual disposable PostgreSQL; synthetic users/orders; remote requests blocked; no email/payment/provider action.",
+  "provenance": "Local development server and actual disposable PostgreSQL; synthetic users/orders; remote requests blocked; no email/payment/provider action. Two real tabs share cookies/storage; only auth verification was delayed, then fulfilled from the current local server session; private APIs remain real.",
   "addressPersisted": true,
   "guestTransferSaved": true,
   "staleCookieWriteBlocked": true,
+  "guestCartExactMigration": true,
+  "sharedGuestReplayBlocked": true,
   "failedPasswordRetained": true,
   "savedPieceVisible": true,
   "accountIsolated": true,

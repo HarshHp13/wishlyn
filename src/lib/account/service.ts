@@ -206,14 +206,24 @@ export async function mutateWishlist(
   const action = body.action;
   if (!["add", "remove", "toggle", "import", "transfer"].includes(String(action)))
     throw new ApiError(400, "invalid_action", "Choose a saved-list action.");
-  const ids = action === "import" || action === "transfer" ? body.productIds : [body.productId];
+  const transfers: { id: string; items: string[] }[] = [];
+  if (action === "transfer") {
+    const raw = body.transfers ?? [{ id: body.transferId, productIds: body.productIds }];
+    if (!Array.isArray(raw) || raw.length < 1 || raw.length > 50)
+      throw new ApiError(400, "invalid_transfer", "Use at most 50 guest selections.");
+    for (const value of raw) {
+      if (!value || typeof value !== "object" || !Array.isArray(value.productIds) || value.productIds.length > 50 || !value.productIds.every(validId))
+        throw new ApiError(400, "invalid_transfer", "Use valid guest selection references.");
+      transfers.push({ id: uuid(value.id), items: value.productIds });
+    }
+  }
+  const ids = action === "transfer" ? [...new Set(transfers.flatMap(transfer => transfer.items))] : action === "import" ? body.productIds : [body.productId];
   if (!Array.isArray(ids) || ids.length > 50 || !ids.every(validId))
     throw new ApiError(
       400,
       "invalid_products",
       "Use at most 50 valid product references.",
     );
-  const transferId = action === "transfer" ? uuid(body.transferId) : null;
   return transaction(async (client) => {
     await lockAccount(request, client, user);
     await client.query(
@@ -228,21 +238,24 @@ export async function mutateWishlist(
     ).rows[0];
     if (action === "import" && row.browser_imported)
       return wishlistRow(user, row);
-    if (transferId) {
-      const prior = await client.query("SELECT product_ids FROM account_wishlist_transfers WHERE owner_id=$1 AND request_key=$2", [user.id, transferId]);
+    const applyIds = new Set<string>(action === "transfer" ? [] : ids);
+    for (const transfer of transfers) {
+      const prior = await client.query("SELECT product_ids FROM account_wishlist_transfers WHERE owner_id=$1 AND request_key=$2", [user.id, transfer.id]);
       if (prior.rows[0]) {
-        if (JSON.stringify(prior.rows[0].product_ids) !== JSON.stringify(ids))
+        if (JSON.stringify(prior.rows[0].product_ids) !== JSON.stringify(transfer.items))
           throw new ApiError(409, "transfer_changed", "These guest selections changed. Reload your saved pieces.");
-        return wishlistRow(user, row);
+      } else {
+        await client.query("INSERT INTO account_wishlist_transfers(owner_id,request_key,product_ids) VALUES($1,$2,$3)", [user.id, transfer.id, JSON.stringify(transfer.items)]);
+        for (const id of transfer.items) applyIds.add(id);
       }
-      await client.query("INSERT INTO account_wishlist_transfers(owner_id,request_key,product_ids) VALUES($1,$2,$3)", [user.id, transferId, JSON.stringify(ids)]);
     }
+    if (action === "transfer" && applyIds.size === 0) return wishlistRow(user, row);
     const current = new Set<string>(row.items);
     if (action === "remove") current.delete(ids[0]);
     else {
       const published = await client.query(
         "SELECT id FROM products p WHERE id=ANY($1::text[]) AND COALESCE(to_jsonb(p)->>'status','published')='published'",
-        [ids],
+        [[...applyIds]],
       );
       const approved = new Set<string>(published.rows.map((p) => p.id));
       if (action !== "import" && action !== "transfer" && !approved.has(ids[0]))
@@ -251,7 +264,7 @@ export async function mutateWishlist(
           "missing_product",
           "This product is no longer available to save.",
         );
-      for (const id of ids)
+      for (const id of applyIds)
         if (approved.has(id)) {
           if (action === "toggle" && current.has(id)) current.delete(id);
           else current.add(id);

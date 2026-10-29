@@ -40,10 +40,14 @@ function fixture({ imported = true, delayed = false, failTransfer = false, failA
       let data = server.get(id) || { viewerId: id, ownerId: id, items: [], version: 1, browserImported: id === "a" ? imported : true };
       if (body?.action === "transfer" && transferFailure) { transferFailure = false; return Response.json({ error: "Synthetic transfer failure" }, { status: 503 }); }
       if (body?.action === "import" && !data.browserImported) data = { ...data, items: [...new Set([...data.items, ...body.productIds])], browserImported: true };
-      if (body?.action === "transfer" && !completed.has(`${id}:${body.transferId}`)) {
-        completed.add(`${id}:${body.transferId}`);
-        data = { ...data, items: [...new Set([...data.items, ...body.productIds])] };
-        if (failAck) ackFailure = true;
+      if (body?.action === "transfer") {
+        for (const transfer of body.transfers || [{ id: body.transferId, productIds: body.productIds }]) {
+          if (!completed.has(`${id}:${transfer.id}`)) {
+            completed.add(`${id}:${transfer.id}`);
+            data = { ...data, items: [...new Set([...data.items, ...transfer.productIds])] };
+            if (failAck) ackFailure = true;
+          }
+        }
       }
       if (body?.action === "add") data = { ...data, items: [...new Set([...data.items, body.productId])] };
       if (body?.action === "remove") data = { ...data, items: data.items.filter(item => item !== body.productId) };
@@ -68,7 +72,7 @@ test("explicit guest picks transfer to an already-imported account without resur
   env.auth(account("a")); await settle();
   assert.deepEqual(Array.from(env.store.getSnapshot().items), ["guest-product"]);
   assert.equal(env.calls.some(call => call.body?.action === "import"), false);
-  assert.deepEqual(env.calls.find(call => call.body?.action === "transfer").body.productIds, ["guest-product"]);
+  assert.deepEqual(env.calls.find(call => call.body?.action === "transfer").body.transfers[0].productIds, ["guest-product"]);
   assert.deepEqual(env.transfers("a"), []);
 });
 test("first import waits for the actual browser migration Web Lock", async () => {
@@ -91,7 +95,7 @@ test("a failed guest transfer retains its account-bound key and retries successf
   await env.store.retry(); await settle();
   const transfers = env.calls.filter(call => call.body?.action === "transfer");
   assert.equal(transfers.length, 2);
-  assert.ok(transfers.every(call => call.accountId === "a" && call.body.transferId === token));
+  assert.ok(transfers.every(call => call.accountId === "a" && call.body.transfers[0].id === token));
   assert.deepEqual(Array.from(env.store.getSnapshot().items), ["guest-product"]);
   assert.deepEqual(env.transfers("a"), []);
 });
