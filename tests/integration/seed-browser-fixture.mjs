@@ -12,7 +12,7 @@ const client = new pg.Client(databaseConfig(url));
 await client.connect();
 try {
   await client.query('BEGIN');
-  await client.query('TRUNCATE profiles,categories,products,product_variants CASCADE');
+  await client.query('TRUNCATE profiles,categories,products,product_variants,request_budgets CASCADE');
   const password = await bcrypt.hash('BrowserFixture9!', 10);
   for (const [id, email, role] of [['browser-customer-a', 'browser-a@example.test', 'customer'], ['browser-customer-b', 'browser-b@example.test', 'customer'], ['browser-admin', 'browser-admin@example.test', 'admin']]) {
     await client.query('INSERT INTO profiles(id,email,password_hash,role) VALUES ($1,$2,$3,$4)', [id, email, password, role]);
