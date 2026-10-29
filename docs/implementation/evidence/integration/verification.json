@@ -1,12 +1,12 @@
 {
-  "recordedAt": "2026-10-29T08:57:17.886720+00:00",
-  "validatedSourceHead": "e7fccbcfb3dd816a4271542cbe374cf60f888a85",
-  "W5Head": "21c5dc355ededd94a29c510e6371a804420c6a36",
+  "recordedAt": "2026-10-29T09:34:21.350259+00:00",
+  "validatedSourceHead": "da368b5e63dc2683351f7b3bf64de0342be71d2e",
+  "W5Head": "2b504ca4c16a431c1a0e9733fec1380e31e568ff",
   "W5Base": "81df15a21281791cd3b2b95d44e77c5e98b8d0cf",
-  "status": "Checks pass; W5 exact-pair reviews and final W6 publication/reviews pending",
+  "status": "W1-W5 merged; complete W6 candidate checks pass; final W6 exact-pair PR reviews and merge pending",
   "tests": {
-    "total": 236,
-    "passed": 236,
+    "total": 244,
+    "passed": 244,
     "failed": 0,
     "skipped": 0
   },
@@ -25,7 +25,7 @@
     "mocked checkout/account/order/SDK/large-bag/address/layout regressions"
   ],
   "provenance": "Dedicated loopback synthetic databases and production server; provider traffic blocked or intercepted; no original env/customer/provider operation",
-  "applicationInputsSha256": "1bb5bf8835126edb07350b83db4f711262d79c9175dd0977a494b855c3f65215",
+  "applicationInputsSha256": "3ab2e76cc8c1e4089964891cc33688cfe1b20b72326d0270c88d7073bd051dd4",
   "fileSha256": {
     ".github/workflows/quality.yml": "0a7b6feef48ce58551171e4a9f265bfd04ad1cc46438deae4083ffa1236d8f9e",
     "eslint.config.mjs": "870f1adccecf3051cbcd9fd307cef51d7633cf510979c181a81f4b1797273493",
@@ -181,16 +181,16 @@
     "src/lib/seo.ts": "181c9bd26c1771bd253cc273a27503066ce68f6667e3f18210070bf98271fb35",
     "src/lib/session.ts": "d455383c4afbd2990ea75585c66523327340526ccebbef91fa387be04e340fb5",
     "src/lib/shopping-state.ts": "f0ae574abcc01329f2fba4bcaed2a1e93d6122e34970283d4540ffa2223eb5c0",
-    "src/lib/shopping-store.ts": "2e5164e0449d5cd460b1c090a5fcd713b61539f5030fb19af8a3a8d72140c825",
+    "src/lib/shopping-store.ts": "ad4457f03873472dbf22cf0812ce17de172a17126f9cff0e8f59faf9e0e639b6",
     "src/types/razorpay.d.ts": "476baad28f1af61e789a64ba9f9bd3b619b1669413bb0767201c8789f8a8b701",
     "tests/account-service/browser-checks.mjs": "96b360500a3c43a130f7c5c3eb02b5b3d7737d28875eb0e4d0923c7c8d6640ca",
     "tests/account-service/browser-fixture.ts": "e022067e4a346b78d7133d3848b8d6a5fc4e5740ba59a48c6933e8e7633cedff",
-    "tests/account-service/cart-migration.test.mjs": "8860e4e985f234ec76296ab9104d2617ac1d9540450dca051e454c48cbbfe47b",
+    "tests/account-service/cart-migration.test.mjs": "b70ecb326f4a47b60b2cb956efed1bd71cc835c86b22e6f3f21b8b96b2434439",
     "tests/account-service/database.test.ts": "0e052f977f8cc07adcbd8472f7745591a75bae7eadb4518ba57d7c5459018f40",
     "tests/account-service/guest-transfer.test.mjs": "20f7cf7a1b8643a1211bd36ffa1e481952018fc9d75bfc19eac06a83df45e965",
     "tests/account-service/private-client.test.mjs": "2d8ba1e631bcd67251fb665e4b66f47fadfb249ad8d714460770093e50d52db8",
     "tests/account-service/wishlist-client.test.mjs": "d4782ec030ea29cebd1c7f3927a2515e8d79ba804840695a15c4265388af4212",
-    "tests/account-service/wishlist-tabs.test.mjs": "67bddeb124512bb809fd5fb4f72699c2fd01bbfe7a6ef01bd1bd4db97e178cc3",
+    "tests/account-service/wishlist-tabs.test.mjs": "1c5d69803e26f949ab39ecd02afe3912de89228eee36ad129e62ea27c2a0067a",
     "tests/commerce/bag-match.test.ts": "c9147cd5bbfffad9a7e0b846664463225ce2faccbd36e3adaeca3f782fba1d71",
     "tests/commerce/client.test.ts": "4c9686bd78e01d611ff42fb8b3a613852ffcf0fabc2e63f7619795c458e6946f",
     "tests/commerce/database.test.ts": "44a7210c221da8e32bcc1d84501628822e4b17808e0e4418f9ac8da4fee71a3f",
@@ -217,5 +217,9 @@
     "tests/storefront/state.test.mjs": "a3a2718cb4cf9d7977aad07ec854ad591cfe167dbdbc22320ee7d7a5fd8fccf0",
     "tests/storefront/store.test.mjs": "7b1268081913790ce05c1981935314dfc50ad12a6d170f6b2641164339480bb3",
     "tsconfig.json": "5c51df4c59f4510d8c7dadf07a5c32132228826a3b331da5e286207b4df7ef9c"
-  }
+  },
+  "rebasedHeadBeforeEvidence": "e69dca8acbe6826012e886c1d5c1101eba476865",
+  "finalIntegrationBase": "c1813b34891d578ac62e9b07cd908dae84f3c766",
+  "applicationInputsUnchangedAfterRebase": true,
+  "W5Merge": "fbe0a04b7dd52bbdcfa854d3080a6928fa2ad473"
 }

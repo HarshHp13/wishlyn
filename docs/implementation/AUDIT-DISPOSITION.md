@@ -2,7 +2,7 @@
 
 The audit findings describe the original application snapshot. Engineering disposition below refers to the implementation branches and fixture evidence, while E1–E5 require owner-operated evidence before release. The original reports remain historical evidence.
 
-Implementation provenance and exact approved heads/bases: [review ledger](REVIEW-LEDGER.md). Validation and reproduction: [W6 integration](W6-INTEGRATION.md). W1–W4 have been merged into `codex/audit-remediation`; W5 and W6 are still awaiting final review and merge. Nothing in this document authorizes merging the umbrella into `main`.
+Implementation provenance and exact approved heads/bases: [review ledger](REVIEW-LEDGER.md). Validation and reproduction: [W6 integration](W6-INTEGRATION.md). W1–W5 have been merged into `codex/audit-remediation`; W6 is awaiting final exact-pair review and merge. Nothing in this document authorizes merging the umbrella into `main`.
 
 ## Engineering findings
 
@@ -12,19 +12,19 @@ Implementation provenance and exact approved heads/bases: [review ledger](REVIEW
 | F02 | No fallback credentials; opaque revocable sessions; tracked-source credential-pattern gate. Removal does not establish provider rotation. | W1, merged; E1 outstanding |
 | F03–F07 | Owned immutable quotes; exact variant/gift snapshots; atomic stock reservations/payment application; retries, duplicate callbacks, mismatches, expiry and reconciliation. Real PostgreSQL concurrency and synthetic provider tests. | W2, [PR #3](https://github.com/HarshHp13/wishlyn/pull/3), merged; provider operations require E5 |
 | F08 | SDK loading fails with a bounded timeout and supports retry. SDK tests. | W2, merged |
-| F09 | Dependency upgrades and production dependency audit. Security dependency/TLS tests; final audit output recorded with W6. | W1, merged; final W6 audit pending |
-| F10 | Owned bag/gift state survives uncertainty without exposing another account; server saved pieces and owned/versioned addresses; captured-account preconditions prevent stale forms writing through another shared cookie. | W3 merged; W5/W6 final review pending |
+| F09 | Dependency upgrades and production dependency audit. Security dependency/TLS tests; final audit output recorded with W6. | W1, merged; W6 audit passes with zero reported vulnerabilities, final review pending |
+| F10 | Owned bag/gift state survives uncertainty without exposing another account; server saved pieces and owned/versioned addresses; captured-account preconditions prevent stale forms writing through another shared cookie. | W3/W5 merged; W6 final review pending |
 | F11–F12 | HttpOnly revocable sessions and origin checks for mutations. Role/disable/password-change/logout and stale-session regression tests. | W1, merged |
 | F13 | Shared PostgreSQL rate budgets and bounded request bodies before expensive operations. Security multi-process/route tests. | W1, merged |
 | F14 | Exact gift-line identity, per-line messages and integer-paise totals shared by product, bag and checkout. Pricing, purchase and bag tests. | W2/W3 merged; W6 final review pending |
 | F15 | Shared validated Indian address model and supported-country behavior. Commerce validation/quote tests. | W2, merged; approved commercial policy requires E3 |
 | F16–F17 | Postal lookup has explicit failure/unknown feedback and cancels stale responses. Storefront implementation and browser evidence. | W3, [PR #4](https://github.com/HarshHp13/wishlyn/pull/4), merged |
 | F18 | Infrastructure outages produce retryable service errors; guest/forbidden/missing/empty remain distinguishable. Catalogue, auth, merchant route tests and actual fixture outage/retry browser evidence. | W1/W3/W4 merged; framework retry integration in W6 pending |
-| F19–F20 | Versioned storage validation, account migration, serialized Web Lock mutations and cross-tab notifications; usable memory recovery when storage fails. Real store regression tests. | W3 merged; W5 guest transfer/W6 payment cleanup final review pending |
-| F21–F22 | Named controls, labels, keyboard focus, selected/state/error feedback and measured text/control contrast. Storefront contrast tests and retained browser evidence. | W2/W3/W4 merged; W5/W6 final review pending |
+| F19–F20 | Versioned storage validation, account migration, serialized Web Lock mutations and cross-tab notifications; usable memory recovery when storage fails. Real store regression tests. | W3/W5 merged; W6 payment cleanup final review pending |
+| F21–F22 | Named controls, labels, keyboard focus, selected/state/error feedback and measured text/control contrast. Storefront contrast tests and retained browser evidence. | W2/W3/W4/W5 merged; W6 final review pending |
 | F23 | Merchant catalogue/editor use a narrow single-column layout; W4 320px/zoom browser evidence. | W4, [PR #5](https://github.com/HarshHp13/wishlyn/pull/5), merged |
 | F24 | Search/filter/sort/page state is URL-backed; resetting/back/forward preserves independent controls. URL/state tests. | W3, merged |
-| F25 | Durable owned support requests, order references, staff replies/status/history and configured service/contact text. Account/service PostgreSQL and browser tests. | W5 final review pending; policy/contact approval requires E3 |
+| F25 | Durable owned support requests, order references, staff replies/status/history and configured service/contact text. Account/service PostgreSQL and browser tests. | W5, [PR #6](https://github.com/HarshHp13/wishlyn/pull/6), merged; policy/contact approval requires E3 |
 | F26–F27 | Transactional product/variant create/edit; stable IDs; revision checks; stock deltas protect reservations and sales; retries return a coherent aggregate. Real merchant concurrency tests. | W4, merged |
 | F28 | Newsletter persistence exposes retryable failure and idempotent duplicate subscriptions. Storefront route tests. | W3, merged; delivery/consent requires E5 |
 | F29 | Versioned checksum migrations with fresh/legacy/rerun/failure tests; forward-repair runbooks preserve business history. | W1/W2 merged; deployment/migrations require E2 |
