@@ -49,6 +49,8 @@ function AccountCheckout({ auth, orderParam }: { auth: AuthState; orderParam: st
   const orderReady = !orderParam || verifiedOrderUser === user;
   const requestKey = useRef({ fingerprint: '', key: '' });
   const active = useRef(true);
+  const paymentScope = useRef(0);
+  useEffect(() => () => { paymentScope.current++; }, [user, order]);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const isCurrent = (owner: string) => {
     const current = getAuthState();
@@ -101,12 +103,12 @@ function AccountCheckout({ auth, orderParam }: { auth: AuthState; orderParam: st
   const pay = async () => {
     if (!user || !order || !orderReady || !approved) return;
     setBusy(true); setError('');
-    const owner = user.id, orderId = order.id;
+    const owner = user.id, orderId = order.id, scope = paymentScope.current;
     try {
       const Razorpay = await loadRazorpay();
-      if (!isCurrent(owner)) { if (active.current) setBusy(false); return; }
+      if (!isCurrent(owner) || scope !== paymentScope.current) { if (active.current) setBusy(false); return; }
       const data = await commerceRequest<{ key: string; amount: number; currency: string; providerOrderId: string }>('/api/create-order', owner, { orderId });
-      if (!isCurrent(owner)) return;
+      if (!isCurrent(owner) || scope !== paymentScope.current) { if (active.current) setBusy(false); return; }
       if (data.amount !== order.totalPaise || data.currency !== order.currency) throw new Error('Payment details changed. Reopen the order to review them.');
       const checkout = new Razorpay({
         key: data.key, amount: data.amount, currency: data.currency, order_id: data.providerOrderId,
