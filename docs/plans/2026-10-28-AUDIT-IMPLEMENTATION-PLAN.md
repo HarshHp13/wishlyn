@@ -219,5 +219,5 @@ The engineering program is complete when all selected packages are merged into i
 | W2 | [PR #3](https://github.com/HarshHp13/wishlyn/pull/3) | `d1141f0`; two recorded agent LGTMs | Merged into integration at `df12f8a`; [review ledger](../implementation/REVIEW-LEDGER.md) |
 | W3 | [PR #4](https://github.com/HarshHp13/wishlyn/pull/4) | `d05e92e`; two recorded agent LGTMs | Merged into integration at `9ac76be`; [review ledger](../implementation/REVIEW-LEDGER.md) |
 | W4 | [PR #5](https://github.com/HarshHp13/wishlyn/pull/5) | `545be87`; two final agent LGTMs | Merged at `77291c4`; 16/16 tests; one concurrency review finding fixed |
-| W5 | `codex/audit-account-service` | Pending final PR/rebase/review | Implementation and disposable-DB/browser validation complete; rebase after W4, then two reviews |
-| W6 | `codex/audit-integration-completion` | Pending final integration/review | Eight reviewer integration findings fixed; 93/93 intermediate tests and browser regressions pass; final five-package verification follows W5 |
+| W5 | [PR #6](https://github.com/HarshHp13/wishlyn/pull/6) | `2b504ca`; two final agent LGTMs | Merged at `fbe0a04`; 124/124 tests; [review ledger](../implementation/REVIEW-LEDGER.md) |
+| W6 | `codex/audit-integration-completion` | Pending final PR/exact-pair reviews | Five-package candidate passes 244/244 tests, zero skips, full static/build/audit and three production-browser matrices; final review/merge remains |
