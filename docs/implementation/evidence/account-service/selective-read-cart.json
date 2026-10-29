@@ -1,0 +1,24 @@
+{
+  "sourceBase": "21c5dc355ededd94a29c510e6371a804420c6a36",
+  "scenario": "Slow tab retains visible old UUID while only its guest payload read fails; metadata reads work; other tab reselects same gift with fresh UUID before delayed Storage-event delivery; slow removes visible old selection",
+  "old": "dd5c2136-dfca-44ad-8715-2d7da071caf4",
+  "fresh": "e7615d88-84e2-490e-8bd0-7a9dd692cfca",
+  "beforeOldRemovalQuantity": 1,
+  "afterOldRemovalQuantity": 0,
+  "afterRetry": [
+    {
+      "quantity": 2,
+      "giftMessage": "Same gift"
+    }
+  ],
+  "oldClaim": "cancelled",
+  "fastAfterRetry": [
+    {
+      "quantity": 2,
+      "giftMessage": "Same gift"
+    }
+  ],
+  "status": "FIXED",
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38",
+  "provenance": "Author-adapted copy of independent seventh-head reproduction; assertions passed on the actual eighth-revision source. Synthetic VM tabs/Storage/Web Locks/API; no external service used."
+}

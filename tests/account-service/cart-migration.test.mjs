@@ -89,9 +89,9 @@ function sharedFixture(guestItems, { asyncEvents = false } = {}) {
     setImmediate(() => { if (++delivered > 250) { overflow = true; return; } other.dispatch(key); });
   });
   function tab(name) {
-    let auth = { status: "guest", user: null }, denied = false, failedWrite = () => false, failedRead = () => false;
+    let auth = { status: "guest", user: null }, denied = false, paused = false, failedWrite = () => false, failedRead = () => false;
     const listeners = new Set(), events = new Set(), exports = {};
-    const dispatch = key => events.forEach(listener => listener({ key }));
+    const dispatch = key => { if (!paused) events.forEach(listener => listener({ key })); };
     const storage = {
       getItem: key => { if (denied || failedRead(key)) throw new Error("Storage denied"); return data.get(key) ?? null; },
       setItem: (key, value) => { if (denied || failedWrite(key)) throw new Error("Storage quota"); data.set(key, value); if (key.endsWith("-selections")) metadataWrites++; changed(name, key); },
@@ -103,7 +103,7 @@ function sharedFixture(guestItems, { asyncEvents = false } = {}) {
       window: { addEventListener: (_type, listener) => events.add(listener) }, localStorage: storage,
       navigator: { locks: { request: (_name, action) => { const task = lock.then(action); lock = task.catch(() => {}); return task; } } },
     });
-    const result = { name, dispatch, store: exports.cartStore, denyStorage() { denied = true; }, restoreStorage() { denied = false; failedWrite = () => false; failedRead = () => false; },
+    const result = { name, dispatch, store: exports.cartStore, pauseEvents() { paused = true; }, resumeEvents() { paused = false; }, denyStorage() { denied = true; }, restoreStorage() { denied = false; failedWrite = () => false; failedRead = () => false; },
       failWrites(predicate) { failedWrite = predicate; }, failReads(predicate) { failedRead = predicate; }, auth(next) { auth = next; listeners.forEach(listener => listener()); } };
     tabs.push(result); result.store.subscribe(() => {}); return result;
   }
@@ -497,4 +497,38 @@ test("a denied old cart cancellation leaves a different tab's later fresh same-g
   slow.restoreStorage(); await slow.store.retry(); await settle(); exact(slow.store.getSnapshot().items, 2, "Later fresh gift");
   assert.deepEqual(JSON.parse(env.data.get(key)).guestSelectionIds, [fresh]);
   slow.auth(account("a")); await settle(); exact(slow.store.getSnapshot().items, 2, "Later fresh gift");
+});
+
+for (const quantity of [1, 2]) for (const retryGuest of [false, true]) test(`selective guest-payload read denial cannot extend an old removal to a newer quantity-${quantity} UUID before ${retryGuest ? "guest retry" : "direct sign-in"}`, async () => {
+  const env = sharedFixture(state.addCartLine([], line(1, "Selective read gift"))), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  const key = state.shoppingKey("cart", null), old = JSON.parse(env.data.get(key)).guestSelectionIds[0];
+  slow.pauseEvents(); slow.failReads(candidate => candidate === key);
+  await fast.store.mutate(() => []); await fast.store.mutate(items => state.addCartLine(items, line(quantity, "Selective read gift")));
+  const fresh = JSON.parse(env.data.get(key)).guestSelectionIds[0]; assert.notEqual(fresh, old);
+  exact(slow.store.getSnapshot().items, 1, "Selective read gift");
+  await slow.store.mutate(() => []); assert.equal(slow.store.getSnapshot().items.length, 0);
+  slow.restoreStorage(); slow.resumeEvents();
+  if (retryGuest) {
+    await slow.store.retry(); await settle(); exact(slow.store.getSnapshot().items, quantity, "Selective read gift");
+    assert.deepEqual(JSON.parse(env.data.get(key)).guestSelectionIds, [fresh]);
+    assert.equal(env.data.has(`${key}-claim-${fresh}`), false);
+    exact(fast.store.getSnapshot().items, quantity, "Selective read gift");
+  }
+  slow.auth(account("a")); await settle(); exact(slow.store.getSnapshot().items, quantity, "Selective read gift");
+  assert.equal(env.data.get(`${key}-claim-${old}`), "cancelled"); assert.equal(env.data.get(`${key}-claim-${fresh}`), "a");
+});
+
+for (const retryGuest of [false, true]) test(`normal readable removal of shared raw quantity cannot cancel another tab's pending fresh delta before ${retryGuest ? "guest retry" : "direct B sign-in"}`, async () => {
+  const env = sharedFixture(state.addCartLine([], line(1, "Pending metadata gift"))), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  const key = state.shoppingKey("cart", null), shared = JSON.parse(env.data.get(key)).guestSelectionIds[0];
+  slow.failWrites(candidate => candidate === key);
+  await slow.store.mutate(items => state.addCartLine(items, line(1, "Pending metadata gift")));
+  const fresh = JSON.parse(env.data.get(`${key}-selections`)).find(record => record.id !== shared).id;
+  exact(fast.store.getSnapshot().items, 1, "Pending metadata gift");
+  await fast.store.mutate(() => []); await settle(); exact(slow.store.getSnapshot().items, 1, "Pending metadata gift");
+  assert.equal(env.data.get(`${key}-claim-${shared}`), "cancelled"); assert.equal(env.data.has(`${key}-claim-${fresh}`), false);
+  slow.restoreStorage();
+  if (retryGuest) { await slow.store.retry(); await settle(); assert.deepEqual(JSON.parse(env.data.get(key)).guestSelectionIds, [fresh]); }
+  slow.auth(account("b")); await settle(); exact(slow.store.getSnapshot().items, 1, "Pending metadata gift");
+  assert.equal(env.data.get(`${key}-claim-${shared}`), "cancelled");
 });

@@ -1,12 +1,12 @@
 {
-  "provenance": "Author-found seventh-revision consistency gap, verified in the single combined 116-test run; not attributed to the sixth reviewers.",
-  "storeSourceSha256": "8980dfd9b448b4569195d992b48de27cfae3cc7f80e6463ffe2f392b752f0eb6",
+  "provenance": "Author-found seventh-revision consistency gap, reverified in the single combined eighth-revision 124-test run; not attributed to the sixth reviewers.",
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38",
   "status": "PASS",
   "passedCases": [
-    "\u2714 an archived owner guest remove cannot change a later fresh same-gift payload (4.30124ms)",
-    "\u2714 an archived owner guest reduce cannot change a later fresh same-gift payload (4.52162ms)",
-    "\u2714 a denied old cart cancellation leaves a different tab's later fresh same-gift UUID intact on guest retry (6.964445ms)",
-    "\u2714 an archived owner cancellation cannot cancel a later deliberate guest re-selection with a fresh UUID (41.335911ms)",
-    "\u2714 a denied old guest cancellation cannot erase another tab's later fresh selection on guest retry (76.200619ms)"
+    "\u2714 an archived owner guest remove cannot change a later fresh same-gift payload (3.205777ms)",
+    "\u2714 an archived owner guest reduce cannot change a later fresh same-gift payload (3.873121ms)",
+    "\u2714 a denied old cart cancellation leaves a different tab's later fresh same-gift UUID intact on guest retry (6.358901ms)",
+    "\u2714 an archived owner cancellation cannot cancel a later deliberate guest re-selection with a fresh UUID (35.97155ms)",
+    "\u2714 a denied old guest cancellation cannot erase another tab's later fresh selection on guest retry (74.758821ms)"
   ]
 }

@@ -436,10 +436,12 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
         let storedRecords: GuestTransfer<T>[] = [];
         if (expected === null) {
           let prior = guestSelections;
-          try { storedRecords = readRecords(selectionKey); prior = storedRecords.filter(record => record.items.some(item => items.some(current => sameSelection(item, current)))); } catch { /* In-memory keys remain stable when storage is blocked. */ }
+          try { storedRecords = readRecords(selectionKey); if (guestVerified) prior = storedRecords.filter(record => record.items.some(item => items.some(current => sameSelection(item, current)))); } catch { /* In-memory keys remain stable when storage is blocked. */ }
           const previousLocal = guestLocalRecords;
           const nextLocal = local.map(item => ({ id: previousLocal.find(record => record.items.some(current => sameLine(item, current)))?.id || crypto.randomUUID(), items: [item] }));
-          for (const record of combine(storedRecords, guestSelections)) if (record.items.some(item => items.some(current => sameLine(item, current))) && !record.items.some(item => next.some(current => sameLine(item, current)))) canceledGuestIds.add(record.id);
+          // Metadata can contain another tab's pending replacement. Only the
+          // verified/cached raw baseline and our own local records are ours to cancel.
+          for (const record of guestSharedRecords) if (record.items.some(item => items.some(current => sameLine(item, current))) && !record.items.some(item => next.some(current => sameLine(item, current)))) canceledGuestIds.add(record.id);
           for (const record of previousLocal) if (!record.items.some(item => local.some(current => sameLine(item, current)))) canceledGuestIds.add(record.id);
           guestLocalRecords = nextLocal;
           guestSelections = selectedGuestRecords(next, prior.filter(record => !canceledGuestIds.has(record.id)), nextLocal);

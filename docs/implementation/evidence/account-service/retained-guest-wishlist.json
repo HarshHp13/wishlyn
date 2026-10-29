@@ -22,7 +22,7 @@
         "action": "transfer",
         "transfers": [
           {
-            "id": "b56e168f-d2bc-4a64-a5d6-cf517947d60c",
+            "id": "3e4361e0-4d09-4271-9e7f-f910bd34753b",
             "productIds": [
               "guest-product"
             ]
@@ -31,6 +31,6 @@
       }
     }
   ],
-  "provenance": "Author-adapted independent fifth-head reproduction running the actual seventh-revision store source with synthetic tabs/API; no external service used.",
-  "storeSourceSha256": "8980dfd9b448b4569195d992b48de27cfae3cc7f80e6463ffe2f392b752f0eb6"
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38",
+  "provenance": "Author-adapted copy of independent prior-head reproduction; assertions passed on the actual eighth-revision source. Synthetic VM tabs/Storage/Web Locks/API; no external service used."
 }

@@ -1,14 +1,14 @@
 {
   "sourceBase": "e54a95bc3de1717c3b81c5f83a8301514a076174",
   "status": "FIXED",
-  "sharedId": "6bbd703f-d2ef-40ac-88f5-6e73688c2ae5",
+  "sharedId": "9019d103-4f86-4f01-81d5-e42b9b133a50",
   "freshMetadata": [
     {
-      "id": "6bbd703f-d2ef-40ac-88f5-6e73688c2ae5",
+      "id": "9019d103-4f86-4f01-81d5-e42b9b133a50",
       "quantity": 1
     },
     {
-      "id": "6adda121-9798-48ad-9b1c-3fad70ff670a",
+      "id": "8d8e560f-e8c3-4c11-82a4-4f0dc81cd2df",
       "quantity": 2
     }
   ],
@@ -146,7 +146,7 @@
       }
     ],
     "guestSelectionIds": [
-      "6adda121-9798-48ad-9b1c-3fad70ff670a"
+      "8d8e560f-e8c3-4c11-82a4-4f0dc81cd2df"
     ]
   },
   "recoveredGuestClaim": "b",
@@ -213,6 +213,6 @@
       "unavailable": false
     }
   ],
-  "provenance": "Author-adapted independent sixth-head reproduction running the actual seventh-revision store source with synthetic tabs/API; no external service used.",
-  "storeSourceSha256": "8980dfd9b448b4569195d992b48de27cfae3cc7f80e6463ffe2f392b752f0eb6"
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38",
+  "provenance": "Author-adapted copy of independent prior-head reproduction; assertions passed on the actual eighth-revision source. Synthetic VM tabs/Storage/Web Locks/API; no external service used."
 }
