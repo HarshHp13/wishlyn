@@ -13,6 +13,10 @@
   "freshGuestAfterLogoutTransferred": true,
   "unreadOwnerCartRecovered": true,
   "unreadOwnerCartPreservedOnAddition": true,
+  "fullStorageDeniedGuestRemovalRetained": true,
+  "guestMetadataConverged": true,
+  "freshQuantityIdentityRetained": true,
+  "freshQuantityTransferredToB": true,
   "failedPasswordRetained": true,
   "savedPieceVisible": true,
   "accountIsolated": true,
@@ -28,5 +32,6 @@
     "width": 320,
     "scrollWidth": 320
   },
-  "errors": []
+  "errors": [],
+  "storeSourceSha256": "8980dfd9b448b4569195d992b48de27cfae3cc7f80e6463ffe2f392b752f0eb6"
 }

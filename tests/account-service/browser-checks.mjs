@@ -291,7 +291,7 @@ async (page) => {
   await page.request.post(origin + "/api/auth/login", { headers: { origin }, data: { email: "browser-b@example.test", password: "Browser fixture password" } });
   await denied.tab.evaluate(() => { window.__wishlynDenyStorage = true; }); denied.release();
   await denied.tab.waitForFunction(() => [...document.querySelectorAll("button")].some(button => button.getAttribute("aria-label") === "Add to wishlist" && !button.disabled));
-  await denied.tab.getByRole("button", { name: "Open shopping bag", exact: true }).click();
+  await denied.tab.getByRole("button", { name: /Open shopping bag/ }).click();
   await denied.tab.getByText("Your shopping bag is empty.", { exact: true }).waitFor();
   const deniedBList = await (await denied.tab.request.get(origin + "/api/account/wishlist", { headers: { "X-Wishlyn-Account-ID": "browser-b" } })).json();
   const storageDeniedSharedGuestIsolated = deniedTransfers.length === 0 && deniedBList.items.length === 0 && deniedAMigration?.quantity === 2 && deniedAMigration?.giftMessage === "Synthetic gift intended for A";
@@ -347,7 +347,7 @@ async (page) => {
   });
   await unread.goto(origin + "/product/browser-product");
   await unread.getByRole("link", { name: "Account profile (browser-b@example.test)", exact: true }).waitFor();
-  await unread.getByRole("button", { name: "Open shopping bag", exact: true }).click();
+  await unread.getByRole("button", { name: /Open shopping bag/ }).click();
   await unread.getByText("Your shopping bag is empty.", { exact: true }).waitFor();
   await unread.evaluate(() => { window.__wishlynDenyStorage = false; window.dispatchEvent(new Event("focus")); });
   await unread.getByText("Gift message: “Stored B gift”", { exact: true }).waitFor();
@@ -361,6 +361,81 @@ async (page) => {
   const preservedOwner = await unread.evaluate(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-account-browser-b")).items);
   const unreadOwnerCartPreservedOnAddition = preservedOwner.length === 2 && preservedOwner.find(item => item.giftMessage === "Stored B gift")?.quantity === 3 && preservedOwner.find(item => item.giftMessage === "New B addition after restore")?.quantity === 1;
   await unread.close();
+
+  async function controlGuestStorage(tab) {
+    await tab.evaluate(() => {
+      window.__wishlynDenyAllStorage = false;
+      window.__wishlynFailGuestCartPayload = false;
+      window.__wishlynGuestMetadataWrites = 0;
+      for (const name of ["getItem", "setItem", "removeItem"]) {
+        const original = Storage.prototype[name];
+        Storage.prototype[name] = function (...args) {
+          if (window.__wishlynDenyAllStorage || (name === "setItem" && window.__wishlynFailGuestCartPayload && args[0] === "wishlyn-v2-cart-guest")) throw new DOMException("Synthetic guest storage failure", "SecurityError");
+          if (name === "setItem" && args[0].endsWith("-guest-selections")) window.__wishlynGuestMetadataWrites++;
+          return original.apply(this, args);
+        };
+      }
+    });
+  }
+  await page.request.post(origin + "/api/auth/logout", { headers: { origin } });
+  await page.goto(origin + "/product/browser-product");
+  await page.getByRole("button", { name: "Add to wishlist", exact: true }).click();
+  await page.getByRole("button", { name: "Remove from wishlist", exact: true }).waitFor();
+  await page.getByLabel("Add gift packaging (+ ₹350 per item)", { exact: true }).check();
+  await page.getByLabel("Gift message (optional)", { exact: true }).fill("Removed while all Storage is denied");
+  await page.getByRole("button", { name: "Add to shopping bag", exact: true }).click();
+  await page.getByRole("button", { name: "Increase quantity of Synthetic account piece", exact: true }).click();
+  await page.waitForLoadState("networkidle");
+  const removedGuestIds = await page.evaluate(() => ({ cart: JSON.parse(localStorage.getItem("wishlyn-v2-cart-guest")).guestSelectionIds[0], wishlist: JSON.parse(localStorage.getItem("wishlyn-v2-wishlist-guest")).guestSelectionIds[0] }));
+  await controlGuestStorage(page); await page.evaluate(() => { window.__wishlynDenyAllStorage = true; });
+  await page.getByRole("button", { name: "Remove Synthetic account piece from cart", exact: true }).click();
+  await page.getByText("Your shopping bag is empty.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Close cart", exact: true }).click();
+  await page.getByRole("button", { name: "Remove from wishlist", exact: true }).click();
+  await page.getByRole("button", { name: "Add to wishlist", exact: true }).waitFor();
+  await page.evaluate(() => { window.__wishlynDenyAllStorage = false; });
+  await page.request.post(origin + "/api/auth/login", { headers: { origin }, data: { email: "browser-a@example.test", password: "Browser fixture password" } });
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await page.getByRole("link", { name: "Account profile (browser-a@example.test)", exact: true }).waitFor();
+  await page.waitForFunction(ids => localStorage.getItem("wishlyn-v2-cart-guest-claim-" + ids.cart) === "cancelled" && localStorage.getItem("wishlyn-v2-wishlist-guest-claim-" + ids.wishlist) === "cancelled", removedGuestIds);
+  const removedAList = await (await page.request.get(origin + "/api/account/wishlist", { headers: { "X-Wishlyn-Account-ID": "browser-a" } })).json();
+  const fullStorageDeniedGuestRemovalRetained = removedAList.items.length === 0 && await page.evaluate(() => !JSON.parse(localStorage.getItem("wishlyn-v2-cart-account-browser-a")).items.some(item => item.giftMessage === "Removed while all Storage is denied"));
+
+  await page.request.post(origin + "/api/auth/logout", { headers: { origin } });
+  await page.goto(origin + "/product/browser-product");
+  await page.getByLabel("Add gift packaging (+ ₹350 per item)", { exact: true }).check();
+  await page.getByLabel("Gift message (optional)", { exact: true }).fill("Shared gift with one fresh quantity");
+  await page.getByRole("button", { name: "Add to shopping bag", exact: true }).click();
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-guest") || '{"items":[]}').items.some(item => item.giftMessage === "Shared gift with one fresh quantity" && item.quantity === 1));
+  const sharedQuantityId = await page.evaluate(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-guest")).guestSelectionIds[0]);
+  const claimant = await page.context().newPage();
+  claimant.on("pageerror", error => errors.push(error.message));
+  await claimant.route("**/*", route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
+  await claimant.goto(origin + "/product/browser-product");
+  await claimant.getByRole("button", { name: "Add to shopping bag", exact: true }).waitFor();
+  await controlGuestStorage(claimant);
+  let releaseQuantityAuth, quantityAuthObserved;
+  const quantityGate = new Promise(resolve => { releaseQuantityAuth = resolve; });
+  const quantityStarted = new Promise(resolve => { quantityAuthObserved = resolve; });
+  await claimant.route("**/api/auth/me", async route => { quantityAuthObserved(); await quantityGate; await route.fulfill({ response: await claimant.request.get(origin + "/api/auth/me") }); });
+  await controlGuestStorage(page); await page.evaluate(() => { window.__wishlynFailGuestCartPayload = true; });
+  await page.getByRole("button", { name: "Increase quantity of Synthetic account piece", exact: true }).click();
+  await page.waitForFunction(shared => JSON.parse(localStorage.getItem("wishlyn-v2-cart-guest-selections") || '[]').some(record => record.id !== shared && record.items[0]?.giftMessage === "Shared gift with one fresh quantity" && record.items[0]?.quantity === 2), sharedQuantityId);
+  const freshQuantityId = await page.evaluate(shared => JSON.parse(localStorage.getItem("wishlyn-v2-cart-guest-selections")).find(record => record.id !== shared && record.items[0]?.giftMessage === "Shared gift with one fresh quantity" && record.items[0]?.quantity === 2).id, sharedQuantityId);
+  await page.waitForTimeout(75); const metadata75 = await page.evaluate(() => window.__wishlynGuestMetadataWrites) + await claimant.evaluate(() => window.__wishlynGuestMetadataWrites);
+  await page.waitForTimeout(75); const metadata150 = await page.evaluate(() => window.__wishlynGuestMetadataWrites) + await claimant.evaluate(() => window.__wishlynGuestMetadataWrites);
+  const guestMetadataConverged = metadata150 === metadata75;
+  await claimant.evaluate(() => window.dispatchEvent(new Event("focus"))); await quantityStarted;
+  await page.request.post(origin + "/api/auth/login", { headers: { origin }, data: { email: "browser-a@example.test", password: "Browser fixture password" } }); releaseQuantityAuth();
+  await claimant.waitForFunction(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-account-browser-a") || '{"items":[]}').items.some(item => item.giftMessage === "Shared gift with one fresh quantity" && item.quantity === 1));
+  await page.request.post(origin + "/api/auth/logout", { headers: { origin } }); await claimant.close();
+  await page.evaluate(() => { window.__wishlynFailGuestCartPayload = false; window.dispatchEvent(new Event("focus")); });
+  await page.waitForFunction(fresh => JSON.parse(localStorage.getItem("wishlyn-v2-cart-guest") || '{"items":[]}').items.some(item => item.giftMessage === "Shared gift with one fresh quantity" && item.quantity === 1) && JSON.parse(localStorage.getItem("wishlyn-v2-cart-guest")).guestSelectionIds[0] === fresh, freshQuantityId);
+  const freshQuantityIdentityRetained = freshQuantityId !== sharedQuantityId && await page.evaluate(fresh => !localStorage.getItem("wishlyn-v2-cart-guest-claim-" + fresh), freshQuantityId);
+  await page.request.post(origin + "/api/auth/login", { headers: { origin }, data: { email: "browser-b@example.test", password: "Browser fixture password" } });
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-account-browser-b") || '{"items":[]}').items.some(item => item.giftMessage === "Shared gift with one fresh quantity" && item.quantity === 1));
+  const freshQuantityTransferredToB = await page.evaluate(ids => localStorage.getItem("wishlyn-v2-cart-guest-claim-" + ids.shared) === "browser-a" && localStorage.getItem("wishlyn-v2-cart-guest-claim-" + ids.fresh) === "browser-b", { shared: sharedQuantityId, fresh: freshQuantityId });
   return {
     provenance:
       "Local development server and actual disposable PostgreSQL; synthetic users/orders; remote requests blocked; auth verification alone delayed; controlled Storage denial in one tab; no email/payment/provider action.",
@@ -377,6 +452,10 @@ async (page) => {
     freshGuestAfterLogoutTransferred,
     unreadOwnerCartRecovered,
     unreadOwnerCartPreservedOnAddition,
+    fullStorageDeniedGuestRemovalRetained,
+    guestMetadataConverged,
+    freshQuantityIdentityRetained,
+    freshQuantityTransferredToB,
     failedPasswordRetained,
     savedPieceVisible: true,
     accountIsolated,

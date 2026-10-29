@@ -1,0 +1,11 @@
+{
+  "status": "FIXED",
+  "sourceBase": "e54a95bc3de1717c3b81c5f83a8301514a076174",
+  "oldSelectionId": "2f070982-1600-402f-9bc6-027a97a417c0",
+  "afterRemovalUnderDeniedStorage": [],
+  "afterDirectSignIn": [],
+  "persistedAccount": [],
+  "oldSelectionClaim": "cancelled",
+  "provenance": "Author-adapted independent sixth-head reproduction running the actual seventh-revision store source with synthetic tabs/API; no external service used.",
+  "storeSourceSha256": "8980dfd9b448b4569195d992b48de27cfae3cc7f80e6463ffe2f392b752f0eb6"
+}

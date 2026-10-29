@@ -11,18 +11,22 @@ const compile = path => ts.transpileModule(readFileSync(new URL(path, import.met
 const tick = () => new Promise(resolve => setImmediate(resolve));
 async function settle() { for (let i = 0; i < 16; i++) await tick(); }
 const account = id => ({ status: "authenticated", user: { id, email: `${id}@example.test`, role: "customer" } });
-function fixture(guestItems = ["guest-product"]) {
+function fixture(guestItems = ["guest-product"], { asyncEvents = false } = {}) {
   const data = new Map(), tabs = [], server = new Map(), done = new Set(), calls = [];
   data.set(state.shoppingKey("wishlist", null), state.encodeShopping(guestItems));
-  let lock = Promise.resolve(), failTransfer = false;
+  let lock = Promise.resolve(), failTransfer = false, metadataWrites = 0, delivered = 0, overflow = false;
+  const changed = (name, key) => tabs.filter(other => other.name !== name).forEach(other => {
+    if (!asyncEvents) return other.dispatch(key);
+    setImmediate(() => { if (++delivered > 250) { overflow = true; return; } other.dispatch(key); });
+  });
   function tab(name) {
     let auth = { status: "guest", user: null }, denied = false, failedRead = () => false, failedWrite = () => false;
     const listeners = new Set(), events = new Map(), browser = {}, client = {}, saved = {};
     const dispatch = key => events.get("storage")?.forEach(listener => listener({ key }));
     const storage = {
       getItem: key => { if (denied || failedRead(key)) throw new Error("Storage denied"); return data.get(key) ?? null; },
-      setItem: (key, value) => { if (denied || failedWrite(key)) throw new Error("Storage denied"); data.set(key, value); for (const other of tabs) if (other.name !== name) other.dispatch(key); },
-      removeItem: key => { if (denied) throw new Error("Storage denied"); data.delete(key); for (const other of tabs) if (other.name !== name) other.dispatch(key); },
+      setItem: (key, value) => { if (denied || failedWrite(key)) throw new Error("Storage denied"); data.set(key, value); if (key.endsWith("-selections")) metadataWrites++; changed(name, key); },
+      removeItem: key => { if (denied) throw new Error("Storage denied"); if (data.delete(key)) changed(name, key); },
     };
     const authClient = { getAuthState: () => auth, refreshAuthSession: async () => auth.user,
       subscribeAuth: listener => { listeners.add(listener); return () => listeners.delete(listener); } };
@@ -56,7 +60,7 @@ function fixture(guestItems = ["guest-product"]) {
       auth(next) { auth = next; listeners.forEach(listener => listener()); } };
     tabs.push(result); result.store.subscribe(() => {}); return result;
   }
-  return { tab, calls, server, data, failNextTransfer() { failTransfer = true; } };
+  return { tab, calls, server, data, metadataWrites: () => metadataWrites, eventOverflow: () => overflow, failNextTransfer() { failTransfer = true; } };
 }
 test("a delayed tab reuses the shared guest key and cannot resurrect a fast tab's removal", async () => {
   const env = fixture(), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
@@ -295,5 +299,95 @@ test("a fresh identical wishlist payload retains its own ID when old metadata cl
   tab.restoreStorage(); const other = env.tab("other"); await settle();
   assert.equal(other.browser.getSnapshot().guestTransfers[0].id, fresh);
   other.auth(account("a")); await settle(); assert.deepEqual(env.server.get("a"), ["guest-product"]);
+  assert.equal(env.calls.some(call => call.body?.transfers?.some(record => record.id === old)), false);
+});
+
+for (const cachedOwner of [false, true]) test(`visible guest removal under full Storage denial is retained before direct ${cachedOwner ? "cached" : "new"} wishlist account verification`, async () => {
+  const env = fixture([]), tab = env.tab("only"); await settle();
+  if (cachedOwner) {
+    tab.auth(account("a")); await settle(); tab.store.mutate("add", "existing-a"); await settle();
+    tab.auth({ status: "guest", user: null }); await settle();
+  }
+  tab.store.mutate("add", "guest-product"); await settle();
+  const key = state.shoppingKey("wishlist", null), old = tab.browser.getSnapshot().guestTransfers[0].id;
+  tab.denyStorage(); tab.store.mutate("remove", "guest-product"); await settle();
+  assert.equal(tab.store.getSnapshot().items.length, 0);
+  tab.restoreStorage(); tab.auth(account("a")); await settle();
+  assert.deepEqual(env.server.get("a"), cachedOwner ? ["existing-a"] : []);
+  assert.equal(env.calls.some(call => call.body?.transfers?.some(record => record.id === old)), false);
+  assert.equal(env.data.get(`${key}-claim-${old}`), "cancelled");
+});
+
+test("full Storage denial removal then same-product re-selection uses only the fresh UUID on direct sign-in", async () => {
+  const env = fixture(), tab = env.tab("only"); await settle();
+  const key = state.shoppingKey("wishlist", null), old = tab.browser.getSnapshot().guestTransfers[0].id;
+  tab.denyStorage(); tab.store.mutate("remove", "guest-product"); await settle();
+  tab.store.mutate("add", "guest-product"); await settle();
+  const fresh = tab.browser.getSnapshot().guestTransfers[0].id; assert.notEqual(fresh, old);
+  tab.restoreStorage(); tab.auth(account("a")); await settle(); assert.deepEqual(env.server.get("a"), ["guest-product"]);
+  const transfers = env.calls.filter(call => call.body?.action === "transfer");
+  assert.equal(transfers.length, 1); assert.equal(transfers[0].body.transfers[0].id, fresh);
+  assert.equal(env.data.get(`${key}-claim-${old}`), "cancelled");
+});
+
+test("an unresolved denied guest cancellation stays bound to A through owner denial and B/A retry", async () => {
+  const env = fixture(), tab = env.tab("only"); await settle();
+  const old = tab.browser.getSnapshot().guestTransfers[0].id;
+  tab.denyStorage(); tab.store.mutate("remove", "guest-product"); await settle();
+  tab.auth(account("a")); await settle(); assert.deepEqual(env.server.get("a"), []);
+  tab.auth(account("b")); await settle(); assert.deepEqual(env.server.get("b"), []);
+  tab.restoreStorage(); tab.auth(account("a")); await settle();
+  assert.deepEqual(env.server.get("a"), []);
+  assert.equal(env.calls.some(call => call.body?.transfers?.some(record => record.id === old)), false);
+});
+
+test("asynchronous guest wishlist tabs converge with pending replacement metadata under selective payload failure", async () => {
+  const env = fixture(["guest-product"], { asyncEvents: true }), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  const key = state.shoppingKey("wishlist", null); slow.failWrites(candidate => candidate === key);
+  slow.store.mutate("add", "fresh-product"); await settle(); await settle();
+  const count = env.metadataWrites(); await settle(); await settle();
+  assert.equal(env.metadataWrites(), count); assert.equal(env.eventOverflow(), false);
+  assert.deepEqual(Array.from(fast.store.getSnapshot().items), ["guest-product"]);
+  assert.deepEqual(Array.from(slow.store.getSnapshot().items), ["guest-product", "fresh-product"]);
+  slow.restoreStorage(); await slow.store.retry(); await settle(); await settle();
+  assert.deepEqual(Array.from(fast.store.getSnapshot().items), ["guest-product", "fresh-product"]);
+  const recovered = env.metadataWrites(); await settle(); assert.equal(env.metadataWrites(), recovered);
+  assert.equal(env.eventOverflow(), false);
+});
+
+test("two guest wishlist tabs retain both local picks without metadata ping-pong while both payloads fail", async () => {
+  const env = fixture(["guest-product"], { asyncEvents: true }), first = env.tab("first"), second = env.tab("second"); await settle();
+  const key = state.shoppingKey("wishlist", null); first.failWrites(candidate => candidate === key); second.failWrites(candidate => candidate === key);
+  first.store.mutate("add", "first-local"); await settle(); second.store.mutate("add", "second-local"); await settle();
+  const count = env.metadataWrites(); await settle(); await settle(); assert.equal(env.metadataWrites(), count); assert.equal(env.eventOverflow(), false);
+  first.restoreStorage(); await first.store.retry(); await settle(); await settle();
+  const partial = env.metadataWrites(); await settle(); assert.equal(env.metadataWrites(), partial);
+  second.restoreStorage(); await second.store.retry(); await settle(); await settle();
+  for (const tab of [first, second]) assert.deepEqual(Array.from(tab.store.getSnapshot().items).sort(), ["first-local", "guest-product", "second-local"]);
+  const recovered = env.metadataWrites(); await settle(); assert.equal(env.metadataWrites(), recovered); assert.equal(env.eventOverflow(), false);
+});
+
+test("an archived owner cancellation cannot cancel a later deliberate guest re-selection with a fresh UUID", async () => {
+  const env = fixture(), tab = env.tab("only"); await settle();
+  const old = tab.browser.getSnapshot().guestTransfers[0].id;
+  tab.denyStorage(); tab.store.mutate("remove", "guest-product"); await settle();
+  tab.auth(account("a")); await settle(); tab.auth({ status: "guest", user: null }); await settle();
+  tab.restoreStorage(); tab.store.mutate("add", "guest-product"); await settle();
+  const fresh = tab.browser.getSnapshot().guestTransfers[0].id; assert.notEqual(fresh, old);
+  tab.auth(account("a")); await settle(); assert.deepEqual(env.server.get("a"), ["guest-product"]);
+  const transfers = env.calls.filter(call => call.body?.action === "transfer");
+  assert.equal(transfers.length, 1); assert.equal(transfers[0].body.transfers[0].id, fresh);
+});
+
+test("a denied old guest cancellation cannot erase another tab's later fresh selection on guest retry", async () => {
+  const env = fixture(), first = env.tab("first"), slow = env.tab("slow"); await settle();
+  const old = slow.browser.getSnapshot().guestTransfers[0].id;
+  slow.denyStorage(); slow.store.mutate("remove", "guest-product"); await settle();
+  first.store.mutate("remove", "guest-product"); await settle(); first.store.mutate("add", "guest-product"); await settle();
+  const fresh = first.browser.getSnapshot().guestTransfers[0].id; assert.notEqual(fresh, old);
+  slow.restoreStorage(); await slow.store.retry(); await settle();
+  assert.deepEqual(Array.from(slow.store.getSnapshot().items), ["guest-product"]);
+  assert.equal(slow.browser.getSnapshot().guestTransfers[0].id, fresh);
+  slow.auth(account("a")); await settle(); assert.deepEqual(env.server.get("a"), ["guest-product"]);
   assert.equal(env.calls.some(call => call.body?.transfers?.some(record => record.id === old)), false);
 });

@@ -1,0 +1,218 @@
+{
+  "sourceBase": "e54a95bc3de1717c3b81c5f83a8301514a076174",
+  "status": "FIXED",
+  "sharedId": "6bbd703f-d2ef-40ac-88f5-6e73688c2ae5",
+  "freshMetadata": [
+    {
+      "id": "6bbd703f-d2ef-40ac-88f5-6e73688c2ae5",
+      "quantity": 1
+    },
+    {
+      "id": "6adda121-9798-48ad-9b1c-3fad70ff670a",
+      "quantity": 2
+    }
+  ],
+  "afterFreshAddition": {
+    "items": [
+      {
+        "variantId": "variant",
+        "product": {
+          "id": "piece",
+          "title": "Synthetic piece",
+          "description": "",
+          "categoryId": "test",
+          "basePrice": 199,
+          "images": [],
+          "rating": 0,
+          "reviewsCount": 0,
+          "details": {}
+        },
+        "variant": {
+          "id": "variant",
+          "productId": "piece",
+          "metalType": "Fixture",
+          "purity": "",
+          "price": 199,
+          "stock": 50
+        },
+        "quantity": 2,
+        "giftWrap": true,
+        "giftMessage": "Shared and fresh gift",
+        "id": "[\"variant\",true,\"Shared and fresh gift\"]",
+        "unavailable": false
+      }
+    ],
+    "status": "ready",
+    "accountId": null,
+    "notice": "Browser storage is unavailable. Your shopping items will last only for this visit."
+  },
+  "afterSharedClaim": {
+    "items": [
+      {
+        "variantId": "variant",
+        "product": {
+          "id": "piece",
+          "title": "Synthetic piece",
+          "description": "",
+          "categoryId": "test",
+          "basePrice": 199,
+          "images": [],
+          "rating": 0,
+          "reviewsCount": 0,
+          "details": {}
+        },
+        "variant": {
+          "id": "variant",
+          "productId": "piece",
+          "metalType": "Fixture",
+          "purity": "",
+          "price": 199,
+          "stock": 50
+        },
+        "quantity": 1,
+        "giftWrap": true,
+        "giftMessage": "Shared and fresh gift",
+        "id": "[\"variant\",true,\"Shared and fresh gift\"]",
+        "unavailable": false
+      }
+    ],
+    "status": "ready",
+    "accountId": null,
+    "notice": "Browser storage is unavailable. Your shopping items will last only for this visit."
+  },
+  "afterRecovery": {
+    "items": [
+      {
+        "variantId": "variant",
+        "product": {
+          "id": "piece",
+          "title": "Synthetic piece",
+          "description": "",
+          "categoryId": "test",
+          "basePrice": 199,
+          "images": [],
+          "rating": 0,
+          "reviewsCount": 0,
+          "details": {}
+        },
+        "variant": {
+          "id": "variant",
+          "productId": "piece",
+          "metalType": "Fixture",
+          "purity": "",
+          "price": 199,
+          "stock": 50
+        },
+        "quantity": 1,
+        "giftWrap": true,
+        "giftMessage": "Shared and fresh gift",
+        "id": "[\"variant\",true,\"Shared and fresh gift\"]",
+        "unavailable": false
+      }
+    ],
+    "status": "ready",
+    "accountId": null,
+    "notice": ""
+  },
+  "guestRaw": {
+    "version": 2,
+    "items": [
+      {
+        "variantId": "variant",
+        "product": {
+          "id": "piece",
+          "title": "Synthetic piece",
+          "description": "",
+          "categoryId": "test",
+          "basePrice": 199,
+          "images": [],
+          "rating": 0,
+          "reviewsCount": 0,
+          "details": {}
+        },
+        "variant": {
+          "id": "variant",
+          "productId": "piece",
+          "metalType": "Fixture",
+          "purity": "",
+          "price": 199,
+          "stock": 50
+        },
+        "quantity": 1,
+        "giftWrap": true,
+        "giftMessage": "Shared and fresh gift",
+        "id": "[\"variant\",true,\"Shared and fresh gift\"]",
+        "unavailable": false
+      }
+    ],
+    "guestSelectionIds": [
+      "6adda121-9798-48ad-9b1c-3fad70ff670a"
+    ]
+  },
+  "recoveredGuestClaim": "b",
+  "afterB": {
+    "items": [
+      {
+        "id": "[\"variant\",true,\"Shared and fresh gift\"]",
+        "variantId": "variant",
+        "product": {
+          "id": "piece",
+          "title": "Synthetic piece",
+          "description": "",
+          "categoryId": "test",
+          "basePrice": 199,
+          "images": [],
+          "rating": 0,
+          "reviewsCount": 0,
+          "details": {}
+        },
+        "variant": {
+          "id": "variant",
+          "productId": "piece",
+          "metalType": "Fixture",
+          "purity": "",
+          "price": 199,
+          "stock": 50
+        },
+        "quantity": 1,
+        "giftWrap": true,
+        "giftMessage": "Shared and fresh gift",
+        "unavailable": false
+      }
+    ],
+    "status": "ready",
+    "accountId": "b",
+    "notice": ""
+  },
+  "aStored": [
+    {
+      "id": "[\"variant\",true,\"Shared and fresh gift\"]",
+      "variantId": "variant",
+      "product": {
+        "id": "piece",
+        "title": "Synthetic piece",
+        "description": "",
+        "categoryId": "test",
+        "basePrice": 199,
+        "images": [],
+        "rating": 0,
+        "reviewsCount": 0,
+        "details": {}
+      },
+      "variant": {
+        "id": "variant",
+        "productId": "piece",
+        "metalType": "Fixture",
+        "purity": "",
+        "price": 199,
+        "stock": 50
+      },
+      "quantity": 1,
+      "giftWrap": true,
+      "giftMessage": "Shared and fresh gift",
+      "unavailable": false
+    }
+  ],
+  "provenance": "Author-adapted independent sixth-head reproduction running the actual seventh-revision store source with synthetic tabs/API; no external service used.",
+  "storeSourceSha256": "8980dfd9b448b4569195d992b48de27cfae3cc7f80e6463ffe2f392b752f0eb6"
+}

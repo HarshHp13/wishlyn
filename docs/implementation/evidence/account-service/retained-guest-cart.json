@@ -41,5 +41,6 @@
       "unavailable": false
     }
   ],
-  "provenance": "Author-adapted independent fifth-head reproduction running the actual sixth-revision store source in isolated synthetic tabs; no external service used."
+  "provenance": "Author-adapted independent fifth-head reproduction running the actual seventh-revision store source with synthetic tabs/API; no external service used.",
+  "storeSourceSha256": "8980dfd9b448b4569195d992b48de27cfae3cc7f80e6463ffe2f392b752f0eb6"
 }
