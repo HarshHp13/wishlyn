@@ -41,7 +41,8 @@ export async function saveMerchantProduct(actorId: string, value: unknown, id?: 
     const creationHash = createHash('sha256').update(JSON.stringify(input)).digest('hex');
     if (!id) {
       await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [`merchant-create:${creationKey}`]);
-      const prior = await client.query<{ id: string; creation_hash: string }>('SELECT id,creation_hash FROM products WHERE creation_key=$1', [creationKey]);
+      // Freeze the cached aggregate as well: a creation retry may race a later edit.
+      const prior = await client.query<{ id: string; creation_hash: string }>('SELECT id,creation_hash FROM products WHERE creation_key=$1 FOR SHARE', [creationKey]);
       if (prior.rows[0]) {
         if (prior.rows[0].creation_hash !== creationHash) throw new ApiError(409, 'save_reference_changed', 'This new product was already saved with different details. Reload the catalogue to edit it.');
         return detail(client, prior.rows[0].id);

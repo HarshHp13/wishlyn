@@ -30,9 +30,9 @@ Migration `004-merchant.sql` adds product status/revision/fact confirmation/upda
 
 | Check | Result / scope |
 | --- | --- |
-| `MERCHANT_TEST_DATABASE_URL=... npm exec tsx -- --test tests/merchant/merchant.test.ts` | 15 passing, zero skips. Uses unique disposable PostgreSQL databases; covers transaction rollback, duplicate creation, cross-product IDs, stale edits, reserved stock, payment versus stale form, archive/quote serialization, consistent snapshots, active offer pricing, bounded search and route authorization/validation. |
+| `MERCHANT_TEST_DATABASE_URL=... npm exec tsx -- --test tests/merchant/merchant.test.ts` | 16 passing, zero skips. Uses unique disposable PostgreSQL databases; covers transaction rollback, duplicate creation, cross-product IDs, stale edits, reserved stock, payment versus stale form, archive/quote serialization, consistent snapshots, active offer pricing, bounded search and route authorization/validation. |
 | W4 scoped ESLint | Passed without errors or warnings. |
-| `npm run build` | Production build and TypeScript passed without a store database. |
+| `npm run build` | Initial head `c37f721` production build passed without a store database. After the review fix, affected lint and TypeScript pass locally; the new head uses the hosted build gate. |
 | Production browser fixture | Create/edit/replenish/publish/archive controls, stable product link, stock history, retained form/uploads through auth refresh and upload/save failures. APIs and media are intercepted synthetic fixtures; these checks do not claim provider uploads or live merchant writes. |
 | Responsive verification | 320, 390, 768 and 1440 CSS pixels, and separately doubled computed text at 320px; geometry and screenshots recorded in the browser evidence. |
 
@@ -67,3 +67,7 @@ playwright-cli -s=wishlyn-merchant-check close
 - Archive excludes new quotes and browsing but preserves previously saved purchase references; it does not cancel already reserved purchases. Discontinue a variant through its active flag, without deleting its inventory or order references.
 - After real orders/stock events exist, preserve those records and forward-repair. Do not drop the new tables or restore the former insecure/destructive admin routes as a rollback.
 - `/admin/support` depends on W5. Final shared CI, all-package tests and the complete integrated review remain W6. This document records implementation evidence; both independent reviewers still must approve the exact PR head/base before merge.
+
+## Review correction R2-W4-01
+
+Reviewer 2 reproduced a duplicate-create retry returning an old product title/revision with newly edited variant pricing. The creation-cache read now takes a product share lock before reading detail, retaining the established product-to-variant lock order and creation-hash conflict behavior. A real PostgreSQL regression delays result delivery between detail reads while starting a normal edit; it verifies that the edit waits, the retry returns the complete original revision, the edit then returns the complete new revision, and product/initial-stock effects still occur once. The revised merchant suite passes 16/16 with no skips, with affected ESLint and TypeScript checks passing. Both reviewers must approve the revised exact head; the previous approval does not carry forward.

@@ -81,6 +81,48 @@ describe('merchant PostgreSQL invariants', { skip: !baseUrl }, () => {
     assert.equal((await query('SELECT * FROM merchant_stock_events')).rowCount, 1);
     await assert.rejects(saveMerchantProduct('admin', { ...body, title: 'Changed retry' }), /already saved/);
   });
+  test('a cached create retry stays one coherent revision while a normal edit waits', async t => {
+    const body = input();
+    const product = await saveMerchantProduct('admin', body);
+    const update = edit(product); update.title = 'Edited fixture title'; update.variants[0].price = 399;
+    let observed = false, notify = () => {}, release = () => {};
+    const readProduct = new Promise<void>(resolve => { notify = resolve; });
+    const resume = new Promise<void>(resolve => { release = resolve; });
+    type QueryCallback = (error: Error | null, result: pg.QueryResult) => void;
+    type Execute = (this: pg.Client, statement: string, values?: unknown[] | QueryCallback, callback?: QueryCallback) => Promise<pg.QueryResult> | void;
+    const execute = pg.Client.prototype.query as unknown as Execute;
+    // All SQL remains real PostgreSQL; delay only delivery between the detail reads.
+    t.mock.method(pg.Client.prototype, 'query', function(this: pg.Client, statement: string, values?: unknown[] | QueryCallback, callback?: QueryCallback) {
+      // Pool.query uses callbacks; retain that driver contract unchanged.
+      if (callback || typeof values === 'function') return execute.call(this, statement, values, callback);
+      const pending = execute.call(this, statement, values) as Promise<pg.QueryResult>;
+      return pending.then(async result => {
+        if (!observed && statement === 'SELECT * FROM products WHERE id=$1' && values?.[0] === product.id) {
+          observed = true; notify(); await resume;
+        }
+        return result;
+      });
+    });
+    const retry = saveMerchantProduct('admin', body);
+    let editing: Promise<MerchantProduct> | undefined;
+    try {
+      await readProduct;
+      editing = saveMerchantProduct('admin', update, product.id);
+      let waiting = false;
+      for (let i = 0; i < 50; i++) {
+        const rows = await query("SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query='SELECT * FROM products WHERE id=$1 FOR UPDATE'");
+        if (rows.rowCount) { waiting = true; break; }
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      release();
+      const retried = await retry, edited = await editing;
+      assert.equal(waiting, true);
+      assert.deepEqual([retried.title, retried.revision, retried.variants[0].price], [product.title, 1, 299.5]);
+      assert.deepEqual([edited.title, edited.revision, edited.variants[0].price], ['Edited fixture title', 2, 399]);
+      assert.equal((await query('SELECT * FROM products')).rowCount, 1);
+      assert.equal((await query('SELECT * FROM merchant_stock_events')).rowCount, 1);
+    } finally { release(); await Promise.allSettled([retry, ...(editing ? [editing] : [])]); }
+  });
   test('variant and stock-history write failures roll back the complete product aggregate', async () => {
     await query("CREATE FUNCTION reject_merchant_history() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected'; END $$; CREATE TRIGGER reject_history BEFORE INSERT ON merchant_stock_events FOR EACH ROW EXECUTE FUNCTION reject_merchant_history()");
     await assert.rejects(saveMerchantProduct('admin', input()));
