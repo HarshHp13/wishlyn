@@ -17,6 +17,9 @@ const source = ts.transpileModule(
   },
 ).outputText;
 const wait = () => new Promise((resolve) => setImmediate(resolve));
+const compile = path => ts.transpileModule(readFileSync(new URL(path, import.meta.url), "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText;
 const account = (id) => ({
   status: "authenticated",
   user: { id, email: `${id}@fixture.invalid`, role: "customer" },
@@ -35,23 +38,33 @@ function fixture(initial = account("a"), storageDenied = false) {
     }),
     subscribe: () => () => {},
     mutate: async () => {},
+    ready: async () => browser.getSnapshot(),
+    acknowledgeGuestTransfer: async () => {},
   };
+  const authClient = {
+    getAuthState: () => auth,
+    subscribeAuth: fn => { listeners.add(fn); return () => listeners.delete(fn); },
+    refreshAuthSession: async () => auth.user,
+  };
+  const client = {};
+  const runtime = {
+    window: { addEventListener: () => {} },
+    AbortSignal, AbortController, queueMicrotask, setTimeout, clearTimeout,
+    fetch: (_url, init) => new Promise(resolve => pending.push({ init, resolve })),
+  };
+  vm.runInNewContext(compile("../../src/lib/account/client.ts"), {
+    ...runtime, exports: client, require: () => authClient,
+  });
   vm.runInNewContext(source, {
     exports: exported,
     require: (name) =>
       name === "../authClient"
-        ? {
-            getAuthState: () => auth,
-            subscribeAuth: (fn) => {
-              listeners.add(fn);
-              return () => listeners.delete(fn);
-            },
-            refreshAuthSession: async () => auth.user,
-          }
+        ? authClient
         : name === "../shopping-store"
           ? { wishlistStore: browser }
+          : name === "./client" ? client
           : shoppingState,
-    window: { addEventListener: () => {} },
+    ...runtime,
     localStorage: {
       getItem: () => {
         if (storageDenied) throw new Error("Storage blocked");
@@ -73,7 +86,7 @@ function fixture(initial = account("a"), storageDenied = false) {
   store.subscribe(() => {});
   const respond = (index, id, items, browserImported = true) =>
     pending[index].resolve(
-      Response.json({ ownerId: id, items, version: 1, browserImported }),
+      Response.json({ viewerId: id, ownerId: id, items, version: 1, browserImported }),
     );
   return {
     store,
@@ -139,4 +152,50 @@ test("storage-denied browser still loads and saves authenticated wishlist throug
   env.respond(2, "a", ["product"]);
   await wait();
   assert.deepEqual(Array.from(env.store.getSnapshot().items), ["product"]);
+});
+test("two accepted wishlist changes survive a same-owner verification refresh", async () => {
+  const env = fixture();
+  await wait(); env.respond(0, "a", []); await wait();
+  env.store.mutate("add", "first-product");
+  env.store.mutate("add", "second-product");
+  await wait();
+  assert.equal(env.pending[1].init.headers["X-Wishlyn-Account-ID"], "a");
+  env.auth({ status: "loading", user: null });
+  env.auth(account("a"));
+  env.respond(1, "a", ["first-product"]); await wait();
+  assert.equal(JSON.parse(env.pending[2].init.body).productId, "second-product");
+  env.respond(2, "a", ["first-product", "second-product"]); await wait();
+  env.respond(3, "a", ["first-product", "second-product"]); await wait();
+  assert.deepEqual(Array.from(env.store.getSnapshot().items), ["first-product", "second-product"]);
+  assert.equal(env.store.getSnapshot().status, "ready");
+});
+test("ambiguous refresh pauses pending changes and resolves toggles to retry-safe desired state", async () => {
+  const env = fixture();
+  await wait(); env.respond(0, "a", []); await wait();
+  env.store.mutate("toggle", "first-product");
+  env.store.mutate("toggle", "second-product");
+  await wait();
+  env.auth({ status: "loading", user: null });
+  env.respond(1, "a", ["first-product"]); await wait();
+  assert.equal(env.pending.length, 2);
+  assert.equal(env.store.getSnapshot().items.length, 0);
+  env.auth(account("a")); await wait();
+  assert.deepEqual(JSON.parse(env.pending[2].init.body), { action: "add", productId: "first-product" });
+  env.respond(2, "a", ["first-product"]); await wait();
+  assert.deepEqual(JSON.parse(env.pending[3].init.body), { action: "add", productId: "second-product" });
+  env.respond(3, "a", ["first-product", "second-product"]); await wait();
+  env.respond(4, "a", ["first-product", "second-product"]); await wait();
+  assert.deepEqual(Array.from(env.store.getSnapshot().items), ["first-product", "second-product"]);
+});
+test("queued A intent is discarded on a verified B switch and never dispatched with B authority", async () => {
+  const env = fixture();
+  await wait(); env.respond(0, "a", []); await wait();
+  env.store.mutate("add", "first-product"); env.store.mutate("add", "second-product");
+  await wait(); env.auth(account("b"));
+  env.respond(1, "a", ["first-product"]); await wait();
+  assert.equal(env.pending.length, 3);
+  assert.equal(env.pending[2].init.method, "GET");
+  assert.equal(env.pending[2].init.headers["X-Wishlyn-Account-ID"], "b");
+  env.respond(2, "b", ["b-product"]); await wait();
+  assert.deepEqual(Array.from(env.store.getSnapshot().items), ["b-product"]);
 });

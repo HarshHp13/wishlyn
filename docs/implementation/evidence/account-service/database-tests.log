@@ -1,28 +1,31 @@
 npm notice run wishlyn@0.1.0 npx
 npm notice run 'tsx' --test tests/account-service/database.test.ts
 ▶ account/service PostgreSQL ownership and recovery
-  ✔ current migrations rerun and account profile persists without revoking its session (535.17622ms)
-  ✔ stale concurrent profile edits preserve exactly one revision (479.779012ms)
-  ✔ address create/read/edit/delete is owned and optimistic versions prevent stale overwrite (551.952746ms)
-  ✔ invalid addresses and cross-origin or anonymous writes do not persist (484.232779ms)
-  ✔ wishlist import is once-only, atomic concurrent operations converge and another account stays isolated (474.618229ms)
-  ✔ password change requires current credential, rejects UTF-8 truncation and revokes all sessions (2835.328918ms)
+  ✔ current migrations rerun and account profile persists without revoking its session (364.004141ms)
+  ✔ intended-account preconditions reject stale cookie reads and every new owned write before persistence (625.480016ms)
+  ✔ explicit guest transfer is idempotent independently of legacy import and never resurrects a later removal (345.177187ms)
+  ✔ stale concurrent profile edits preserve exactly one revision (316.782048ms)
+  ✔ address create/read/edit/delete is owned and optimistic versions prevent stale overwrite (337.192526ms)
+  ✔ invalid addresses and cross-origin or anonymous writes do not persist (315.425397ms)
+  ✔ wishlist import is once-only, atomic concurrent operations converge and another account stays isolated (361.55137ms)
+  ✔ password change requires current credential, rejects UTF-8 truncation and revokes all sessions (1878.999022ms)
 [API] Request could not be completed.
-  ✔ password transaction rollback leaves old password and sessions usable (2159.396913ms)
-  ✔ disabled recovery reports unavailable and never returns a token (433.216634ms)
-  ✔ configured recovery hashes tokens, makes them single-use and invalidates old sessions (1590.375856ms)
-  ✔ failed delivery invalidates token and unknown account has same acceptance response (878.601504ms)
-  ✔ expired and password-version-mismatched recovery tokens are rejected (1600.944735ms)
-  ✔ support requests bind owned durable orders, retry once, and never alter payment/fulfillment (477.883208ms)
-  ✔ staff replies have history, customer replies reopen resolved requests and stale updates fail (527.338697ms)
+  ✔ password transaction rollback leaves old password and sessions usable (1335.706967ms)
+  ✔ disabled recovery reports unavailable and never returns a token (298.066803ms)
+  ✔ configured recovery hashes tokens, makes them single-use and invalidates old sessions (1096.799907ms)
+  ✔ failed delivery invalidates token and unknown account has same acceptance response (570.727271ms)
+  ✔ expired and password-version-mismatched recovery tokens are rejected (1081.657288ms)
+  ✔ support requests bind owned durable orders, retry once, and never alter payment/fulfillment (327.891647ms)
+  ✔ staff replies have history, customer replies reopen resolved requests and stale updates fail (352.066796ms)
+  ✔ concurrent replies and detail reads preserve a coherent version, status and event history (409.771155ms)
 [API] Request could not be completed.
-  ✔ support event failure rolls back request creation and permits same-key retry (414.195312ms)
-✔ account/service PostgreSQL ownership and recovery (13789.109076ms)
-ℹ tests 14
+  ✔ support event failure rolls back request creation and permits same-key retry (350.125239ms)
+✔ account/service PostgreSQL ownership and recovery (10563.758184ms)
+ℹ tests 17
 ℹ suites 1
-ℹ pass 14
+ℹ pass 17
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 14376.311861
+ℹ duration_ms 10837.787461

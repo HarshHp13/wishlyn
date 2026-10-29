@@ -112,7 +112,7 @@ function SupportContent({
       request?: SupportRequest;
       requests?: SupportRequest[];
       nextOffset?: number | null;
-    }>(endpoint, undefined, controller.signal)
+    }>(endpoint, owner || null, undefined, controller.signal)
       .then((data) => {
         if (controller.signal.aborted) return;
         setDetail(data.request || null);
@@ -131,7 +131,7 @@ function SupportContent({
         }
       });
     return () => controller.abort();
-  }, [key, endpoint, revision]);
+  }, [key, endpoint, owner, revision]);
   const current = () =>
     getAuthState().status === "authenticated" &&
     getAuthState().user?.id === owner;
@@ -142,6 +142,7 @@ function SupportContent({
       if (detail) {
         const data = await accountRequest<{ request: SupportRequest }>(
           endpoint,
+          owner || null,
           {
             message: reply,
             version: detail.version,
@@ -157,6 +158,7 @@ function SupportContent({
         setRequestKey(token);
         const data = await accountRequest<{ request: SupportRequest }>(
           "/api/support",
+          owner || null,
           { ...form, requestKey: token },
         );
         if (current()) router.push(`/support/${data.request.id}`);
@@ -251,7 +253,7 @@ function SupportContent({
               {error && (
                 <div role="alert" className={styles.error}>
                   {error}{" "}
-                  <button onClick={() => setRevision((v) => v + 1)}>
+                  <button onClick={() => { void refreshAuthSession(true).then(() => setRevision(v => v + 1)).catch(() => undefined); }}>
                     Reload requests
                   </button>
                 </div>

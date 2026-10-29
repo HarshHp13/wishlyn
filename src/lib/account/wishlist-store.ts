@@ -1,7 +1,8 @@
 "use client";
 import { getAuthState, refreshAuthSession, subscribeAuth } from "../authClient";
 import { wishlistStore as browserStore } from "../shopping-store";
-import { decodeWishlist, shoppingKey, validId } from "../shopping-state";
+import { validId } from "../shopping-state";
+import { accountRequest } from "./client";
 import type { SavedWishlist } from "./types";
 
 type Snapshot = {
@@ -10,138 +11,140 @@ type Snapshot = {
   notice: string;
   accountId: string | null;
 };
-const initial: Snapshot = {
-  items: [],
-  status: "loading",
-  notice: "",
-  accountId: null,
-};
-let snapshot = initial,
-  generation = 0,
-  initialized = false;
-let controller: AbortController | null = null,
-  queue = Promise.resolve();
+type Intent = { ownerId: string; epoch: number; action: "add" | "remove"; productId: string };
+const initial: Snapshot = { items: [], status: "loading", notice: "", accountId: null };
+let snapshot = initial, generation = 0, ownerEpoch = 0, initialized = false;
+let lastOwner: string | null | undefined;
+let controller: AbortController | null = null;
+let intents: Intent[] = [], draining: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 const publish = (next: Snapshot) => {
   snapshot = next;
-  listeners.forEach((listener) => listener());
+  listeners.forEach(listener => listener());
 };
 const owner = () => {
   const auth = getAuthState();
-  return auth.status === "authenticated"
-    ? auth.user?.id
-    : auth.status === "guest"
-      ? null
-      : undefined;
+  return auth.status === "authenticated" ? auth.user?.id : auth.status === "guest" ? null : undefined;
 };
-async function request(
-  body?: unknown,
-  signal?: AbortSignal,
-): Promise<SavedWishlist> {
-  const response = await fetch("/api/account/wishlist", {
-    method: body ? "POST" : "GET",
-    body: body ? JSON.stringify(body) : undefined,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    credentials: "same-origin",
-    cache: "no-store",
-    signal: signal
-      ? AbortSignal.any([signal, AbortSignal.timeout(10000)])
-      : AbortSignal.timeout(10000),
+function observeOwner() {
+  const id = owner();
+  // Verification refreshes hide private data, but do not invalidate same-owner intent.
+  if (id !== undefined && id !== lastOwner) {
+    lastOwner = id;
+    ownerEpoch++;
+    intents = [];
+  }
+}
+function verified(id: string, epoch: number): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const signal = AbortSignal.timeout(15000);
+    const cleanup = () => { unsubscribe(); signal.removeEventListener("abort", abort); };
+    const abort = () => { cleanup(); reject(new Error("Verify your account and retry your saved-piece change.")); };
+    const check = () => {
+      const current = owner();
+      if (epoch !== ownerEpoch || (current !== undefined && current !== id)) { cleanup(); resolve(false); }
+      else if (current === id) { cleanup(); resolve(true); }
+    };
+    const unsubscribe = subscribeAuth(check);
+    signal.addEventListener("abort", abort, { once: true });
+    check();
   });
-  const data = await response.json();
-  if (!response.ok)
-    throw new Error(
-      typeof data?.error === "string"
-        ? data.error
-        : "Saved pieces could not be loaded.",
-    );
-  if (
-    typeof data.ownerId !== "string" ||
-    !Array.isArray(data.items) ||
-    data.items.length > 50 ||
-    !data.items.every(validId)
-  )
+}
+async function request(id: string, body?: unknown, signal?: AbortSignal): Promise<SavedWishlist> {
+  const data = await accountRequest<SavedWishlist>("/api/account/wishlist", id, body, signal);
+  if (!Array.isArray(data.items) || data.items.length > 50 || !data.items.every(validId))
     throw new Error("Saved pieces could not be verified.");
   return data;
 }
+function announce(id: string) {
+  try { localStorage.setItem("wishlyn-server-wishlist-change", `${id}:${Date.now()}:${Math.random()}`); }
+  catch { /* Server persistence is independent of storage. */ }
+}
+function drain(): Promise<void> {
+  if (draining) return draining;
+  const run = async () => {
+    while (intents.length) {
+      const intent = intents[0], { ownerId: id, epoch } = intent;
+      try {
+        if (!(await verified(id, epoch))) {
+          if (intents[0] === intent) intents.shift();
+          continue;
+        }
+        const data = await request(id, { action: intent.action, productId: intent.productId });
+        if (epoch !== ownerEpoch || owner() !== id) continue;
+        if (intents[0] === intent) intents.shift();
+        // A refresh read waits for the whole queue and keeps controls hidden
+        // until its final authoritative snapshot, avoiding read/write races.
+        if (snapshot.status !== "loading")
+          publish({ items: data.items, status: "ready", notice: "", accountId: id });
+        announce(id);
+      } catch (error) {
+        if (epoch !== ownerEpoch) continue;
+        if (owner() === undefined) {
+          // The outcome may be ambiguous. Replaying add/remove is safe; toggles
+          // were resolved to a deterministic desired state when accepted.
+          try { if (await verified(id, epoch)) continue; } catch { /* Expose retry below. */ }
+        }
+        if (epoch === ownerEpoch && (owner() === id || owner() === undefined))
+          publish({ ...initial, ...(owner() === id ? { items: snapshot.items, accountId: id } : {}), status: "error", notice: error instanceof Error ? error.message : "This change could not be saved. Retry." });
+        break;
+      }
+    }
+  };
+  draining = run().finally(() => { draining = null; });
+  return draining;
+}
 async function load() {
-  const id = owner(),
-    revision = ++generation;
+  observeOwner();
+  const id = owner(), revision = ++generation, epoch = ownerEpoch;
   controller?.abort();
   controller = null;
   if (id === undefined) {
-    publish({
-      ...initial,
-      status: getAuthState().status === "error" ? "error" : "loading",
-      notice:
-        getAuthState().status === "error"
-          ? "Verify your account to load saved pieces."
-          : "",
-    });
+    publish({ ...initial, status: getAuthState().status === "error" ? "error" : "loading", notice: getAuthState().status === "error" ? "Verify your account to load saved pieces." : "" });
     return;
   }
   if (id === null) {
-    const local = browserStore.getSnapshot();
-    publish({ ...local, accountId: null });
+    publish({ ...browserStore.getSnapshot(), accountId: null });
     return;
   }
   publish({ ...initial, accountId: id });
   const active = new AbortController();
   controller = active;
+  const current = () => revision === generation && epoch === ownerEpoch && owner() === id;
   try {
-    await queue;
-    if (revision !== generation || owner() !== id) return;
-    let data = await request(undefined, active.signal);
-    if (revision !== generation || owner() !== id || data.ownerId !== id)
-      return;
+    // Browser migration owns the Web Lock. Never consume an empty legacy list
+    // while that migration is still waiting to move explicit guest selections.
+    const browser = await browserStore.ready(id, AbortSignal.any([active.signal, AbortSignal.timeout(15000)]));
+    await drain();
+    if (!current()) return;
+    if (intents.length) throw new Error(snapshot.notice || "Your saved-piece change is pending. Retry.");
+    let data = await request(id, undefined, active.signal);
+    if (!current()) return;
     if (!data.browserImported) {
-      let items: string[] = [];
-      try {
-        items = decodeWishlist(
-          localStorage.getItem(shoppingKey("wishlist", id)),
-        ).items;
-      } catch {
-        /* Server saving remains available without browser storage. */
-      }
-      data = await request(
-        { action: "import", productIds: items },
-        active.signal,
-      );
-      if (revision !== generation || owner() !== id || data.ownerId !== id)
-        return;
+      data = await request(id, { action: "import", productIds: browser.items }, active.signal);
+      if (!current()) return;
+    }
+    for (const transfer of browser.guestTransfers || []) {
+      data = await request(id, { action: "transfer", transferId: transfer.id, productIds: transfer.items }, active.signal);
+      if (!current()) return;
+      await browserStore.acknowledgeGuestTransfer(id, transfer.id);
+      if (!current()) return;
+      announce(id);
     }
     publish({ items: data.items, status: "ready", accountId: id, notice: "" });
   } catch (error) {
-    if (revision === generation && owner() === id)
-      publish({
-        ...initial,
-        accountId: id,
-        status: "error",
-        notice:
-          error instanceof Error
-            ? error.message
-            : "Saved pieces could not be loaded. Retry.",
-      });
+    if (current()) publish({ ...initial, accountId: id, status: "error", notice: error instanceof Error ? error.message : "Saved pieces could not be loaded. Retry." });
   }
 }
 function start() {
   if (initialized || typeof window === "undefined") return;
   initialized = true;
   browserStore.subscribe(() => {
-    if (owner() === null) {
-      const local = browserStore.getSnapshot();
-      publish({ ...local, accountId: null });
-    }
+    if (owner() === null) publish({ ...browserStore.getSnapshot(), accountId: null });
   });
-  subscribeAuth(() => {
-    void load();
-  });
-  window.addEventListener("focus", () => {
-    if (owner()) void load();
-  });
-  window.addEventListener("storage", (event) => {
-    if (event.key === "wishlyn-server-wishlist-change" && owner()) void load();
-  });
+  subscribeAuth(() => { void load(); });
+  window.addEventListener("focus", () => { if (owner()) void load(); });
+  window.addEventListener("storage", event => { if (event.key === "wishlyn-server-wishlist-change" && owner()) void load(); });
   void refreshAuthSession().catch(() => undefined);
   void load();
 }
@@ -149,61 +152,23 @@ export const savedWishlistStore = {
   subscribe(listener: () => void) {
     listeners.add(listener);
     start();
-    return () => {
-      listeners.delete(listener);
-    };
+    return () => { listeners.delete(listener); };
   },
   getSnapshot: () => snapshot,
   getServerSnapshot: () => initial,
-  retry: async () => {
-    await refreshAuthSession();
-    await load();
-  },
+  retry: async () => { await refreshAuthSession(); await load(); },
   mutate(action: "add" | "remove" | "toggle", productId: string) {
-    const id = owner(),
-      revision = generation;
-    if (!validId(productId) || id === undefined || snapshot.status !== "ready")
-      return;
+    const id = owner();
+    if (!validId(productId) || id === undefined || snapshot.status !== "ready") return;
     if (id === null) {
-      void browserStore.mutate((items) =>
-        action === "remove" ||
-        (action === "toggle" && items.includes(productId))
-          ? items.filter((item) => item !== productId)
-          : [...new Set([...items, productId])].slice(0, 50),
-      );
+      void browserStore.mutate(items => action === "remove" || (action === "toggle" && items.includes(productId)) ? items.filter(item => item !== productId) : [...new Set([...items, productId])].slice(0, 50));
       return;
     }
-    queue = queue.then(async () => {
-      if (owner() !== id || revision !== generation) return;
-      try {
-        const data = await request({ action, productId });
-        if (owner() !== id || revision !== generation || data.ownerId !== id)
-          return;
-        publish({
-          items: data.items,
-          status: "ready",
-          notice: "",
-          accountId: id,
-        });
-        try {
-          localStorage.setItem(
-            "wishlyn-server-wishlist-change",
-            `${id}:${Date.now()}:${Math.random()}`,
-          );
-        } catch {
-          /* Server persistence is independent of storage. */
-        }
-      } catch (error) {
-        if (owner() === id && revision === generation)
-          publish({
-            ...snapshot,
-            notice:
-              error instanceof Error
-                ? error.message
-                : "This change could not be saved. Retry.",
-            status: "error",
-          });
-      }
-    });
+    const projected = new Set(snapshot.items);
+    for (const intent of intents) if (intent.epoch === ownerEpoch && intent.ownerId === id) {
+      if (intent.action === "remove") projected.delete(intent.productId); else projected.add(intent.productId);
+    }
+    intents.push({ ownerId: id, epoch: ownerEpoch, productId, action: action === "toggle" ? projected.has(productId) ? "remove" : "add" : action });
+    void drain();
   },
 };

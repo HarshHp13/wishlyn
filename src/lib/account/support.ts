@@ -47,6 +47,7 @@ export async function supportList(
     )
   ).rows;
   return {
+    viewerId: user.id,
     ownerId: user.id,
     requests: rows.slice(0, 20).map(mapped),
     nextOffset: rows.length > 20 ? offset + 20 : null,

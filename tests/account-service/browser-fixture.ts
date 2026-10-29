@@ -31,6 +31,7 @@ async function main() {
   await query(
     "INSERT INTO product_variants(id,product_id,metal_type,purity,price,stock) VALUES('browser-variant','browser-product','Fixture','Plated',199,50) ON CONFLICT DO NOTHING",
   );
+  await query("INSERT INTO account_wishlists(owner_id,browser_imported) VALUES('browser-a',true)");
   const order = await createPurchase(
     { id: "browser-a", email: "browser-a@example.test" },
     {

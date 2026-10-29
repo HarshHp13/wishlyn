@@ -1,13 +1,31 @@
 npm notice run wishlyn@0.1.0 npx
-npm notice run 'tsx' --test tests/account-service/wishlist-client.test.mjs
-✔ stale account A load cannot overwrite verified account B even when fetch ignores cancellation (71.58894ms)
-✔ uncertain auth hides server data and a delayed mutation does not return after an A→B→A cycle (6.367073ms)
-✔ storage-denied browser still loads and saves authenticated wishlist through the server (7.643654ms)
-ℹ tests 3
+npm notice run 'tsx' --test tests/account-service/guest-transfer.test.mjs tests/account-service/private-client.test.mjs tests/account-service/wishlist-client.test.mjs tests/storefront/store.test.mjs
+✔ explicit guest picks transfer to an already-imported account without resurrecting its old browser list (218.338628ms)
+✔ first import waits for the actual browser migration Web Lock (54.252299ms)
+✔ a failed guest transfer retains its account-bound key and retries successfully (47.377032ms)
+✔ an A guest transfer waiting on migration never moves to B and can resume for A (46.182222ms)
+✔ a replay after failed browser acknowledgement cannot resurrect a later server removal (31.735333ms)
+✔ storage-denied guest picks survive sign-in in memory and save through the private API (34.956043ms)
+✔ captured account precondition rejects a locally changed account before sending a stale form (91.086569ms)
+✔ private responses validate viewer and customer ownership separately; staff can view another customer (16.871446ms)
+✔ private client emits the captured account header and requires explicit identity on private calls (44.13718ms)
+✔ an A→B→A cycle cannot accept an older private response (11.974285ms)
+✔ actual support component never renders a mismatched private response (83.560781ms)
+✔ stale account A load cannot overwrite verified account B even when fetch ignores cancellation (59.773079ms)
+✔ uncertain auth hides server data and a delayed mutation does not return after an A→B→A cycle (16.821322ms)
+✔ storage-denied browser still loads and saves authenticated wishlist through the server (12.164082ms)
+✔ two accepted wishlist changes survive a same-owner verification refresh (13.330189ms)
+✔ ambiguous refresh pauses pending changes and resolves toggles to retry-safe desired state (11.337974ms)
+✔ queued A intent is discarded on a verified B switch and never dispatched with B authority (8.878084ms)
+✔ verified guest migration occurs once; empty account does not resurrect universal records (11.828961ms)
+✔ focus refresh hides private data without clearing it; logout then another account is isolated (2.641316ms)
+✔ concurrent tabs serialize mutations and converge; removal is not overwritten (3.63335ms)
+✔ storage write failure preserves a usable in-memory bag across subsequent changes (2.000654ms)
+ℹ tests 21
 ℹ suites 0
-ℹ pass 3
+ℹ pass 21
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 2091.23181
+ℹ duration_ms 1251.89302

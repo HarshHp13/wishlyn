@@ -12,6 +12,7 @@ export interface SavedAddress extends ShippingAddress {
   label: string;
 }
 export interface SavedWishlist {
+  viewerId: string;
   ownerId: string;
   items: string[];
   version: number;

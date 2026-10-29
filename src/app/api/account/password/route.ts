@@ -15,6 +15,7 @@ export async function POST(request: Request) {
     });
     await changePassword(request, user, requireObject(await readJson(request)));
     const response = NextResponse.json({
+      viewerId: user.id,
       message: "Password changed. Sign in again on all devices.",
     });
     clearSessionCookie(response);

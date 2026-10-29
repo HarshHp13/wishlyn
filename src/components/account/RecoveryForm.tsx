@@ -57,6 +57,7 @@ export default function RecoveryForm({ reset = false }: { reset?: boolean }) {
                   reset
                     ? "/api/account/reset-password"
                     : "/api/account/recovery",
+                  null,
                   reset ? { token, newPassword: password } : { email },
                 )
                   .then(async (data) => {

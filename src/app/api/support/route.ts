@@ -19,6 +19,7 @@ export async function POST(request: Request) {
     const user = await accountGuard(request, "support-customer");
     return NextResponse.json(
       {
+        viewerId: user.id,
         request: await createSupport(
           request,
           user,

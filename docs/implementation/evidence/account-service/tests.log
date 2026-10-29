@@ -1,32 +1,48 @@
 npm notice run wishlyn@0.1.0 npx
-npm notice run 'tsx' --test tests/account-service/database.test.ts tests/account-service/wishlist-client.test.mjs
+npm notice run 'tsx' --test tests/account-service/database.test.ts tests/account-service/guest-transfer.test.mjs tests/account-service/private-client.test.mjs tests/account-service/wishlist-client.test.mjs
 ▶ account/service PostgreSQL ownership and recovery
-  ✔ current migrations rerun and account profile persists without revoking its session (387.403937ms)
-  ✔ stale concurrent profile edits preserve exactly one revision (328.361655ms)
-  ✔ address create/read/edit/delete is owned and optimistic versions prevent stale overwrite (330.323268ms)
-  ✔ invalid addresses and cross-origin or anonymous writes do not persist (313.446306ms)
-  ✔ wishlist import is once-only, atomic concurrent operations converge and another account stays isolated (343.230151ms)
-  ✔ password change requires current credential, rejects UTF-8 truncation and revokes all sessions (1913.054278ms)
+  ✔ current migrations rerun and account profile persists without revoking its session (477.063441ms)
+  ✔ intended-account preconditions reject stale cookie reads and every new owned write before persistence (762.480672ms)
+  ✔ explicit guest transfer is idempotent independently of legacy import and never resurrects a later removal (347.128285ms)
+  ✔ stale concurrent profile edits preserve exactly one revision (308.822407ms)
+  ✔ address create/read/edit/delete is owned and optimistic versions prevent stale overwrite (335.73206ms)
+  ✔ invalid addresses and cross-origin or anonymous writes do not persist (315.207615ms)
+  ✔ wishlist import is once-only, atomic concurrent operations converge and another account stays isolated (344.913507ms)
+  ✔ password change requires current credential, rejects UTF-8 truncation and revokes all sessions (1949.64894ms)
 [API] Request could not be completed.
-  ✔ password transaction rollback leaves old password and sessions usable (1392.442403ms)
-  ✔ disabled recovery reports unavailable and never returns a token (307.947657ms)
-  ✔ configured recovery hashes tokens, makes them single-use and invalidates old sessions (1132.850151ms)
-  ✔ failed delivery invalidates token and unknown account has same acceptance response (585.688776ms)
-  ✔ expired and password-version-mismatched recovery tokens are rejected (1128.105115ms)
-  ✔ support requests bind owned durable orders, retry once, and never alter payment/fulfillment (344.594951ms)
-  ✔ staff replies have history, customer replies reopen resolved requests and stale updates fail (339.785013ms)
-  ✔ concurrent replies and detail reads preserve a coherent version, status and event history (397.749962ms)
+  ✔ password transaction rollback leaves old password and sessions usable (1425.572073ms)
+  ✔ disabled recovery reports unavailable and never returns a token (312.10491ms)
+  ✔ configured recovery hashes tokens, makes them single-use and invalidates old sessions (1107.516156ms)
+  ✔ failed delivery invalidates token and unknown account has same acceptance response (582.366112ms)
+  ✔ expired and password-version-mismatched recovery tokens are rejected (1183.925953ms)
+  ✔ support requests bind owned durable orders, retry once, and never alter payment/fulfillment (351.061643ms)
+  ✔ staff replies have history, customer replies reopen resolved requests and stale updates fail (361.994195ms)
+  ✔ concurrent replies and detail reads preserve a coherent version, status and event history (414.756964ms)
 [API] Request could not be completed.
-  ✔ support event failure rolls back request creation and permits same-key retry (335.522854ms)
-✔ account/service PostgreSQL ownership and recovery (9784.725877ms)
-✔ stale account A load cannot overwrite verified account B even when fetch ignores cancellation (31.257703ms)
-✔ uncertain auth hides server data and a delayed mutation does not return after an A→B→A cycle (2.923344ms)
-✔ storage-denied browser still loads and saves authenticated wishlist through the server (2.171801ms)
-ℹ tests 18
+  ✔ support event failure rolls back request creation and permits same-key retry (345.709902ms)
+✔ account/service PostgreSQL ownership and recovery (11162.585459ms)
+✔ explicit guest picks transfer to an already-imported account without resurrecting its old browser list (217.349971ms)
+✔ first import waits for the actual browser migration Web Lock (79.013789ms)
+✔ a failed guest transfer retains its account-bound key and retries successfully (55.498869ms)
+✔ an A guest transfer waiting on migration never moves to B and can resume for A (51.059386ms)
+✔ a replay after failed browser acknowledgement cannot resurrect a later server removal (30.411661ms)
+✔ storage-denied guest picks survive sign-in in memory and save through the private API (28.634921ms)
+✔ captured account precondition rejects a locally changed account before sending a stale form (89.140062ms)
+✔ private responses validate viewer and customer ownership separately; staff can view another customer (15.239966ms)
+✔ private client emits the captured account header and requires explicit identity on private calls (51.202144ms)
+✔ an A→B→A cycle cannot accept an older private response (13.659631ms)
+✔ actual support component never renders a mismatched private response (74.818923ms)
+✔ stale account A load cannot overwrite verified account B even when fetch ignores cancellation (59.213778ms)
+✔ uncertain auth hides server data and a delayed mutation does not return after an A→B→A cycle (18.188028ms)
+✔ storage-denied browser still loads and saves authenticated wishlist through the server (13.473007ms)
+✔ two accepted wishlist changes survive a same-owner verification refresh (14.964718ms)
+✔ ambiguous refresh pauses pending changes and resolves toggles to retry-safe desired state (12.150238ms)
+✔ queued A intent is discarded on a verified B switch and never dispatched with B authority (10.666213ms)
+ℹ tests 34
 ℹ suites 1
-ℹ pass 18
+ℹ pass 34
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 10046.236975
+ℹ duration_ms 11438.460615

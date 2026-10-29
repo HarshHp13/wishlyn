@@ -1,6 +1,8 @@
 {
   "provenance": "Local development server and actual disposable PostgreSQL; synthetic users/orders; remote requests blocked; no email/payment/provider action.",
   "addressPersisted": true,
+  "guestTransferSaved": true,
+  "staleCookieWriteBlocked": true,
   "failedPasswordRetained": true,
   "savedPieceVisible": true,
   "accountIsolated": true,

@@ -20,11 +20,28 @@ async (page) => {
       .getByRole("button", { name: "Save profile", exact: true })
       .waitFor();
   }
+  await page.goto(origin + "/product/browser-product");
+  await page.getByRole("button", { name: "Add to wishlist", exact: true }).click();
+  await page.getByRole("button", { name: "Remove from wishlist", exact: true }).waitFor();
+  const guestTransferResponse = page.waitForResponse(response => {
+    const request = response.request();
+    return response.url().endsWith("/api/account/wishlist") && request.method() === "POST" && request.postDataJSON()?.action === "transfer";
+  });
   await signIn("browser-a@example.test");
+  const guestTransferSaved = (await guestTransferResponse).status() === 200;
   await page.getByLabel("First name", { exact: true }).fill("Asha");
   await page.getByLabel("Last name", { exact: true }).fill("Fixture");
   await page.getByRole("button", { name: "Save profile", exact: true }).click();
   await page.getByText("Profile saved.", { exact: true }).waitFor();
+  await page.request.post(origin + "/api/auth/login", { headers: { origin }, data: { email: "browser-b@example.test", password: "Browser fixture password" } });
+  await page.getByLabel("First name", { exact: true }).fill("Stale A edit");
+  await page.getByRole("button", { name: "Save profile", exact: true }).click();
+  await page.getByText("Your account changed. Verify your account and retry this action.", { exact: false }).waitFor();
+  const bProfile = await (await page.request.get(origin + "/api/account/profile", { headers: { "X-Wishlyn-Account-ID": "browser-b" } })).json();
+  const staleCookieWriteBlocked = bProfile.profile.firstName === "";
+  await page.request.post(origin + "/api/auth/login", { headers: { origin }, data: { email: "browser-a@example.test", password: "Browser fixture password" } });
+  await page.getByRole("button", { name: "Reload account", exact: true }).click();
+  await page.getByLabel("First name", { exact: true }).fill("Asha");
   for (const [label, value] of [
     ["Address label", "Browser home"],
     ["Recipient first name", "Asha"],
@@ -65,13 +82,17 @@ async (page) => {
       ...document.querySelectorAll("main input,main select,main textarea"),
     ].filter((el) => !el.labels?.length).length,
   }));
-  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => {
+    document.activeElement?.blur();
+    window.scrollTo({ top: 0, behavior: "instant" });
+  });
+  await page.waitForFunction(() => window.scrollY === 0);
   await page.screenshot({
     path: "/tmp/wishlyn-w5-account-mobile.png",
     fullPage: true,
   });
   await page.request.post(origin + "/api/account/wishlist", {
-    headers: { origin },
+    headers: { origin, "X-Wishlyn-Account-ID": "browser-a" },
     data: { action: "add", productId: "browser-product" },
   });
   await page.goto(origin + "/wishlist");
@@ -106,7 +127,11 @@ async (page) => {
   await page
     .getByText("A synthetic customer follow-up.", { exact: true })
     .waitFor();
-  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => {
+    document.activeElement?.blur();
+    window.scrollTo({ top: 0, behavior: "instant" });
+  });
+  await page.waitForFunction(() => window.scrollY === 0);
   await page.screenshot({
     path: "/tmp/wishlyn-w5-support-mobile.png",
     fullPage: true,
@@ -120,7 +145,7 @@ async (page) => {
     (await page.getByLabel("Address label", { exact: true }).inputValue()) ===
       "";
   const requestIsolated =
-    (await page.request.get(origin + "/api" + requestPath)).status() === 404;
+    (await page.request.get(origin + "/api" + requestPath, { headers: { "X-Wishlyn-Account-ID": "browser-b" } })).status() === 404;
   await page.goto(origin + "/forgot-password");
   await page
     .getByLabel("Account email", { exact: true })
@@ -151,7 +176,11 @@ async (page) => {
     scrollWidth: document.documentElement.scrollWidth,
   }));
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => {
+    document.activeElement?.blur();
+    window.scrollTo({ top: 0, behavior: "instant" });
+  });
+  await page.waitForFunction(() => window.scrollY === 0);
   await page.screenshot({
     path: "/tmp/wishlyn-w5-support-desktop.png",
     fullPage: true,
@@ -160,6 +189,8 @@ async (page) => {
     provenance:
       "Local development server and actual disposable PostgreSQL; synthetic users/orders; remote requests blocked; no email/payment/provider action.",
     addressPersisted,
+    guestTransferSaved,
+    staleCookieWriteBlocked,
     failedPasswordRetained,
     savedPieceVisible: true,
     accountIsolated,

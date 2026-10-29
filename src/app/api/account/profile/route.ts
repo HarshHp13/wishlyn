@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   try {
     const user = await accountGuard(request, "account-profile");
     return NextResponse.json(
-      { profile: await getProfile(user) },
+      { viewerId: user.id, profile: await getProfile(user) },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     const user = await accountGuard(request, "account-profile");
     return NextResponse.json(
       {
+        viewerId: user.id,
         profile: await saveProfile(
           request,
           user,

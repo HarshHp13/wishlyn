@@ -7,7 +7,7 @@ export async function GET(request: Request, context: Context) {
   try {
     const user = await accountGuard(request, "support-admin", true);
     return NextResponse.json(
-      { request: await supportDetail(user, true, (await context.params).id) },
+      { viewerId: user.id, request: await supportDetail(user, true, (await context.params).id) },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
@@ -19,6 +19,7 @@ export async function POST(request: Request, context: Context) {
     const user = await accountGuard(request, "support-admin", true);
     return NextResponse.json(
       {
+        viewerId: user.id,
         request: await replySupport(
           request,
           user,

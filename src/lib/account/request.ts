@@ -16,6 +16,13 @@ export async function accountGuard(
 ): Promise<SessionUser> {
   assertSameOrigin(request);
   const user = await (admin ? requireAdmin(request) : requireSession(request));
+  // This is a precondition for the account the UI intended, never owner authority.
+  if (request.headers.get("X-Wishlyn-Account-ID") !== user.id)
+    throw new ApiError(
+      409,
+      "account_changed",
+      "Your account changed. Verify your account and retry this action.",
+    );
   await rateLimit(request, {
     scope,
     limit: request.method === "GET" ? 120 : 40,

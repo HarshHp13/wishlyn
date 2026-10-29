@@ -180,6 +180,7 @@ function wishlistRow(
   row?: Record<string, unknown>,
 ): SavedWishlist {
   return {
+    viewerId: user.id,
     ownerId: user.id,
     items: Array.isArray(row?.items) ? (row.items as string[]) : [],
     version: Number(row?.version || 1),
@@ -203,15 +204,16 @@ export async function mutateWishlist(
   body: Record<string, unknown>,
 ): Promise<SavedWishlist> {
   const action = body.action;
-  if (!["add", "remove", "toggle", "import"].includes(String(action)))
+  if (!["add", "remove", "toggle", "import", "transfer"].includes(String(action)))
     throw new ApiError(400, "invalid_action", "Choose a saved-list action.");
-  const ids = action === "import" ? body.productIds : [body.productId];
+  const ids = action === "import" || action === "transfer" ? body.productIds : [body.productId];
   if (!Array.isArray(ids) || ids.length > 50 || !ids.every(validId))
     throw new ApiError(
       400,
       "invalid_products",
       "Use at most 50 valid product references.",
     );
+  const transferId = action === "transfer" ? uuid(body.transferId) : null;
   return transaction(async (client) => {
     await lockAccount(request, client, user);
     await client.query(
@@ -226,6 +228,15 @@ export async function mutateWishlist(
     ).rows[0];
     if (action === "import" && row.browser_imported)
       return wishlistRow(user, row);
+    if (transferId) {
+      const prior = await client.query("SELECT product_ids FROM account_wishlist_transfers WHERE owner_id=$1 AND request_key=$2", [user.id, transferId]);
+      if (prior.rows[0]) {
+        if (JSON.stringify(prior.rows[0].product_ids) !== JSON.stringify(ids))
+          throw new ApiError(409, "transfer_changed", "These guest selections changed. Reload your saved pieces.");
+        return wishlistRow(user, row);
+      }
+      await client.query("INSERT INTO account_wishlist_transfers(owner_id,request_key,product_ids) VALUES($1,$2,$3)", [user.id, transferId, JSON.stringify(ids)]);
+    }
     const current = new Set<string>(row.items);
     if (action === "remove") current.delete(ids[0]);
     else {
@@ -234,7 +245,7 @@ export async function mutateWishlist(
         [ids],
       );
       const approved = new Set<string>(published.rows.map((p) => p.id));
-      if (action !== "import" && !approved.has(ids[0]))
+      if (action !== "import" && action !== "transfer" && !approved.has(ids[0]))
         throw new ApiError(
           404,
           "missing_product",

@@ -14,6 +14,11 @@ CREATE TABLE account_wishlists (
   items JSONB NOT NULL DEFAULT '[]' CHECK (jsonb_typeof(items) = 'array' AND jsonb_array_length(items) <= 50),
   browser_imported BOOLEAN NOT NULL DEFAULT false, version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE TABLE account_wishlist_transfers (
+  owner_id VARCHAR(128) NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
+  request_key UUID NOT NULL, product_ids JSONB NOT NULL CHECK (jsonb_typeof(product_ids) = 'array' AND jsonb_array_length(product_ids) <= 50),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY(owner_id, request_key)
+);
 CREATE TABLE account_recovery_tokens (
   token_hash CHAR(64) PRIMARY KEY, owner_id VARCHAR(128) NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
   session_version INTEGER NOT NULL, expires_at TIMESTAMPTZ NOT NULL, consumed_at TIMESTAMPTZ,

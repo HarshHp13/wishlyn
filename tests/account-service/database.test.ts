@@ -41,6 +41,7 @@ import {
   GET as adminSupportGET,
   POST as adminSupportPOST,
 } from "../../src/app/api/admin/support/[id]/route";
+import { GET as adminSupportListGET } from "../../src/app/api/admin/support/route";
 const configured = process.env.ACCOUNT_SERVICE_TEST_DATABASE_URL;
 const base = configured ? new URL(configured) : null;
 if (
@@ -91,11 +92,13 @@ function req(
   body?: unknown,
   user: SessionUser = a,
   originHeader = origin,
+  intendedAccount: string | null = user.id,
 ) {
   return new Request(origin + path, {
     method: body === undefined ? "GET" : "POST",
     headers: {
       cookie: cookies[user.id],
+      ...(intendedAccount ? { "X-Wishlyn-Account-ID": intendedAccount } : {}),
       ...(body === undefined
         ? {}
         : { origin: originHeader, "Content-Type": "application/json" }),
@@ -193,6 +196,55 @@ describe(
         ).profile.firstName,
         "",
       );
+    });
+    test("intended-account preconditions reject stale cookie reads and every new owned write before persistence", async () => {
+      const purchase = await order();
+      const payload = { orderId: purchase.id, kind: "help", subject: "Synthetic subject", message: "A synthetic request for this purchase.", requestKey: randomUUID() };
+      const created = (await (await supportPOST(req("/api/support", payload))).json()).request;
+      const stale = (path: string, body?: unknown) => req(path, body, b, origin, a.id);
+      for (const [handler, path] of [[profileGET, "/api/account/profile"], [addressesGET, "/api/account/addresses"], [wishlistGET, "/api/account/wishlist"], [supportGET, "/api/support"]] as const) {
+        const response = await handler(stale(path));
+        assert.equal(response.status, 409);
+        assert.equal((await response.json()).code, "account_changed");
+        assert.equal((await handler(req(path, undefined, a, origin, null))).status, 409);
+      }
+      assert.equal((await profilePOST(stale("/api/account/profile", { ownerId: a.id, firstName: "A edited", lastName: "Fixture", version: 1 }))).status, 409);
+      assert.equal((await addressesPOST(stale("/api/account/addresses", address))).status, 409);
+      assert.equal((await wishlistPOST(stale("/api/account/wishlist", { action: "add", productId: "product" }))).status, 409);
+      assert.equal((await passwordPOST(stale("/api/account/password", { currentPassword: pass, newPassword: "Synthetic changed password" }))).status, 409);
+      assert.equal((await supportPOST(stale("/api/support", { ...payload, requestKey: randomUUID() }))).status, 409);
+      assert.equal((await supportDetailGET(stale("/api/support/" + created.id), context(created.id))).status, 409);
+      assert.equal((await supportDetailPOST(stale("/api/support/" + created.id, { version: 1, message: "Stale synthetic reply" }), context(created.id))).status, 409);
+      assert.equal((await adminSupportListGET(req("/api/admin/support", undefined, admin, origin, a.id))).status, 409);
+      assert.equal((await adminSupportPOST(req("/api/admin/support/" + created.id, { version: 1, message: "Stale admin reply", status: "resolved" }, admin, origin, a.id), context(created.id))).status, 409);
+      assert.equal((await query("SELECT * FROM account_details")).rowCount, 0);
+      assert.equal((await query("SELECT * FROM account_addresses")).rowCount, 0);
+      assert.equal((await query("SELECT * FROM account_wishlists")).rowCount, 0);
+      assert.equal((await query("SELECT * FROM support_requests")).rowCount, 1);
+      assert.equal((await query("SELECT * FROM support_request_events")).rowCount, 1);
+      assert.equal((await getSession(req("/api/auth/me", undefined, b)))?.id, b.id);
+      assert.equal(await comparePassword(pass, (await query("SELECT password_hash FROM profiles WHERE id=$1", [b.id])).rows[0].password_hash), true);
+      const viewed = await (await adminSupportGET(req("/api/admin/support/" + created.id, undefined, admin), context(created.id))).json();
+      assert.equal(viewed.viewerId, admin.id);
+      assert.equal(viewed.request.ownerId, a.id);
+      const lower = req("/api/account/profile");
+      const headers = new Headers(lower.headers);
+      headers.delete("X-Wishlyn-Account-ID"); headers.set("x-wishlyn-account-id", a.id);
+      assert.equal((await profileGET(new Request(lower, { headers }))).status, 200);
+    });
+    test("explicit guest transfer is idempotent independently of legacy import and never resurrects a later removal", async () => {
+      await wishlistPOST(req("/api/account/wishlist", { action: "import", productIds: [] }));
+      const transfer = { action: "transfer", transferId: randomUUID(), productIds: ["product"] };
+      const results = await Promise.all([wishlistPOST(req("/api/account/wishlist", transfer)), wishlistPOST(req("/api/account/wishlist", transfer))]);
+      assert.ok(results.every(response => response.status === 200));
+      assert.equal((await query("SELECT * FROM account_wishlist_transfers")).rowCount, 1);
+      await wishlistPOST(req("/api/account/wishlist", { action: "remove", productId: "product" }));
+      const replay = await wishlistPOST(req("/api/account/wishlist", transfer));
+      assert.deepEqual((await replay.json()).items, []);
+      assert.equal((await wishlistPOST(req("/api/account/wishlist", { ...transfer, productIds: [] }))).status, 409);
+      const bList = await (await wishlistGET(req("/api/account/wishlist", undefined, b))).json();
+      assert.deepEqual(bList.items, []);
+      assert.equal(bList.browserImported, false);
     });
     test("stale concurrent profile edits preserve exactly one revision", async () => {
       const rs = await Promise.all([

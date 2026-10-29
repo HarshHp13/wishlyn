@@ -76,11 +76,13 @@ function AccountContent() {
     Promise.all([
       accountRequest<{ profile: AccountProfile }>(
         "/api/account/profile",
+        owner,
         undefined,
         controller.signal,
       ),
       accountRequest<{ ownerId: string; addresses: SavedAddress[] }>(
         "/api/account/addresses",
+        owner,
         undefined,
         controller.signal,
       ),
@@ -127,7 +129,7 @@ function AccountContent() {
     }
   }
   const reload = () => {
-    setRevision((v) => v + 1);
+    void refreshAuthSession(true).then(() => setRevision(v => v + 1)).catch(() => undefined);
   };
   return (
     <>
@@ -191,7 +193,7 @@ function AccountContent() {
                           void perform(async () => {
                             const data = await accountRequest<{
                               profile: AccountProfile;
-                            }>("/api/account/profile", profile);
+                            }>("/api/account/profile", owner, profile);
                             if (current()) setProfile(data.profile);
                           }, "Profile saved.");
                         }}
@@ -235,6 +237,7 @@ function AccountContent() {
                           void perform(async () => {
                             await accountRequest(
                               "/api/account/password",
+                              owner,
                               password,
                             );
                             if (current()) {
@@ -330,7 +333,7 @@ function AccountContent() {
                                   const data = await accountRequest<{
                                     ownerId: string;
                                     addresses: SavedAddress[];
-                                  }>("/api/account/addresses", {
+                                  }>("/api/account/addresses", owner, {
                                     action: "delete",
                                     id: a.id,
                                     version: a.version,
@@ -353,7 +356,7 @@ function AccountContent() {
                           const data = await accountRequest<{
                             ownerId: string;
                             addresses: SavedAddress[];
-                          }>("/api/account/addresses", address);
+                          }>("/api/account/addresses", owner, address);
                           if (current()) {
                             setAddresses(data.addresses);
                             setAddress(emptyAddress);
