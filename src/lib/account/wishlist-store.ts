@@ -135,7 +135,7 @@ async function load() {
       }
     }
     if (transfers.length) announce(id);
-    publish({ items: data.items, status: "ready", accountId: id, notice: "" });
+    publish({ items: data.items, status: "ready", accountId: id, notice: browser.notice });
   } catch (error) {
     if (current()) publish({ ...initial, accountId: id, status: "error", notice: error instanceof Error ? error.message : "Saved pieces could not be loaded. Retry." });
   }
@@ -160,7 +160,7 @@ export const savedWishlistStore = {
   },
   getSnapshot: () => snapshot,
   getServerSnapshot: () => initial,
-  retry: async () => { await refreshAuthSession(); await load(); },
+  retry: async () => { await browserStore.retry(); await load(); },
   mutate(action: "add" | "remove" | "toggle", productId: string) {
     const id = owner();
     if (!validId(productId) || id === undefined || snapshot.status !== "ready") return;

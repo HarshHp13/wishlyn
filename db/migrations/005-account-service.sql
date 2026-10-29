@@ -17,7 +17,7 @@ CREATE TABLE account_wishlists (
 CREATE TABLE account_wishlist_transfers (
   owner_id VARCHAR(128) NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
   request_key UUID NOT NULL, product_ids JSONB NOT NULL CHECK (jsonb_typeof(product_ids) = 'array' AND jsonb_array_length(product_ids) <= 50),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY(owner_id, request_key)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY(request_key)
 );
 CREATE TABLE account_recovery_tokens (
   token_hash CHAR(64) PRIMARY KEY, owner_id VARCHAR(128) NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,

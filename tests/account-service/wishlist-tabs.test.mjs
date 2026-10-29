@@ -14,15 +14,15 @@ const account = id => ({ status: "authenticated", user: { id, email: `${id}@exam
 function fixture(guestItems = ["guest-product"]) {
   const data = new Map(), tabs = [], server = new Map(), done = new Set(), calls = [];
   data.set(state.shoppingKey("wishlist", null), state.encodeShopping(guestItems));
-  let lock = Promise.resolve();
+  let lock = Promise.resolve(), failTransfer = false;
   function tab(name) {
-    let auth = { status: "guest", user: null };
+    let auth = { status: "guest", user: null }, denied = false;
     const listeners = new Set(), events = new Map(), browser = {}, client = {}, saved = {};
     const dispatch = key => events.get("storage")?.forEach(listener => listener({ key }));
     const storage = {
-      getItem: key => data.get(key) ?? null,
-      setItem: (key, value) => { data.set(key, value); for (const other of tabs) if (other.name !== name) other.dispatch(key); },
-      removeItem: key => { data.delete(key); for (const other of tabs) if (other.name !== name) other.dispatch(key); },
+      getItem: key => { if (denied) throw new Error("Storage denied"); return data.get(key) ?? null; },
+      setItem: (key, value) => { if (denied) throw new Error("Storage denied"); data.set(key, value); for (const other of tabs) if (other.name !== name) other.dispatch(key); },
+      removeItem: key => { if (denied) throw new Error("Storage denied"); data.delete(key); for (const other of tabs) if (other.name !== name) other.dispatch(key); },
     };
     const authClient = { getAuthState: () => auth, refreshAuthSession: async () => auth.user,
       subscribeAuth: listener => { listeners.add(listener); return () => listeners.delete(listener); } };
@@ -35,6 +35,7 @@ function fixture(guestItems = ["guest-product"]) {
         assert.equal(owner, auth.user?.id);
         const body = options.body ? JSON.parse(options.body) : null;
         calls.push({ tab: name, owner, body });
+        if (body?.action === "transfer" && failTransfer) { failTransfer = false; return Response.json({ error: "Synthetic transfer failure" }, { status: 503 }); }
         let items = server.get(owner) || [];
         if (body?.action === "transfer") for (const record of body.transfers) {
           const key = `${owner}:${record.id}`;
@@ -50,10 +51,11 @@ function fixture(guestItems = ["guest-product"]) {
     vm.runInNewContext(compile("../../src/lib/account/client.ts"), { ...runtime, exports: client, require: () => authClient });
     vm.runInNewContext(compile("../../src/lib/account/wishlist-store.ts"), { ...runtime, exports: saved, require: name => name === "../authClient" ? authClient : name === "../shopping-store" ? browser : name === "./client" ? client : state });
     const result = { name, dispatch, store: saved.savedWishlistStore, browser: browser.wishlistStore,
+      denyStorage() { denied = true; }, restoreStorage() { denied = false; },
       auth(next) { auth = next; listeners.forEach(listener => listener()); } };
     tabs.push(result); result.store.subscribe(() => {}); return result;
   }
-  return { tab, calls, server };
+  return { tab, calls, server, failNextTransfer() { failTransfer = true; } };
 }
 test("a delayed tab reuses the shared guest key and cannot resurrect a fast tab's removal", async () => {
   const env = fixture(), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
@@ -66,6 +68,82 @@ test("a delayed tab reuses the shared guest key and cannot resurrect a fast tab'
   assert.deepEqual(env.server.get("a"), []);
   assert.deepEqual(Array.from(slow.store.getSnapshot().items), []);
   const transfers = env.calls.filter(call => call.body?.action === "transfer");
+  assert.equal(transfers.length, 2);
+  assert.equal(transfers[0].body.transfers[0].id, transfers[1].body.transfers[0].id);
+});
+test("canceling an unclaimed guest pick while another tab verifies never submits its cached UUID", async () => {
+  const env = fixture(), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  const canceled = slow.browser.getSnapshot().guestTransfers[0].id;
+  slow.auth({ status: "loading", user: null });
+  fast.store.mutate("remove", "guest-product"); await settle();
+  fast.store.mutate("add", "second-product"); await settle();
+  fast.auth(account("a")); await settle(); slow.auth(account("a")); await settle();
+  assert.deepEqual(env.server.get("a"), ["second-product"]);
+  assert.equal(env.calls.some(call => call.body?.transfers?.some(record => record.id === canceled)), false);
+  assert.equal(slow.store.getSnapshot().status, "ready");
+});
+test("guest cancellation followed by deliberate re-selection spends only the fresh UUID", async () => {
+  const env = fixture(), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  const canceled = slow.browser.getSnapshot().guestTransfers[0].id;
+  slow.auth({ status: "loading", user: null });
+  fast.store.mutate("remove", "guest-product"); await settle();
+  fast.store.mutate("add", "guest-product"); await settle();
+  const fresh = fast.browser.getSnapshot().guestTransfers[0].id;
+  assert.notEqual(fresh, canceled);
+  fast.auth(account("a")); await settle(); slow.auth(account("a")); await settle();
+  assert.deepEqual(env.server.get("a"), ["guest-product"]);
+  const transfers = env.calls.filter(call => call.body?.action === "transfer");
+  assert.equal(transfers.length, 1); assert.equal(transfers[0].body.transfers[0].id, fresh);
+});
+test("storage denial cannot assign A's cached shared selection to delayed B, including retry", async () => {
+  const env = fixture(), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  slow.auth({ status: "loading", user: null }); fast.auth(account("a")); await settle();
+  fast.store.mutate("remove", "guest-product"); await settle();
+  slow.denyStorage(); slow.auth(account("b")); await settle();
+  assert.deepEqual(env.server.get("b"), []);
+  assert.deepEqual(Array.from(slow.browser.getSnapshot().items), []);
+  assert.match(slow.store.getSnapshot().notice, /retained for verification/);
+  assert.equal(env.calls.some(call => call.owner === "b" && call.body?.action === "transfer"), false);
+  slow.restoreStorage(); await slow.store.retry(); await settle();
+  assert.deepEqual(env.server.get("b"), []);
+  assert.equal(slow.store.getSnapshot().status, "ready");
+  assert.equal(slow.store.getSnapshot().notice, "");
+});
+test("same-A storage-denied delayed selection stays withheld and safely replays after storage returns", async () => {
+  const env = fixture(), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  slow.auth({ status: "loading", user: null }); fast.auth(account("a")); await settle();
+  fast.store.mutate("remove", "guest-product"); await settle();
+  slow.denyStorage(); slow.auth(account("a")); await settle();
+  assert.deepEqual(env.server.get("a"), []);
+  assert.equal(env.calls.filter(call => call.body?.action === "transfer").length, 1);
+  slow.restoreStorage(); await slow.store.retry(); await settle();
+  assert.deepEqual(env.server.get("a"), []);
+  const transfers = env.calls.filter(call => call.body?.action === "transfer");
+  assert.equal(transfers.length, 2);
+  assert.equal(transfers[0].body.transfers[0].id, transfers[1].body.transfers[0].id);
+});
+test("mixed denied shared/local guest picks transfer only the fresh local action to B", async () => {
+  const env = fixture(), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  slow.denyStorage(); slow.store.mutate("add", "fresh-local"); await settle();
+  slow.auth({ status: "loading", user: null }); fast.auth(account("a")); await settle();
+  fast.store.mutate("remove", "guest-product"); await settle();
+  slow.auth(account("b")); await settle();
+  assert.deepEqual(env.server.get("b"), ["fresh-local"]);
+  const sent = env.calls.filter(call => call.owner === "b" && call.body?.action === "transfer");
+  assert.equal(sent.length, 1); assert.deepEqual(sent[0].body.transfers[0].productIds, ["fresh-local"]);
+  slow.restoreStorage(); await slow.store.retry(); await settle();
+  assert.deepEqual(env.server.get("b"), ["fresh-local"]);
+  assert.equal(env.calls.filter(call => call.owner === "b" && call.body?.action === "transfer").length, 1);
+});
+test("a failed fresh-local transfer remains bound to its account across storage recovery", async () => {
+  const env = fixture(), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  slow.denyStorage(); slow.store.mutate("add", "fresh-local"); await settle();
+  slow.auth({ status: "loading", user: null }); fast.auth(account("a")); await settle();
+  env.failNextTransfer(); slow.auth(account("b")); await settle();
+  assert.equal(slow.store.getSnapshot().status, "error");
+  slow.restoreStorage(); await slow.store.retry(); await settle();
+  assert.deepEqual(env.server.get("b"), ["fresh-local"]);
+  const transfers = env.calls.filter(call => call.owner === "b" && call.body?.action === "transfer");
   assert.equal(transfers.length, 2);
   assert.equal(transfers[0].body.transfers[0].id, transfers[1].body.transfers[0].id);
 });

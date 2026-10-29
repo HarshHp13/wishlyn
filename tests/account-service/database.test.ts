@@ -261,6 +261,30 @@ describe(
       assert.equal((await query("SELECT * FROM account_wishlist_transfers")).rowCount, 2);
       assert.deepEqual((await (await wishlistGET(req("/api/account/wishlist"))).json()).items, ["product-2"]);
     });
+    test("a globally spent guest UUID rejects another account and rolls back its whole batch", async () => {
+      const spent = { id: randomUUID(), productIds: ["product"] }, fresh = { id: randomUUID(), productIds: ["product"] };
+      assert.equal((await wishlistPOST(req("/api/account/wishlist", { action: "transfer", transfers: [spent] }))).status, 200);
+      const foreign = await wishlistPOST(req("/api/account/wishlist", { action: "transfer", transfers: [fresh, spent] }, b));
+      assert.equal(foreign.status, 409);
+      const changed = await wishlistPOST(req("/api/account/wishlist", { action: "transfer", transfers: [{ ...spent, productIds: [] }] }));
+      assert.equal(changed.status, 409);
+      assert.deepEqual(await foreign.json(), await changed.json());
+      assert.equal((await query("SELECT * FROM account_wishlist_transfers")).rowCount, 1);
+      assert.deepEqual((await (await wishlistGET(req("/api/account/wishlist", undefined, b))).json()).items, []);
+      assert.equal((await wishlistPOST(req("/api/account/wishlist", { action: "transfer", transfers: [fresh] }, b))).status, 200);
+    });
+    test("opposite-order overlapping cross-account batches bind all UUIDs to one session owner", async () => {
+      const one = { id: randomUUID(), productIds: ["product"] }, two = { id: randomUUID(), productIds: ["product"] };
+      const results = await Promise.all([
+        wishlistPOST(req("/api/account/wishlist", { action: "transfer", transfers: [one, two] })),
+        wishlistPOST(req("/api/account/wishlist", { action: "transfer", transfers: [two, one] }, b)),
+      ]);
+      assert.deepEqual(results.map(response => response.status).sort(), [200, 409]);
+      const rows = (await query("SELECT owner_id,request_key FROM account_wishlist_transfers")).rows;
+      assert.equal(rows.length, 2);
+      assert.equal(new Set(rows.map(row => row.owner_id)).size, 1);
+      assert.equal(rows[0].owner_id, results[0].status === 200 ? a.id : b.id);
+    });
     test("stale concurrent profile edits preserve exactly one revision", async () => {
       const rs = await Promise.all([
         profilePOST(

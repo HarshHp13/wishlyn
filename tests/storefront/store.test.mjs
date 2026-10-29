@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
+import { webcrypto } from 'node:crypto';
 import ts from 'typescript';
 import * as state from '../../src/lib/shopping-state.ts';
 
@@ -27,6 +28,7 @@ function environment() {
       },
       window: { addEventListener(name, fn) { if (!events.has(name)) events.set(name, new Set()); events.get(name).add(fn); } },
       localStorage: storage,
+      crypto: webcrypto,
       navigator: { locks: { request(_name, fn) { const task = locked.then(fn); locked = task.catch(() => {}); return task; } } },
     });
     const result = { dispatch, storage, store: exports.cartStore, auth(next) { auth = next; authListeners.forEach(fn => fn()); } };
@@ -80,4 +82,40 @@ test('storage write failure preserves a usable in-memory bag across subsequent c
   await a.store.mutate(items => state.addCartLine(items, { ...line, giftMessage: 'Second' }));
   assert.equal(a.store.getSnapshot().items.length, 2);
   assert.match(a.store.getSnapshot().notice, /storage is unavailable/);
+});
+
+test('blocked storage survives same-account verification without leaking across accounts', async () => {
+  const env = environment(); const a = env.tab(account('a')); await wait();
+  a.storage.setItem = () => { throw new Error('Quota'); };
+  await a.store.mutate(items => state.addCartLine(items, line));
+  a.auth({ status: 'loading', user: null });
+  assert.equal(a.store.getSnapshot().items.length, 0);
+  a.auth({ status: 'error', user: null });
+  a.auth(account('a')); await wait();
+  assert.equal(a.store.getSnapshot().items[0].giftMessage, 'Private gift');
+  a.auth({ status: 'guest', user: null }); await wait();
+  assert.equal(a.store.getSnapshot().items.length, 0);
+  a.auth(account('b')); await wait();
+  assert.equal(a.store.getSnapshot().items.length, 0);
+  a.auth(account('a')); await wait();
+  assert.equal(a.store.getSnapshot().items.length, 1);
+});
+
+test('visit-only guest picks are consumed once and merge with the same account memory', async () => {
+  const env = environment(); const a = env.tab(); await wait();
+  a.storage.setItem = () => { throw new Error('Quota'); };
+  await a.store.mutate(items => state.addCartLine(items, line));
+  a.auth(account('a')); await wait();
+  assert.equal(a.store.getSnapshot().items[0].quantity, 1);
+  a.auth({ status: 'guest', user: null }); await wait();
+  assert.equal(a.store.getSnapshot().items.length, 0, 'consumed guest memory must not return after logout');
+  await a.store.mutate(items => state.addCartLine(items, { ...line, giftMessage: 'New guest gift' }));
+  a.auth(account('a')); await wait();
+  assert.equal(a.store.getSnapshot().items.length, 2);
+  assert.equal(a.store.getSnapshot().items.reduce((sum, item) => sum + item.quantity, 0), 2);
+  a.auth({ status: 'guest', user: null }); await wait();
+  a.auth(account('b')); await wait();
+  assert.equal(a.store.getSnapshot().items.length, 0);
+  a.auth(account('a')); await wait();
+  assert.deepEqual(a.store.getSnapshot().items.map(item => item.giftMessage).sort(), ['New guest gift', 'Private gift']);
 });

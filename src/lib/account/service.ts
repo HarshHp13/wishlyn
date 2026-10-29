@@ -239,14 +239,15 @@ export async function mutateWishlist(
     if (action === "import" && row.browser_imported)
       return wishlistRow(user, row);
     const applyIds = new Set<string>(action === "transfer" ? [] : ids);
-    for (const transfer of transfers) {
-      const prior = await client.query("SELECT product_ids FROM account_wishlist_transfers WHERE owner_id=$1 AND request_key=$2", [user.id, transfer.id]);
-      if (prior.rows[0]) {
-        if (JSON.stringify(prior.rows[0].product_ids) !== JSON.stringify(transfer.items))
-          throw new ApiError(409, "transfer_changed", "These guest selections changed. Reload your saved pieces.");
-      } else {
-        await client.query("INSERT INTO account_wishlist_transfers(owner_id,request_key,product_ids) VALUES($1,$2,$3)", [user.id, transfer.id, JSON.stringify(transfer.items)]);
-        for (const id of transfer.items) applyIds.add(id);
+    // Stable ordering prevents overlapping cross-account batches from taking
+    // token locks in opposite orders. Session authority still selects owner.
+    for (const transfer of [...transfers].sort((a, b) => a.id.localeCompare(b.id))) {
+      const inserted = await client.query("INSERT INTO account_wishlist_transfers(owner_id,request_key,product_ids) VALUES($1,$2,$3) ON CONFLICT(request_key) DO NOTHING RETURNING request_key", [user.id, transfer.id, JSON.stringify(transfer.items)]);
+      if (inserted.rowCount) for (const id of transfer.items) applyIds.add(id);
+      else {
+        const prior = await client.query("SELECT owner_id,product_ids FROM account_wishlist_transfers WHERE request_key=$1", [transfer.id]);
+        if (prior.rows[0]?.owner_id !== user.id || JSON.stringify(prior.rows[0]?.product_ids) !== JSON.stringify(transfer.items))
+          throw new ApiError(409, "transfer_changed", "These guest selections could not be transferred. Reload your saved pieces.");
       }
     }
     if (action === "transfer" && applyIds.size === 0) return wishlistRow(user, row);

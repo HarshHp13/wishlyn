@@ -224,14 +224,94 @@ async (page) => {
   const afterDelayed = await (await slow.request.get(origin + "/api/account/wishlist", { headers: { "X-Wishlyn-Account-ID": "browser-a" } })).json();
   const sharedGuestReplayBlocked = !afterDelayed.items.includes("browser-product");
   await slow.close();
+
+  async function delayedGuestTab() {
+    const tab = await page.context().newPage();
+    tab.on("pageerror", error => errors.push(error.message));
+    await tab.route("**/*", route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
+    await tab.goto(origin + "/product/browser-product");
+    await tab.getByRole("button", { name: "Remove from wishlist", exact: true }).waitFor();
+    let release, observed;
+    const gate = new Promise(resolve => { release = resolve; });
+    const started = new Promise(resolve => { observed = resolve; });
+    await tab.route("**/api/auth/me", async route => {
+      observed(); await gate;
+      await route.fulfill({ response: await tab.request.get(origin + "/api/auth/me") });
+    });
+    await tab.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await started;
+    return { tab, release };
+  }
+  await page.request.post(origin + "/api/auth/logout", { headers: { origin } });
+  await page.goto(origin + "/product/browser-product");
+  await page.getByRole("button", { name: "Add to wishlist", exact: true }).click();
+  await page.getByRole("button", { name: "Remove from wishlist", exact: true }).waitFor();
+  const canceledId = await page.evaluate(() => JSON.parse(localStorage.getItem("wishlyn-v2-wishlist-guest-selections"))[0].id);
+  const canceled = await delayedGuestTab(), canceledTransfers = [];
+  canceled.tab.on("request", request => {
+    if (request.url().endsWith("/api/account/wishlist") && request.method() === "POST" && request.postDataJSON()?.action === "transfer") canceledTransfers.push(...request.postDataJSON().transfers);
+  });
+  await page.getByRole("button", { name: "Remove from wishlist", exact: true }).click();
+  await page.getByRole("button", { name: "Add to wishlist", exact: true }).waitFor();
+  await signIn("browser-a@example.test"); canceled.release();
+  await canceled.tab.waitForFunction(() => [...document.querySelectorAll("button")].some(button => button.getAttribute("aria-label") === "Add to wishlist" && !button.disabled));
+  const canceledList = await (await canceled.tab.request.get(origin + "/api/account/wishlist", { headers: { "X-Wishlyn-Account-ID": "browser-a" } })).json();
+  const unclaimedGuestCancellationBlocked = canceledList.items.length === 0 && !canceledTransfers.some(record => record.id === canceledId);
+  await canceled.tab.close();
+
+  await page.request.post(origin + "/api/auth/logout", { headers: { origin } });
+  await page.goto(origin + "/product/browser-product");
+  await page.getByRole("button", { name: "Add to wishlist", exact: true }).click();
+  await page.getByRole("button", { name: "Remove from wishlist", exact: true }).waitFor();
+  await page.getByLabel("Add gift packaging (+ ₹350 per item)", { exact: true }).check();
+  await page.getByLabel("Gift message (optional)", { exact: true }).fill("Synthetic gift intended for A");
+  await page.getByRole("button", { name: "Add to shopping bag", exact: true }).click();
+  await page.getByRole("button", { name: "Increase quantity of Synthetic account piece", exact: true }).click();
+  await page.getByRole("button", { name: "Close cart", exact: true }).click();
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-guest") || '{"items":[]}').items.some(item => item.quantity === 2 && item.giftMessage === "Synthetic gift intended for A"));
+  const denied = await delayedGuestTab(), deniedTransfers = [];
+  denied.tab.on("request", request => {
+    if (request.url().endsWith("/api/account/wishlist") && request.method() === "POST" && request.postDataJSON()?.action === "transfer") deniedTransfers.push(request.postDataJSON());
+  });
+  await denied.tab.evaluate(() => {
+    window.__wishlynDenyStorage = false;
+    for (const name of ["getItem", "setItem", "removeItem"]) {
+      const original = Storage.prototype[name];
+      Storage.prototype[name] = function (...args) {
+        if (window.__wishlynDenyStorage) throw new DOMException("Synthetic storage denial", "SecurityError");
+        return original.apply(this, args);
+      };
+    }
+  });
+  const deniedFastTransfer = page.waitForResponse(response => response.url().endsWith("/api/account/wishlist") && response.request().method() === "POST" && response.request().postDataJSON()?.action === "transfer");
+  await signIn("browser-a@example.test"); await deniedFastTransfer;
+  const deniedAMigration = await page.evaluate(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-account-browser-a") || '{"items":[]}').items.find(item => item.giftMessage === "Synthetic gift intended for A"));
+  await page.request.post(origin + "/api/account/wishlist", { headers: { origin, "X-Wishlyn-Account-ID": "browser-a" }, data: { action: "remove", productId: "browser-product" } });
+  await page.request.post(origin + "/api/auth/login", { headers: { origin }, data: { email: "browser-b@example.test", password: "Browser fixture password" } });
+  await denied.tab.evaluate(() => { window.__wishlynDenyStorage = true; }); denied.release();
+  await denied.tab.waitForFunction(() => [...document.querySelectorAll("button")].some(button => button.getAttribute("aria-label") === "Add to wishlist" && !button.disabled));
+  await denied.tab.getByRole("button", { name: "Open shopping bag", exact: true }).click();
+  await denied.tab.getByText("Your shopping bag is empty.", { exact: true }).waitFor();
+  const deniedBList = await (await denied.tab.request.get(origin + "/api/account/wishlist", { headers: { "X-Wishlyn-Account-ID": "browser-b" } })).json();
+  const storageDeniedSharedGuestIsolated = deniedTransfers.length === 0 && deniedBList.items.length === 0 && deniedAMigration?.quantity === 2 && deniedAMigration?.giftMessage === "Synthetic gift intended for A";
+  const storageDeniedCartEmpty = await denied.tab.getByText("Your shopping bag is empty.", { exact: true }).isVisible();
+  await denied.tab.getByText("Some guest selections are retained for verification", { exact: false }).first().waitFor();
+  await denied.tab.evaluate(() => { window.__wishlynDenyStorage = false; });
+  await denied.tab.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await denied.tab.waitForFunction(() => !document.querySelector('[role="dialog"]')?.textContent?.includes("retained for verification") && ![...document.querySelectorAll("dialog[open]")].some(dialog => dialog.textContent.includes("retained for verification")));
+  await denied.tab.getByText("Your shopping bag is empty.", { exact: true }).waitFor();
+  await denied.tab.close();
   return {
     provenance:
-      "Local development server and actual disposable PostgreSQL; synthetic users/orders; remote requests blocked; no email/payment/provider action.",
+      "Local development server and actual disposable PostgreSQL; synthetic users/orders; remote requests blocked; auth verification alone delayed; controlled Storage denial in one tab; no email/payment/provider action.",
     addressPersisted,
     guestTransferSaved,
     staleCookieWriteBlocked,
     guestCartExactMigration,
     sharedGuestReplayBlocked,
+    unclaimedGuestCancellationBlocked,
+    storageDeniedSharedGuestIsolated,
+    storageDeniedCartEmpty,
     failedPasswordRetained,
     savedPieceVisible: true,
     accountIsolated,
