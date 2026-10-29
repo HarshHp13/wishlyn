@@ -1,0 +1,74 @@
+npm notice run wishlyn@0.1.0 build
+npm notice run next build
+▲ Next.js 16.4.3 (Turbopack)
+✓ Running next.config.ts took 73ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 581ms
+  Running TypeScript ...
+  Finished TypeScript in 2.4s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/43) ...
+  Generating static pages using 11 workers (10/43)
+  Generating static pages using 11 workers (21/43)
+  Generating static pages using 11 workers (32/43)
+[API] Request could not be completed.
+✓ Generating static pages using 11 workers (43/43) in 329ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ○ /admin
+├ ○ /admin/orders
+├ ƒ /admin/orders/[id]
+├ ○ /admin/support
+├ ƒ /admin/support/[id]
+├ ƒ /api/account/addresses
+├ ƒ /api/account/password
+├ ƒ /api/account/profile
+├ ƒ /api/account/recovery
+├ ƒ /api/account/reset-password
+├ ƒ /api/account/wishlist
+├ ƒ /api/admin/orders
+├ ƒ /api/admin/orders/[id]
+├ ƒ /api/admin/product
+├ ƒ /api/admin/support
+├ ƒ /api/admin/support/[id]
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/me
+├ ƒ /api/auth/signup
+├ ƒ /api/cart-products
+├ ƒ /api/checkout/quote
+├ ƒ /api/cloudinary/upload
+├ ƒ /api/create-order
+├ ƒ /api/internal/commerce-reconcile
+├ ƒ /api/newsletter
+├ ƒ /api/orders
+├ ƒ /api/orders/[id]
+├ ƒ /api/razorpay/order
+├ ƒ /api/razorpay/verify
+├ ƒ /api/razorpay/webhook
+├ ƒ /api/support
+├ ƒ /api/support/[id]
+├ ƒ /api/verify-payment
+├ ƒ /api/wishlist-products
+├ ○ /checkout
+├ ○ /forgot-password
+├ ○ /login
+├ ○ /orders
+├ ƒ /orders/[id]
+├ ƒ /product/[id]
+├ ○ /profile
+├ ○ /reset-password
+├ ○ /robots.txt
+├ ƒ /sitemap.xml
+├ ƒ /sitemaps/[id]
+├ ƒ /support
+├ ƒ /support/[id]
+└ ○ /wishlist
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

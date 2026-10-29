@@ -1,0 +1,15 @@
+{
+  "sourceBase": "e54a95bc3de1717c3b81c5f83a8301514a076174",
+  "status": "FIXED",
+  "scenario": "Two verified guest tabs, only guest payload writes fail in slow tab, one fresh addition then no user action",
+  "storageEvents": "asynchronous setImmediate delivery",
+  "metadataWrites": {
+    "baseline": 1,
+    "after75ms": 2,
+    "after150ms": 2
+  },
+  "fastQuantity": 1,
+  "slowQuantity": 2,
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38",
+  "provenance": "Author-adapted copy of independent prior-head reproduction; assertions passed on the actual eighth-revision source. Synthetic VM tabs/Storage/Web Locks/API; no external service used."
+}

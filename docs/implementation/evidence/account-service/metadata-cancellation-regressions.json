@@ -1,0 +1,15 @@
+{
+  "provenance": "Eight R1-W5-09/R2-confirmed regressions from the single combined eighth-revision 124-test run. Cancellation authority is the verified/cached atomic raw baseline and this tab local UUIDs, never arbitrary same-line metadata.",
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38",
+  "status": "PASS",
+  "passedCases": [
+    "\u2714 selective guest-payload read denial cannot extend an old removal to a newer quantity-1 UUID before direct sign-in (4.702347ms)",
+    "\u2714 selective guest-payload read denial cannot extend an old removal to a newer quantity-1 UUID before guest retry (6.312988ms)",
+    "\u2714 selective guest-payload read denial cannot extend an old removal to a newer quantity-2 UUID before direct sign-in (6.500414ms)",
+    "\u2714 selective guest-payload read denial cannot extend an old removal to a newer quantity-2 UUID before guest retry (8.854746ms)",
+    "\u2714 normal readable removal of shared raw quantity cannot cancel another tab's pending fresh delta before direct B sign-in (8.550927ms)",
+    "\u2714 normal readable removal of shared raw quantity cannot cancel another tab's pending fresh delta before guest retry (8.005598ms)",
+    "\u2714 selective wishlist payload-read denial preserves a later same-product UUID through direct account verification (75.667645ms)",
+    "\u2714 selective wishlist payload-read denial preserves a later same-product UUID through guest retry (72.91871ms)"
+  ]
+}

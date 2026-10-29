@@ -1,0 +1,15 @@
+{
+  "sourceBase": "21c5dc355ededd94a29c510e6371a804420c6a36",
+  "scenario": "Both guests with normal reads; slow adds quantity1 to shared same-gift line while its raw payload writes fail and fresh metadata succeeds; fast removes visible shared quantity1; fresh pending delta must remain",
+  "shared": "1243a535-1644-4933-b06c-ba9889af69d5",
+  "fresh": "5d6dee54-f389-4216-967c-cfcfb2b455a7",
+  "fastBefore": 1,
+  "slowBefore": 2,
+  "afterRetry": 1,
+  "afterB": 1,
+  "sharedClaim": "cancelled",
+  "freshClaim": "b",
+  "status": "FIXED",
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38",
+  "provenance": "Author-adapted copy of independent seventh-head reproduction; assertions passed on the actual eighth-revision source. Synthetic VM tabs/Storage/Web Locks/API; no external service used."
+}

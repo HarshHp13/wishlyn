@@ -1,0 +1,2 @@
+npm notice run wishlyn@0.1.0 npx
+npm notice run 'eslint' src/lib/shopping-store.ts tests/account-service/cart-migration.test.mjs tests/account-service/wishlist-tabs.test.mjs tests/account-service/browser-checks.mjs

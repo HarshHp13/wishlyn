@@ -1,0 +1,46 @@
+{
+  "status": "FIXED",
+  "withheldUnderB": {
+    "items": [],
+    "status": "ready",
+    "accountId": "b",
+    "notice": "Browser storage is unavailable. Some guest selections are retained for verification; retry when storage is available."
+  },
+  "afterLogout": {
+    "items": [],
+    "status": "ready",
+    "accountId": null,
+    "notice": "Browser storage is unavailable. Your shopping items will last only for this visit."
+  },
+  "aStored": [
+    {
+      "id": "[\"variant\",true,\"Shared gift now consumed by A\"]",
+      "variantId": "variant",
+      "product": {
+        "id": "piece",
+        "title": "Synthetic piece",
+        "description": "",
+        "categoryId": "test",
+        "basePrice": 199,
+        "images": [],
+        "rating": 0,
+        "reviewsCount": 0,
+        "details": {}
+      },
+      "variant": {
+        "id": "variant",
+        "productId": "piece",
+        "metalType": "Fixture",
+        "purity": "",
+        "price": 199,
+        "stock": 50
+      },
+      "quantity": 2,
+      "giftWrap": true,
+      "giftMessage": "Shared gift now consumed by A",
+      "unavailable": false
+    }
+  ],
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38",
+  "provenance": "Author-adapted copy of independent prior-head reproduction; assertions passed on the actual eighth-revision source. Synthetic VM tabs/Storage/Web Locks/API; no external service used."
+}
