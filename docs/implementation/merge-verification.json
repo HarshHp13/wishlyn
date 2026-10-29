@@ -134,5 +134,49 @@
         }
       ]
     }
+  ],
+  "continuationVerifiedAt": "2026-10-29T04:12:24.575768+00:00",
+  "continuationMergeEvidence": [
+    {
+      "package": "W4",
+      "pr": 5,
+      "head": "545be876d0bb8302486ad695a32bca30fb6f0527",
+      "base": "f8da3505a4ce96f51e0af97a714ac74820a92f4e",
+      "merge": "77291c4ee8c111ec35dcd16a00a83c3b05609a39",
+      "mergedAt": "2026-10-29T04:11:31Z",
+      "approvalUrls": [
+        "https://github.com/HarshHp13/wishlyn/pull/5#issuecomment-6487695982",
+        "https://github.com/HarshHp13/wishlyn/pull/5#issuecomment-6487696330"
+      ],
+      "checks": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-29T04:04:59Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/HarshHp13/wishlyn/actions/runs/40815616259/job/123255841798",
+          "name": "verify",
+          "startedAt": "2026-10-29T04:03:58Z",
+          "status": "COMPLETED",
+          "workflowName": "Quality"
+        },
+        {
+          "__typename": "StatusContext",
+          "context": "Vercel",
+          "startedAt": "2026-10-29T04:06:29Z",
+          "state": "SUCCESS",
+          "targetUrl": "https://vercel.com/pratikharsh13-5879s-projects/wishlyn/28DYzTcVdvNZCSkNbXFGPLgEQ934"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-10-29T04:06:30Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://vercel.com/github",
+          "name": "Vercel Preview Comments",
+          "startedAt": "2026-10-29T04:06:30Z",
+          "status": "COMPLETED",
+          "workflowName": ""
+        }
+      ]
+    }
   ]
 }

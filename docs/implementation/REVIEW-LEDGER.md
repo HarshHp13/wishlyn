@@ -10,6 +10,8 @@ Two independent implementation reviewers: `/root/implementation_reviewer_one` an
 | W2 — Commerce & Orders | [#3](https://github.com/HarshHp13/wishlyn/pull/3) | `d1141f017f128db2008001699dab33ef9e857a2f` | `e3abf740ea94560113f50f088a6835b3ae3e7ad5` | +1 LGTM ([#6466672985](https://github.com/HarshHp13/wishlyn/pull/3#issuecomment-6466672985)) | +1 LGTM ([#6466673613](https://github.com/HarshHp13/wishlyn/pull/3#issuecomment-6466673613)) | 31/31 commerce tests, 36/36 sec tests, Build, CI | `df12f8a89e97d763db633bbf99f8cc50a174e498` |
 | W3 — Storefront & UX | [#4](https://github.com/HarshHp13/wishlyn/pull/4) | `d05e92eda1be78d27b3be97bf04efa3b5e71f071` | `6bc122b88906f0985ddb16ba2025456c922372b8` | +1 LGTM ([#6466892409](https://github.com/HarshHp13/wishlyn/pull/4#issuecomment-6466892409)) | +1 LGTM ([#6466892929](https://github.com/HarshHp13/wishlyn/pull/4#issuecomment-6466892929)) | 20/20 storefront tests, 36/36 sec tests, 31/31 com tests, Build, CI | `9ac76bea0a5832d1c245c20b7ace6a874a21b990` |
 
+| W4 — Merchant catalogue & inventory | [#5](https://github.com/HarshHp13/wishlyn/pull/5) | `545be876d0bb8302486ad695a32bca30fb6f0527` | `f8da3505a4ce96f51e0af97a714ac74820a92f4e` | +1 LGTM ([review](https://github.com/HarshHp13/wishlyn/pull/5#issuecomment-6487695982)) | +1 LGTM ([review](https://github.com/HarshHp13/wishlyn/pull/5#issuecomment-6487696330)) | 16/16 merchant tests; final-head lint/typecheck, Quality and Vercel | `77291c4ee8c111ec35dcd16a00a83c3b05609a39` |
+
 ## Review cycles
 
 ### W1 — Identity & Security (PR #2)
@@ -44,3 +46,9 @@ All reported Quality/Vercel checks on the three merged PR heads are successful. 
 `main` remains at `d11e46b31b1cce7aa609622b7581b0779e558f05`. Umbrella PR #1 is open and has not been merged. W4, W5, remaining integration work and the documented operational release gates remain outstanding; the three merged packages do not complete the entire audit implementation plan.
 
 Machine-readable evidence: [merge-verification.json](merge-verification.json).
+
+## W4 continuation — 29 October 2026
+
+PR #5 initially received Reviewer 1 LGTM on `c37f721` and Reviewer 2 REQUEST CHANGES. R2-W4-01 reproduced a mixed product/variant snapshot when a duplicate-create retry raced an edit. The author added a cached product row lock and a controlled real-PostgreSQL regression. Both reviewers then independently approved the revised exact head; their earlier verdicts did not authorize this new head.
+
+Approved head `545be876d0bb8302486ad695a32bca30fb6f0527` against base `f8da3505a4ce96f51e0af97a714ac74820a92f4e` was merged at `77291c4ee8c111ec35dcd16a00a83c3b05609a39`. Both final review comments preceded the merge; all reported final-head Quality/Vercel checks succeeded. Each reviewer independently passed 16/16 merchant tests with zero skips. Saved reports: [Reviewer 1](reviews/W4-R1-FINAL.md), [Reviewer 2](reviews/W4-R2-FINAL.md). W5 and W6 remain in progress. `main` remains at the original `d11e46b` head.

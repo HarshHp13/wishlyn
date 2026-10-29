@@ -218,6 +218,6 @@ The engineering program is complete when all selected packages are merged into i
 | W1 | [PR #2](https://github.com/HarshHp13/wishlyn/pull/2) | `6bce669`; two recorded agent LGTMs | Merged into integration at `08024f6`; [review ledger](../implementation/REVIEW-LEDGER.md) |
 | W2 | [PR #3](https://github.com/HarshHp13/wishlyn/pull/3) | `d1141f0`; two recorded agent LGTMs | Merged into integration at `df12f8a`; [review ledger](../implementation/REVIEW-LEDGER.md) |
 | W3 | [PR #4](https://github.com/HarshHp13/wishlyn/pull/4) | `d05e92e`; two recorded agent LGTMs | Merged into integration at `9ac76be`; [review ledger](../implementation/REVIEW-LEDGER.md) |
-| W4 | Pending | Pending | Not started |
-| W5 | Pending | Pending | Not started |
-| W6 | Integration | Pending | Final integrated validation and remaining W2/W3 contract work; depends on W4/W5 |
+| W4 | [PR #5](https://github.com/HarshHp13/wishlyn/pull/5) | `545be87`; two final agent LGTMs | Merged at `77291c4`; 16/16 tests; one concurrency review finding fixed |
+| W5 | `codex/audit-account-service` | Pending final PR/rebase/review | Implementation and disposable-DB/browser validation complete; rebase after W4, then two reviews |
+| W6 | `codex/audit-integration-completion` | Pending final integration/review | Eight reviewer integration findings fixed; 93/93 intermediate tests and browser regressions pass; final five-package verification follows W5 |
