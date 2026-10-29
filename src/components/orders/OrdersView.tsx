@@ -33,6 +33,7 @@ function AccountOrders({ auth, admin, id }: { auth: AuthState; admin: boolean; i
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const isCurrent = (owner: string) => active.current && getAuthState().status === 'authenticated' && getAuthState().user?.id === owner;
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [loadedUser, setLoadedUser] = useState<AuthState['user']>(null);
   const [orders, setOrders] = useState<Purchase[]>([]);
   const [order, setOrder] = useState<Purchase | null>(null);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
@@ -49,6 +50,8 @@ function AccountOrders({ auth, admin, id }: { auth: AuthState; admin: boolean; i
 
   const requestKey = auth.status === 'authenticated' && auth.user ? JSON.stringify([auth.user.id, auth.user.role, endpoint]) : null;
 
+  const ready = Boolean(requestKey && loadedKey === requestKey && loadedUser === auth.user && !loading);
+
   useEffect(() => {
     if (!requestKey || !auth.user) return;
     const key = requestKey;
@@ -57,15 +60,15 @@ function AccountOrders({ auth, admin, id }: { auth: AuthState; admin: boolean; i
     commerceRequest<{ order?: Purchase; orders?: Purchase[]; nextOffset?: number | null }>(endpoint, owner, undefined, controller.signal)
       .then(data => {
         if (!admin) for (const purchase of data.order ? [data.order] : data.orders || []) assertPurchaseOwner(purchase, owner);
-        if (!controller.signal.aborted && isCurrent(owner)) { setOrder(data.order || null); setOrders(data.orders || []); setNextOffset(data.nextOffset ?? null); setLoadedKey(key); setLoading(false); setError(''); setUnauthenticated(false); }
+        if (!controller.signal.aborted && isCurrent(owner)) { setOrder(data.order || null); setOrders(data.orders || []); setNextOffset(data.nextOffset ?? null); setLoadedKey(key); setLoadedUser(auth.user); setLoading(false); setError(''); setUnauthenticated(false); }
       })
-      .catch(error => { if (!controller.signal.aborted) { setOrder(null); setOrders([]); setNextOffset(null); setError(error instanceof Error ? error.message : 'Orders could not be loaded. Please retry.'); setUnauthenticated(error instanceof CommerceRequestError && error.status === 401); setLoadedKey(key); setLoading(false); } });
+      .catch(error => { if (!controller.signal.aborted && isCurrent(owner)) { setOrder(null); setOrders([]); setNextOffset(null); setError(error instanceof Error ? error.message : 'Orders could not be loaded. Please retry.'); setUnauthenticated(error instanceof CommerceRequestError && error.status === 401); setLoadedKey(key); setLoadedUser(auth.user); setLoading(false); } });
     return () => controller.abort();
   }, [endpoint, revision, requestKey, auth.user, admin]);
 
   const reload = () => { setLoading(true); setError(''); setRevision(value => value + 1); };
   const action = async (payload: Record<string, unknown>) => {
-    if (auth.status !== 'authenticated' || !auth.user || loadedKey !== requestKey) return;
+    if (auth.status !== 'authenticated' || !auth.user || !ready || getAuthState().user !== loadedUser) return;
     const owner = auth.user.id;
     setBusy(true); setError('');
     try { await commerceRequest(endpoint, owner, payload); if (isCurrent(owner)) reload(); }
@@ -78,8 +81,8 @@ function AccountOrders({ auth, admin, id }: { auth: AuthState; admin: boolean; i
     <nav className={styles.nav} aria-label="Order navigation"><Link href={admin ? '/admin' : '/profile'}>{admin ? 'Store administration' : 'My account'}</Link>{id && <Link href={base}>All orders</Link>}<Link href="/">Shop</Link></nav>
     <h1>{id ? (admin ? 'Order workspace' : 'Your order') : (admin ? 'Orders and payment exceptions' : 'Your orders')}</h1>
     {admin && !id && <p className={styles.intro}>Review payments, prepare confirmed purchases and record dispatch. Historical orders created before verified checkout are retained separately for a controlled migration.</p>}
-    {requestKey && loadedKey === requestKey && error && <div role="alert" className={styles.error}>{error} {unauthenticated ? <Link href={`/login?redirect=${encodeURIComponent(id ? `${base}/${id}` : base)}`}>Sign in</Link> : <button onClick={reload}>Retry loading</button>}</div>}
-    {auth.status === 'loading' ? <p role="status">Verifying your account…</p> : auth.status === 'error' ? <div role="alert"><p>Your account could not be verified.</p><button onClick={() => { void refreshAuthSession().catch(() => undefined); }}>Retry account check</button></div> : auth.status === 'guest' ? <p><Link href={`/login?redirect=${encodeURIComponent(id ? `${base}/${id}` : base)}`}>Sign in to view orders</Link></p> : loading || loadedKey !== requestKey ? <p role="status">Loading order details…</p> : id && order ? <>
+    {ready && error && <div role="alert" className={styles.error}>{error} {unauthenticated ? <Link href={`/login?redirect=${encodeURIComponent(id ? `${base}/${id}` : base)}`}>Sign in</Link> : <button onClick={reload}>Retry loading</button>}</div>}
+    {auth.status === 'loading' ? <p role="status">Verifying your account…</p> : auth.status === 'error' ? <div role="alert"><p>Your account could not be verified.</p><button onClick={() => { void refreshAuthSession().catch(() => undefined); }}>Retry account check</button></div> : auth.status === 'guest' ? <p><Link href={`/login?redirect=${encodeURIComponent(id ? `${base}/${id}` : base)}`}>Sign in to view orders</Link></p> : !ready ? <p role="status">Loading order details…</p> : id && order ? <>
       <div className={styles.heading}><div><p className={styles.reference}>{order.id}</p><h2>{statusLabel(order)}</h2><p>{descriptions[order.status]}</p></div><div className={styles.actions}>
         {(order.providerOrderId || order.paymentSetupState !== 'idle') && <button disabled={busy} onClick={() => action({ action: 'reconcile' })}>{busy ? 'Checking…' : 'Check payment status'}</button>}
         {!admin && order.status === 'pending_payment' && <><Link href={`/checkout?order=${order.id}`}>Review and pay</Link><button disabled={busy} onClick={() => action({ action: 'cancel' })}>Cancel unpaid order</button></>}

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { after, before, beforeEach, describe, test } from 'node:test';
 import pg from 'pg';
 import { NextResponse } from 'next/server';
+import { databaseConfig } from '../../src/lib/databaseConfig.mjs';
 import { migrate } from '../../scripts/migrate.mjs';
 import { query, closeDatabase } from '../../src/lib/database';
 import { productInput, validateMerchantImages } from '../../src/lib/merchant/validation';
@@ -52,12 +53,12 @@ describe('merchant PostgreSQL invariants', { skip: !baseUrl }, () => {
     const url = new URL(baseUrl!);
     assert.ok(['127.0.0.1','localhost'].includes(url.hostname));
     assert.match(url.pathname, /^\/wishlyn_.*test$/);
+    Object.assign(process.env, { NODE_ENV: 'test', DB_ALLOW_LOCAL_PLAINTEXT: 'true', APP_ORIGIN: 'http://localhost:3144', NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: 'merchant-fixture' });
     databaseName = `wishlyn_merchant_${randomUUID().replaceAll('-', '')}_test`;
-    admin = new pg.Client({ connectionString: url.toString() }); await admin.connect();
+    admin = new pg.Client(databaseConfig(url.toString(), process.env)); await admin.connect();
     await admin.query(`CREATE DATABASE "${databaseName}"`);
     url.pathname = `/${databaseName}`; databaseUrl = url.toString();
     process.env.DATABASE_URL = databaseUrl; process.env.DB_ALLOW_LOCAL_PLAINTEXT = 'true';
-    Object.assign(process.env, { NODE_ENV: 'test', APP_ORIGIN: 'http://localhost:3144', NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: 'merchant-fixture' });
     const names = await migrate(databaseUrl, true);
     assert.ok(names.includes('004-merchant.sql')); assert.deepEqual(await migrate(databaseUrl, true), []);
   });
@@ -177,7 +178,7 @@ describe('merchant PostgreSQL invariants', { skip: !baseUrl }, () => {
   });
   test('quote waits for a product archive transaction and sees its committed status', async () => {
     const product = await saveMerchantProduct('admin', input());
-    const blocker = new pg.Client({ connectionString: databaseUrl }); await blocker.connect(); await blocker.query('BEGIN');
+    const blocker = new pg.Client(databaseConfig(databaseUrl, process.env)); await blocker.connect(); await blocker.query('BEGIN');
     await blocker.query("UPDATE products SET status='archived' WHERE id=$1", [product.id]);
     const pending = quote(product.variants[0].id).then(() => 'unexpected', () => 'rejected');
     let waiting = false;
