@@ -23,7 +23,10 @@ async page => {
     await page.waitForURL('**/profile');
     await page.getByRole('button', { name: 'Save profile', exact: true }).waitFor();
   }
-  await go('/product/browser-piece');
+  await go('/');
+  await page.getByRole('link', { name: /Synthetic browser piece/ }).first().click();
+  await page.waitForURL('**/product/browser-piece');
+  await page.getByRole('heading', { name: 'Synthetic browser piece', exact: true }).waitFor();
   await page.getByLabel('Choose your option', { exact: true }).selectOption('browser-variant-b');
   await page.getByRole('button', { name: 'Add to wishlist', exact: true }).click();
   await page.getByRole('button', { name: 'Remove from wishlist', exact: true }).waitFor();
@@ -192,5 +195,5 @@ async page => {
   await page.waitForFunction(() => scrollY === 0);
   await page.screenshot({ path: '/tmp/wishlyn-completion-real-journey.png', fullPage: true });
   check(errors.length === 0, `Runtime exceptions: ${errors.join('; ')}`);
-  return { status: 'PASS', orderId, requestId, guestBagQuantityPreserved: true, delayedGuestTabDoesNotResurrectRemovedPiece: true, realFixtureProfileAddresses: true, exactVariantGiftQuoteReload: true, serverWishlist: true, customerStaffSupport: true, reservationSafeStockAdjustment: true, archivePreservesOrder: true, accountIsolation: true, staleCookieQuoteRejected: true, geometry, pageErrors: errors, blockedProviderCalls: blocked, provenance: 'Actual APIs/SQL/session cookies against only the named disposable database; foreign/provider traffic blocked, no payment or notification sent' };
+  return { status: 'PASS', orderId, requestId, catalogueProductNavigation: true, guestBagQuantityPreserved: true, delayedGuestTabDoesNotResurrectRemovedPiece: true, realFixtureProfileAddresses: true, exactVariantGiftQuoteReload: true, serverWishlist: true, customerStaffSupport: true, reservationSafeStockAdjustment: true, archivePreservesOrder: true, accountIsolation: true, staleCookieQuoteRejected: true, geometry, pageErrors: errors, blockedProviderCalls: blocked, provenance: 'Actual APIs/SQL/session cookies against only the named disposable database; foreign/provider traffic blocked, no payment or notification sent' };
 }

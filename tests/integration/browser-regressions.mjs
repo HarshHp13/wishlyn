@@ -10,7 +10,7 @@ async page => {
   const product = { id: 'fixture-01', title: 'Synthetic checkout piece', description: 'Fixture only', categoryId: 'earrings', basePrice: 199, images: [], rating: 0, reviewsCount: 0, details: {} };
   const variant = { id: 'variant-1', productId: product.id, metalType: 'Fixture material', purity: 'Plated', price: 199, stock: 100 };
   const order = { id: first, ownerId: user.id, email: user.email, items: [{ variantId: variant.id, productId: product.id, title: 'First saved order piece', metalType: variant.metalType, purity: variant.purity, size: null, image: null, quantity: 1, giftWrap: false, giftMessage: '', unitPricePaise: 19900, giftWrapPaise: 0, lineTotalPaise: 19900 }], shipping, currency: 'INR', subtotalPaise: 19900, shippingPaise: 25000, taxPaise: 600, totalPaise: 45500, status: 'pending_payment', reservationState: 'active', paymentSetupState: 'idle', providerOrderId: null, providerPaymentId: null, fulfillmentStatus: 'unfulfilled', trackingCarrier: null, trackingNumber: null, trackingUrl: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 900000).toISOString() };
-  let failedSecond = 0, quotePayload, orderStatus = 'pending_payment';
+  let failedSecond = 0, quotePayload, orderStatus = 'pending_payment', secondAvailable = false;
   const paymentRequests = [], pageErrors = [];
   let releaseSdk, notifySdk;
   const sdkStarted = new Promise(resolve => { notifySdk = resolve; });
@@ -31,7 +31,10 @@ async page => {
         return route.fulfill({ json: { user } });
       }
       if (url.pathname === `/api/orders/${first}`) return route.fulfill({ json: { viewerId: user.id, order: { ...order, status: orderStatus } } });
-      if (url.pathname === `/api/orders/${second}`) { failedSecond++; return route.fulfill({ status: 503, json: { error: 'Second order is temporarily unavailable' } }); }
+      if (url.pathname === `/api/orders/${second}`) {
+        if (secondAvailable) return route.fulfill({ json: { viewerId: user.id, order: { ...order, id: second, items: [{ ...order.items[0], title: 'Recovered second saved piece' }] } } });
+        failedSecond++; return route.fulfill({ status: 503, json: { error: 'Second order is temporarily unavailable' } });
+      }
       if (url.pathname === '/api/account/addresses') return route.fulfill({ json: { viewerId: user.id, ownerId: user.id, addresses: [{ ...shipping, id: 'address-fixture', version: 1, label: 'Home fixture' }] } });
       if (url.pathname === '/api/cart-products') return route.fulfill({ json: { items: [{ product, variant }] } });
       if (url.pathname === '/api/checkout/quote') { quotePayload = request.postDataJSON(); return route.fulfill({ json: { viewerId: user.id, order } }); }
@@ -55,6 +58,10 @@ async page => {
   await page.waitForFunction(() => typeof window.Razorpay === 'function');
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   check(paymentRequests.length === 0 && failedSecond > 0, 'Unexpected payment request');
+  secondAvailable = true;
+  await page.getByRole('button', { name: 'Retry loading order', exact: true }).click();
+  await page.getByText('Recovered second saved piece', { exact: true }).waitFor();
+  check(!await page.getByRole('checkbox').isChecked(), 'Recovered order retained old payment approval');
 
   authMode = 'superseded'; authCount = 0;
   const startedFirst = new Promise(resolve => { notifyFirst = resolve; });
@@ -111,5 +118,5 @@ async page => {
   await page.waitForFunction(() => scrollY === 0);
   await page.screenshot({ path: '/tmp/wishlyn-completion-checkout-mobile.png', fullPage: true });
   check(pageErrors.length === 0, `Runtime errors: ${pageErrors.join('; ')}`);
-  return { status: 'PASS', staleSavedOrderHidden: true, retiredSdkActionDoesNotStartPayment: true, failedSavedOrderRetry: true, supersededAuthStaysInCheckout: true, sameAccountOrderStatusRefreshed: true, largeBagAdjustment: true, savedPurchaseWithLargeBag: true, savedAddressQuote: true, layouts, pageErrors, paymentRequests, provenance: 'Isolated production Next application; API/provider traffic intercepted with synthetic data; no live purchase' };
+  return { status: 'PASS', staleSavedOrderHidden: true, retiredSdkActionDoesNotStartPayment: true, failedSavedOrderRetry: true, savedOrderRetryLoads: true, supersededAuthStaysInCheckout: true, sameAccountOrderStatusRefreshed: true, largeBagAdjustment: true, savedPurchaseWithLargeBag: true, savedAddressQuote: true, layouts, pageErrors, paymentRequests, provenance: 'Isolated production Next application; API/provider traffic intercepted with synthetic data; no live purchase' };
 }
