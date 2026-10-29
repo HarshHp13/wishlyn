@@ -172,10 +172,10 @@ async page => {
   await login('browser-b@example.test');
   check(await page.getByText('Integration home', { exact: true }).count() === 0, 'B saw A address');
   await go(`/orders/${orderId}`);
-  await page.getByRole('alert').waitFor();
+  await page.locator('main').getByRole('alert').waitFor();
   check(await page.locator('main').getByText('Integration gift for Asha', { exact: false }).count() === 0, 'B saw A order');
   await go(`/support/${requestId}`);
-  await page.getByRole('alert').waitFor();
+  await page.locator('main').getByRole('alert').waitFor();
   check(await page.getByText('Synthetic staff reply:', { exact: false }).count() === 0, 'B saw A request');
   await go('/profile');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
@@ -190,6 +190,9 @@ async page => {
   for (const path of ['/profile', `/support/${requestId}`, '/checkout?order=' + orderId]) {
     await go(path);
     await page.getByRole('heading', { level: 1 }).waitFor();
+    if (path === '/profile') await page.getByRole('button', { name: 'Save profile', exact: true }).waitFor();
+    else if (path.startsWith('/support/')) await page.getByText('Synthetic staff reply:', { exact: false }).waitFor();
+    else await page.getByRole('heading', { name: 'Review your order', exact: true }).waitFor();
     await page.setViewportSize({ width: 320, height: 1000 });
     const layout = await page.evaluate(() => ({ width: innerWidth, scrollWidth: document.documentElement.scrollWidth }));
     check(layout.scrollWidth <= 320, `${path} overflows`); geometry.push({ path, ...layout });
