@@ -138,3 +138,33 @@ test('paid cleanup compares the latest bag inside the queued mutation and accoun
   assert.equal(a.store.getSnapshot().items.length, 1);
 });
 
+
+test('paid cleanup rechecks the unread durable bag when storage recovers', async () => {
+  const env = environment();
+  env.data.set(state.shoppingKey('cart', 'a'), state.encodeShopping(state.addCartLine([], line)));
+  const a = env.tab(account('a'));
+  a.storage.getItem = () => { throw new Error('Storage denied'); };
+  await wait();
+  await a.complete({ ownerId: 'a', items: [line] });
+  assert.equal(state.decodeCart(env.data.get(state.shoppingKey('cart', 'a'))).items.length, 1, 'unread durable data must not be overwritten');
+  a.storage.getItem = key => env.data.get(key) ?? null;
+  a.auth({ status: 'loading', user: null }); a.auth(account('a')); await wait();
+  assert.equal(a.store.getSnapshot().items.length, 0);
+  assert.equal(state.decodeCart(env.data.get(state.shoppingKey('cart', 'a'))).items.length, 0);
+});
+
+test('unread recovery preserves an accepted edit ahead of paid cleanup', async () => {
+  const env = environment();
+  env.data.set(state.shoppingKey('cart', 'a'), state.encodeShopping(state.addCartLine([], line)));
+  const a = env.tab(account('a'));
+  a.storage.getItem = () => { throw new Error('Storage denied'); };
+  await wait();
+  await a.store.mutate(items => state.addCartLine(items, { ...line, giftMessage: 'New accepted gift' }));
+  await a.complete({ ownerId: 'a', items: [line] });
+  a.storage.getItem = key => env.data.get(key) ?? null;
+  a.auth({ status: 'loading', user: null }); a.auth(account('a')); await wait();
+  const recovered = a.store.getSnapshot().items;
+  assert.deepEqual(recovered.map(item => item.giftMessage).sort(), ['New accepted gift', 'Private gift']);
+  assert.equal(recovered.reduce((sum, item) => sum + item.quantity, 0), 2);
+  assert.equal(state.decodeCart(env.data.get(state.shoppingKey('cart', 'a'))).items.length, 2);
+});
