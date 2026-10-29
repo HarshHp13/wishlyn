@@ -8,6 +8,8 @@
   "unclaimedGuestCancellationBlocked": true,
   "storageDeniedSharedGuestIsolated": true,
   "storageDeniedCartEmpty": true,
+  "unreadOwnerCartRecovered": true,
+  "unreadOwnerCartPreservedOnAddition": true,
   "failedPasswordRetained": true,
   "savedPieceVisible": true,
   "accountIsolated": true,

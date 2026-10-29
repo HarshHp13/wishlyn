@@ -301,6 +301,42 @@ async (page) => {
   await denied.tab.waitForFunction(() => !document.querySelector('[role="dialog"]')?.textContent?.includes("retained for verification") && ![...document.querySelectorAll("dialog[open]")].some(dialog => dialog.textContent.includes("retained for verification")));
   await denied.tab.getByText("Your shopping bag is empty.", { exact: true }).waitFor();
   await denied.tab.close();
+
+  // Seed only this synthetic browser account's durable cart, then prevent the
+  // new tab from reading it until Storage access is restored.
+  await page.evaluate(item => {
+    const stored = { ...item, id: JSON.stringify([item.variantId, true, "Stored B gift"]), quantity: 3, giftMessage: "Stored B gift" };
+    localStorage.setItem("wishlyn-v2-cart-account-browser-b", JSON.stringify({ version: 2, items: [stored] }));
+  }, deniedAMigration);
+  const unread = await page.context().newPage();
+  unread.on("pageerror", error => errors.push(error.message));
+  await unread.route("**/*", route => ["localhost", "127.0.0.1"].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
+  await unread.addInitScript(() => {
+    window.__wishlynDenyStorage = true;
+    for (const name of ["getItem", "setItem", "removeItem"]) {
+      const original = Storage.prototype[name];
+      Storage.prototype[name] = function (...args) {
+        if (window.__wishlynDenyStorage) throw new DOMException("Synthetic unread owner storage", "SecurityError");
+        return original.apply(this, args);
+      };
+    }
+  });
+  await unread.goto(origin + "/product/browser-product");
+  await unread.getByRole("link", { name: "Account profile (browser-b@example.test)", exact: true }).waitFor();
+  await unread.getByRole("button", { name: "Open shopping bag", exact: true }).click();
+  await unread.getByText("Your shopping bag is empty.", { exact: true }).waitFor();
+  await unread.evaluate(() => { window.__wishlynDenyStorage = false; window.dispatchEvent(new Event("focus")); });
+  await unread.getByText("Gift message: “Stored B gift”", { exact: true }).waitFor();
+  const restoredOwner = await unread.evaluate(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-account-browser-b")).items);
+  const unreadOwnerCartRecovered = restoredOwner.length === 1 && restoredOwner[0].quantity === 3 && restoredOwner[0].giftMessage === "Stored B gift";
+  await unread.getByRole("button", { name: "Close cart", exact: true }).click();
+  await unread.getByLabel("Add gift packaging (+ ₹350 per item)", { exact: true }).check();
+  await unread.getByLabel("Gift message (optional)", { exact: true }).fill("New B addition after restore");
+  await unread.getByRole("button", { name: "Add to shopping bag", exact: true }).click();
+  await unread.getByText("Gift message: “New B addition after restore”", { exact: true }).waitFor();
+  const preservedOwner = await unread.evaluate(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-account-browser-b")).items);
+  const unreadOwnerCartPreservedOnAddition = preservedOwner.length === 2 && preservedOwner.find(item => item.giftMessage === "Stored B gift")?.quantity === 3 && preservedOwner.find(item => item.giftMessage === "New B addition after restore")?.quantity === 1;
+  await unread.close();
   return {
     provenance:
       "Local development server and actual disposable PostgreSQL; synthetic users/orders; remote requests blocked; auth verification alone delayed; controlled Storage denial in one tab; no email/payment/provider action.",
@@ -312,6 +348,8 @@ async (page) => {
     unclaimedGuestCancellationBlocked,
     storageDeniedSharedGuestIsolated,
     storageDeniedCartEmpty,
+    unreadOwnerCartRecovered,
+    unreadOwnerCartPreservedOnAddition,
     failedPasswordRetained,
     savedPieceVisible: true,
     accountIsolated,

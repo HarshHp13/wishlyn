@@ -1,0 +1,98 @@
+{
+  "status": "FIXED",
+  "initialPersistedBag": [
+    {
+      "quantity": 3,
+      "giftMessage": "Existing B stored gift"
+    }
+  ],
+  "deniedSnapshot": {
+    "items": [],
+    "notice": "Browser storage is unavailable. Your shopping items will last only for this visit."
+  },
+  "afterStorageRestoreRetry": {
+    "items": [
+      {
+        "id": "[\"variant\",true,\"Existing B stored gift\"]",
+        "variantId": "variant",
+        "product": {
+          "id": "piece",
+          "title": "Synthetic piece",
+          "description": "",
+          "categoryId": "test",
+          "basePrice": 199,
+          "images": [],
+          "rating": 0,
+          "reviewsCount": 0,
+          "details": {}
+        },
+        "variant": {
+          "id": "variant",
+          "productId": "piece",
+          "metalType": "Fixture",
+          "purity": "",
+          "price": 199,
+          "stock": 10
+        },
+        "quantity": 3,
+        "giftWrap": true,
+        "giftMessage": "Existing B stored gift",
+        "unavailable": false
+      }
+    ],
+    "notice": ""
+  },
+  "afterSessionReverification": {
+    "items": [
+      {
+        "id": "[\"variant\",true,\"Existing B stored gift\"]",
+        "variantId": "variant",
+        "product": {
+          "id": "piece",
+          "title": "Synthetic piece",
+          "description": "",
+          "categoryId": "test",
+          "basePrice": 199,
+          "images": [],
+          "rating": 0,
+          "reviewsCount": 0,
+          "details": {}
+        },
+        "variant": {
+          "id": "variant",
+          "productId": "piece",
+          "metalType": "Fixture",
+          "purity": "",
+          "price": 199,
+          "stock": 10
+        },
+        "quantity": 3,
+        "giftWrap": true,
+        "giftMessage": "Existing B stored gift",
+        "unavailable": false
+      }
+    ],
+    "notice": ""
+  },
+  "finalSnapshot": [
+    {
+      "quantity": 3,
+      "giftMessage": "Existing B stored gift"
+    },
+    {
+      "quantity": 1,
+      "giftMessage": "New B addition after storage returned"
+    }
+  ],
+  "finalPersistedBag": [
+    {
+      "quantity": 3,
+      "giftMessage": "Existing B stored gift"
+    },
+    {
+      "quantity": 1,
+      "giftMessage": "New B addition after storage returned"
+    }
+  ],
+  "provenance": "Actual store/state, controlled unread existing B cart plus total storage denial/restoration, no application mutation or external traffic"
+}

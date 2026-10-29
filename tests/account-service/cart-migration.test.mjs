@@ -85,11 +85,11 @@ function sharedFixture(guestItems) {
   const data = new Map([[state.shoppingKey("cart", null), state.encodeShopping(guestItems)]]), tabs = [];
   let lock = Promise.resolve();
   function tab(name) {
-    let auth = { status: "guest", user: null }, denied = false, failedWrite = () => false;
+    let auth = { status: "guest", user: null }, denied = false, failedWrite = () => false, failedRead = () => false;
     const listeners = new Set(), events = new Set(), exports = {};
     const dispatch = key => events.forEach(listener => listener({ key }));
     const storage = {
-      getItem: key => { if (denied) throw new Error("Storage denied"); return data.get(key) ?? null; },
+      getItem: key => { if (denied || failedRead(key)) throw new Error("Storage denied"); return data.get(key) ?? null; },
       setItem: (key, value) => { if (denied || failedWrite(key)) throw new Error("Storage quota"); data.set(key, value); tabs.filter(other => other.name !== name).forEach(other => other.dispatch(key)); },
       removeItem: key => { if (denied) throw new Error("Storage denied"); data.delete(key); tabs.filter(other => other.name !== name).forEach(other => other.dispatch(key)); },
     };
@@ -99,8 +99,8 @@ function sharedFixture(guestItems) {
       window: { addEventListener: (_type, listener) => events.add(listener) }, localStorage: storage,
       navigator: { locks: { request: (_name, action) => { const task = lock.then(action); lock = task.catch(() => {}); return task; } } },
     });
-    const result = { name, dispatch, store: exports.cartStore, denyStorage() { denied = true; }, restoreStorage() { denied = false; failedWrite = () => false; },
-      failWrites(predicate) { failedWrite = predicate; }, auth(next) { auth = next; listeners.forEach(listener => listener()); } };
+    const result = { name, dispatch, store: exports.cartStore, denyStorage() { denied = true; }, restoreStorage() { denied = false; failedWrite = () => false; failedRead = () => false; },
+      failWrites(predicate) { failedWrite = predicate; }, failReads(predicate) { failedRead = predicate; }, auth(next) { auth = next; listeners.forEach(listener => listener()); } };
     tabs.push(result); result.store.subscribe(() => {}); return result;
   }
   return { data, tab };
@@ -180,4 +180,88 @@ test("a failed later guest edit preserves old cart claims and cannot re-key A's 
   assert.equal(slow.store.getSnapshot().items.length, 1);
   exact(slow.store.getSnapshot().items, 1, "Fresh local gift");
   exact(fast.store.getSnapshot().items, 2);
+});
+
+test("restored storage recovers an unread durable owner cart before retry or a later addition", async () => {
+  const env = sharedFixture([]), tab = env.tab("only"); await settle();
+  env.data.set(state.shoppingKey("cart", "b"), state.encodeShopping(state.addCartLine([], line(3, "Existing B gift"))));
+  tab.denyStorage(); tab.auth(account("b")); await settle();
+  assert.equal(tab.store.getSnapshot().items.length, 0);
+  tab.restoreStorage(); await tab.store.retry(); await settle();
+  exact(tab.store.getSnapshot().items, 3, "Existing B gift");
+  tab.auth({ status: "loading", user: null }); tab.auth(account("b")); await settle();
+  exact(tab.store.getSnapshot().items, 3, "Existing B gift");
+  await tab.store.mutate(items => state.addCartLine(items, line(1, "New B addition")));
+  const stored = state.decodeCart(env.data.get(state.shoppingKey("cart", "b"))).items;
+  exact(stored, 3, "Existing B gift"); exact(stored, 1, "New B addition");
+});
+test("a mutation after storage restoration first reads the owner's unknown baseline without explicit retry", async () => {
+  const env = sharedFixture([]), tab = env.tab("only"); await settle();
+  env.data.set(state.shoppingKey("cart", "b"), state.encodeShopping(state.addCartLine([], line(3, "Existing B gift"))));
+  tab.denyStorage(); tab.auth(account("b")); await settle(); tab.restoreStorage();
+  await tab.store.mutate(items => state.addCartLine(items, line(1, "New B addition")));
+  const stored = state.decodeCart(env.data.get(state.shoppingKey("cart", "b"))).items;
+  exact(stored, 3, "Existing B gift"); exact(stored, 1, "New B addition");
+});
+test("unread owner storage reconciles accepted local additions and removals exactly once across B/A/B", async () => {
+  const env = sharedFixture([]), tab = env.tab("only"); await settle();
+  env.data.set(state.shoppingKey("cart", "b"), state.encodeShopping(state.addCartLine([], line(3, "Existing B gift"))));
+  tab.denyStorage(); tab.auth(account("b")); await settle();
+  await tab.store.mutate(items => state.addCartLine(items, line(1, "Removed local gift")));
+  await tab.store.mutate(items => items.filter(item => item.giftMessage !== "Removed local gift"));
+  await tab.store.mutate(items => state.addCartLine(items, line(2, "Kept local gift")));
+  tab.auth(account("a")); await settle(); assert.equal(tab.store.getSnapshot().items.length, 0);
+  tab.restoreStorage(); tab.auth(account("b")); await settle();
+  const stored = state.decodeCart(env.data.get(state.shoppingKey("cart", "b"))).items;
+  assert.equal(stored.length, 2);
+  exact(stored, 3, "Existing B gift"); exact(stored, 2, "Kept local gift");
+  await tab.store.retry(); await settle(); exact(tab.store.getSnapshot().items, 2, "Kept local gift");
+});
+test("unread same-line guest and owned additions merge with the durable quantity once, preserving quantity/removal intent", async () => {
+  const env = sharedFixture([]), tab = env.tab("only"); await settle();
+  env.data.set(state.shoppingKey("cart", "b"), state.encodeShopping(state.addCartLine([], line(3))));
+  tab.denyStorage(); await tab.store.mutate(items => state.addCartLine(items, line(1)));
+  tab.auth(account("b")); await settle();
+  await tab.store.mutate(items => state.addCartLine(items, line(2)));
+  tab.restoreStorage(); await tab.store.retry(); await settle();
+  exact(tab.store.getSnapshot().items, 6);
+  tab.denyStorage(); await tab.store.mutate(items => state.changeQuantity(items, items[0].id, 2));
+  await tab.store.mutate(() => []);
+  tab.restoreStorage(); await tab.store.retry(); await settle();
+  assert.equal(tab.store.getSnapshot().items.length, 0);
+  assert.equal(state.decodeCart(env.data.get(state.shoppingKey("cart", "b"))).items.length, 0);
+});
+test("a successful baseline read followed by quota failure never replays pending local additions twice", async () => {
+  const env = sharedFixture([]), tab = env.tab("only"); await settle();
+  env.data.set(state.shoppingKey("cart", "b"), state.encodeShopping(state.addCartLine([], line(3))));
+  tab.denyStorage(); tab.auth(account("b")); await settle();
+  await tab.store.mutate(items => state.addCartLine(items, line(1)));
+  tab.restoreStorage(); tab.failWrites(key => key === state.shoppingKey("cart", "b"));
+  await tab.store.retry(); await settle(); exact(tab.store.getSnapshot().items, 4);
+  await tab.store.retry(); await settle(); exact(tab.store.getSnapshot().items, 4);
+  tab.restoreStorage(); await tab.store.retry(); await settle();
+  exact(state.decodeCart(env.data.get(state.shoppingKey("cart", "b"))).items, 4);
+});
+test("read denial with working writes cannot overwrite an unknown owner baseline", async () => {
+  const env = sharedFixture([]), tab = env.tab("only"); await settle();
+  const key = state.shoppingKey("cart", "b");
+  env.data.set(key, state.encodeShopping(state.addCartLine([], line(3, "Existing B gift"))));
+  tab.failReads(candidate => candidate === key); tab.auth(account("b")); await settle();
+  await tab.store.mutate(items => state.addCartLine(items, line(1, "Local B gift")));
+  exact(state.decodeCart(env.data.get(key)).items, 3, "Existing B gift");
+  assert.equal(state.decodeCart(env.data.get(key)).items.length, 1);
+  tab.restoreStorage(); await tab.store.retry(); await settle();
+  const stored = state.decodeCart(env.data.get(key)).items;
+  exact(stored, 3, "Existing B gift"); exact(stored, 1, "Local B gift");
+});
+test("removing a local line while its same-line owner baseline is unread remains a removal after recovery", async () => {
+  const env = sharedFixture([]), tab = env.tab("only"); await settle();
+  const key = state.shoppingKey("cart", "b");
+  env.data.set(key, state.encodeShopping(state.addCartLine([], line(3))));
+  tab.denyStorage(); tab.auth(account("b")); await settle();
+  await tab.store.mutate(items => state.addCartLine(items, line(1)));
+  await tab.store.mutate(items => items.filter(item => item.id !== state.lineId(variant.id, true, "Private gift")));
+  tab.restoreStorage(); await tab.store.retry(); await settle();
+  assert.equal(tab.store.getSnapshot().items.length, 0);
+  assert.equal(state.decodeCart(env.data.get(key)).items.length, 0);
 });

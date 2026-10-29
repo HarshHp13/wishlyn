@@ -5,6 +5,7 @@ import { addCartLine, decodeCart, decodeWishlist, encodeShopping, shoppingKey, t
 
 type GuestTransfer<T> = { id: string; items: T[] };
 type Snapshot<T> = { items: T[]; status: 'loading' | 'ready' | 'error'; notice: string; accountId: string | null; guestTransfers?: GuestTransfer<T>[] };
+type CartMemory<T> = { items: T[]; baselineKnown: boolean; edits: ((items: T[]) => T[])[] };
 
 function createStore<T>(kind: string, decode: (raw: string | null) => { items: T[]; recovered: boolean }, merge: (a: T[], b: T[]) => T[], localChanges: (before: T[], after: T[], local: T[]) => T[], sameSelection: (a: T, b: T) => boolean) {
   const initial: Snapshot<T> = { items: [], status: 'loading', notice: '', accountId: null };
@@ -18,11 +19,14 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
   const localSelectionIds = new Set<string>();
   const pendingGuests = new Map<string, GuestTransfer<T>[]>();
   const guestAssignments = new Map<string, GuestTransfer<T>[]>();
-  const memory = new Map<string, T[]>();
+  const memory = new Map<string, CartMemory<T>>();
   let queue: Promise<void> = Promise.resolve();
   const listeners = new Set<() => void>();
   const publish = (next: Snapshot<T>) => {
-    if (kind === 'cart' && memoryOnly && scope && next.status === 'ready') memory.set(scope, next.items);
+    if (kind === 'cart' && memoryOnly && scope && next.status === 'ready') {
+      const prior = memory.get(scope);
+      memory.set(scope, { items: next.items, baselineKnown: prior?.baselineKnown ?? false, edits: prior?.edits || [] });
+    }
     if (JSON.stringify(snapshot) === JSON.stringify(next)) return;
     snapshot = next;
     listeners.forEach(listener => listener());
@@ -100,6 +104,35 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
   function unclaimedGuestCart(items: T[]): T[] {
     return selections(items, readRecords(selectionKey)).filter(record => !localStorage.getItem(claimKey(record.id))).flatMap(record => record.items);
   }
+  // An empty fallback does not prove that the owner's durable bag was empty.
+  // Replay accepted owner-local edits only after that unread baseline returns.
+  // Once read, keep the resulting full snapshot if writing still fails.
+  function restoreCartMemory(key: string): T[] {
+    const prior = memory.get(key);
+    if (!prior) return [];
+    try {
+      let items = prior.items;
+      if (!prior.baselineKnown) {
+        const current = decode(localStorage.getItem(key));
+        items = prior.edits.reduce((current, edit) => edit(current), current.items);
+        memory.set(key, { items, baselineKnown: true, edits: [] });
+      }
+      localStorage.setItem(key, encodeShopping(items));
+      memory.delete(key); memoryOnly = false;
+      return items;
+    } catch {
+      memoryOnly = true;
+      return memory.get(key)?.items || prior.items;
+    }
+  }
+  function rememberCartAddition(key: string, items: T[], picks: T[]) {
+    const prior = memory.get(key);
+    memory.set(key, {
+      items, baselineKnown: prior?.baselineKnown ?? true,
+      edits: prior && !prior.baselineKnown ? [...prior.edits, current => merge(current, picks)] : [],
+    });
+    memoryOnly = true;
+  }
   function load() {
     if (lastVerifiedAccount === null && snapshot.accountId === null && snapshot.status === 'ready') {
       guestMemory = snapshot.items;
@@ -123,7 +156,7 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
       queue = queue.then(() => lock(() => {
         if (identity() !== accountId || scope !== key) return;
         if (kind === 'cart' && memory.has(key)) {
-          let items = memory.get(key) || [];
+          let items = accountId ? restoreCartMemory(key) : memory.get(key)?.items || [];
           let retained = false;
           if (accountId && (previous === null || guestAssignments.has(accountId))) {
             let shared: T[] = [];
@@ -131,12 +164,14 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
               const claimed = claimLiveCartGuest(accountId, decode(localStorage.getItem(shoppingKey(kind, null))).items);
               shared = claimed.items; retained = !claimed.complete;
             } catch { retained = true; }
-            items = merge(items, merge(shared, eligibleGuestMemory(accountId)));
+            const picks = merge(shared, eligibleGuestMemory(accountId));
+            items = merge(items, picks);
+            if (picks.length) { rememberCartAddition(key, items, picks); items = restoreCartMemory(key); }
             consumeLocalGuest(accountId);
             memory.delete(shoppingKey(kind, null));
             if (!retained) { guestAssignments.delete(accountId); guestMemory = []; guestSelections = []; }
           }
-          publish({ items, status: 'ready', accountId, notice: retained ? 'Browser storage is unavailable. Some guest selections are retained for verification; retry when storage is available.' : 'Browser storage is unavailable. Your shopping items will last only for this visit.' });
+          publish({ items, status: 'ready', accountId, notice: retained ? 'Browser storage is unavailable. Some guest selections are retained for verification; retry when storage is available.' : memoryOnly ? 'Browser storage is unavailable. Your shopping items will last only for this visit.' : '' });
           return;
         }
         let migratedItems: T[] | undefined, accountItems: T[] | undefined;
@@ -213,6 +248,10 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
             pendingGuests.set(accountId, pending);
             items = migratedItems || merge(items, pending.flatMap(record => record.items));
           }
+          if (kind === 'cart' && accountId) memory.set(key, {
+            items, baselineKnown: accountItems !== undefined,
+            edits: accountItems === undefined && items.length ? [current => merge(current, items)] : [],
+          });
           const retained = !!accountId && !verifiedGuest && guestAssignments.has(accountId) && guestMemory.length > 0;
           if (accountId) {
             consumeLocalGuest(accountId);
@@ -260,7 +299,7 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
     getServerSnapshot: () => initial,
     subscribe: (listener: () => void) => { listeners.add(listener); start(); return () => { listeners.delete(listener); }; },
     notify,
-    retry: async () => { await refreshAuthSession(); const accountId = identity(); if (accountId && guestAssignments.has(accountId)) scope = null; load(); },
+    retry: async () => { await refreshAuthSession(); const accountId = identity(); if (accountId && (guestAssignments.has(accountId) || (kind === 'cart' && memory.has(shoppingKey(kind, accountId))))) scope = null; load(); },
     // Integration code recovering a cached account cart must call this when
     // guest storage cannot be read. The shared guest snapshot is ineligible.
     getEligibleGuestRecovery: eligibleGuestMemory,
@@ -297,6 +336,7 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
       queue = queue.then(() => lock(() => {
         if (identity() !== expected || scope !== key) return;
         let items = snapshot.items;
+        if (kind === 'cart' && expected && memory.has(key)) items = restoreCartMemory(key);
         try { if (!memoryOnly) items = decode(localStorage.getItem(key)).items; } catch { /* In-memory fallback. */ }
         if (expected === null && kind === 'cart' && !memoryOnly) {
           try { items = unclaimedGuestCart(items); } catch { /* Shared cached quantities never become local additions. */ }
@@ -311,14 +351,21 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
           guestSelections = selections(next, prior);
         }
         try {
+          const prior = kind === 'cart' && expected ? memory.get(key) : undefined;
+          if (prior && !prior.baselineKnown) {
+            memory.set(key, { ...prior, items: next, edits: [...prior.edits, update] });
+            throw new Error('The saved account bag has not been read.');
+          }
           // Keep old claim metadata until the corresponding guest payload is
           // replaced. A quota failure cannot erase ownership of the old copy.
           if (expected === null) persistRecords(selectionKey, combine(storedRecords, guestSelections));
           localStorage.setItem(key, encodeShopping(next));
+          if (kind === 'cart' && expected) { memory.delete(key); memoryOnly = false; }
           if (expected === null) { try { persistRecords(selectionKey, guestSelections); } catch { /* Extra old records are harmless; only live payloads may claim unspent IDs. */ } }
           if (expected === null) { guestLocalItems = []; guestLocalOwner = null; localSelectionIds.clear(); }
         } catch {
           memoryOnly = true; notice = 'Browser storage is unavailable. Your shopping items will last only for this visit.';
+          if (kind === 'cart' && expected && !memory.has(key)) memory.set(key, { items: next, baselineKnown: true, edits: [] });
           if (expected === null) {
             guestLocalItems = local; guestLocalOwner = null;
             localSelectionIds.clear();
