@@ -265,3 +265,123 @@ test("removing a local line while its same-line owner baseline is unread remains
   assert.equal(tab.store.getSnapshot().items.length, 0);
   assert.equal(state.decodeCart(env.data.get(key)).items.length, 0);
 });
+
+for (const delayedOwner of ["a", "b"]) test(`a delayed ${delayedOwner} logout under storage denial starts a fresh guest bag and retains only new guest actions`, async () => {
+  const env = sharedFixture(state.addCartLine([], line(2, "Shared gift owned by A"))), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  slow.auth({ status: "loading", user: null }); fast.auth(account("a")); await settle();
+  slow.denyStorage(); slow.auth(account(delayedOwner)); await settle();
+  assert.equal(slow.store.getSnapshot().items.length, 0);
+  slow.auth({ status: "guest", user: null }); await settle();
+  assert.equal(slow.store.getSnapshot().accountId, null);
+  assert.equal(slow.store.getSnapshot().items.length, 0);
+  await slow.store.mutate(items => state.addCartLine(items, line(1, "Fresh post-logout gift")));
+  assert.equal(slow.store.getSnapshot().items.length, 1); exact(slow.store.getSnapshot().items, 1, "Fresh post-logout gift");
+  slow.restoreStorage(); await slow.store.retry(); await settle();
+  assert.equal(slow.store.getSnapshot().items.length, 1); exact(slow.store.getSnapshot().items, 1, "Fresh post-logout gift");
+  slow.auth(account("b")); await settle();
+  assert.equal(slow.store.getSnapshot().items.length, 1); exact(slow.store.getSnapshot().items, 1, "Fresh post-logout gift");
+  exact(state.decodeCart(env.data.get(state.shoppingKey("cart", "a"))).items, 2, "Shared gift owned by A");
+});
+for (const explicitRetry of [true, false]) test(`restored guest storage filters old claimed raw gifts before ${explicitRetry ? "explicit retry" : "a fresh mutation"}`, async () => {
+  const env = sharedFixture(state.addCartLine([], line(2, "Claimed raw gift"))), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  slow.auth({ status: "loading", user: null }); fast.failWrites(key => key === state.shoppingKey("cart", "a"));
+  fast.auth(account("a")); await settle(); exact(fast.store.getSnapshot().items, 2, "Claimed raw gift");
+  assert.equal(state.decodeCart(env.data.get(state.shoppingKey("cart", null))).items.length, 1);
+  slow.denyStorage(); slow.auth(account("b")); await settle(); slow.auth({ status: "guest", user: null }); await settle();
+  assert.equal(slow.store.getSnapshot().items.length, 0); slow.restoreStorage();
+  if (explicitRetry) { await slow.store.retry(); await settle(); assert.equal(slow.store.getSnapshot().items.length, 0); }
+  await slow.store.mutate(items => state.addCartLine(items, line(1, "Only fresh guest gift")));
+  assert.equal(slow.store.getSnapshot().items.length, 1); exact(slow.store.getSnapshot().items, 1, "Only fresh guest gift");
+  slow.auth(account("b")); await settle();
+  assert.equal(slow.store.getSnapshot().items.length, 1); exact(slow.store.getSnapshot().items, 1, "Only fresh guest gift");
+  exact(fast.store.getSnapshot().items, 2, "Claimed raw gift");
+});
+test("guest fallback excludes readable raw items when their claim records cannot be verified", async () => {
+  const env = sharedFixture(state.addCartLine([], line(2, "Claimed gift"))), tab = env.tab("only"); await settle();
+  const key = state.shoppingKey("cart", null), id = JSON.parse(env.data.get(`${key}-selections`))[0].id;
+  env.data.set(`${key}-claim-${id}`, "a"); tab.failReads(candidate => candidate.includes("-claim-"));
+  tab.auth({ status: "loading", user: null }); tab.auth({ status: "guest", user: null }); await settle();
+  assert.equal(tab.store.getSnapshot().items.length, 0);
+  tab.restoreStorage(); await tab.store.retry(); await settle(); assert.equal(tab.store.getSnapshot().items.length, 0);
+});
+test("a guest tab losing storage during another tab's claim never renders the old shared gift", async () => {
+  const env = sharedFixture(state.addCartLine([], line(2, "Shared gift"))), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  slow.denyStorage(); fast.auth(account("a")); await settle();
+  assert.equal(slow.store.getSnapshot().accountId, null); assert.equal(slow.store.getSnapshot().items.length, 0);
+  await slow.store.mutate(items => state.addCartLine(items, line(1, "Fresh guest gift")));
+  slow.restoreStorage(); await slow.store.retry(); await settle();
+  assert.equal(slow.store.getSnapshot().items.length, 1); exact(slow.store.getSnapshot().items, 1, "Fresh guest gift");
+});
+test("local intent bound before a queued account migration stays with that owner after immediate logout", async () => {
+  const env = sharedFixture([]), tab = env.tab("only"); await settle(); tab.denyStorage();
+  await tab.store.mutate(items => state.addCartLine(items, line(2, "Fresh A intent")));
+  tab.auth(account("a")); tab.auth({ status: "guest", user: null }); await settle();
+  assert.equal(tab.store.getSnapshot().items.length, 0);
+  await tab.store.mutate(items => state.addCartLine(items, line(1, "New guest B intent")));
+  tab.auth(account("b")); await settle(); assert.equal(tab.store.getSnapshot().items.length, 1); exact(tab.store.getSnapshot().items, 1, "New guest B intent");
+  tab.auth(account("a")); await settle(); assert.equal(tab.store.getSnapshot().items.length, 1); exact(tab.store.getSnapshot().items, 2, "Fresh A intent");
+});
+test("guest edits replay on verified unclaimed storage without restoring a canceled line or doubling a fresh gift", async () => {
+  const env = sharedFixture(state.addCartLine([], line(2, "Canceled guest gift"))), tab = env.tab("only"); await settle();
+  tab.failWrites(key => key === state.shoppingKey("cart", null));
+  await tab.store.mutate(items => items.filter(item => item.giftMessage !== "Canceled guest gift"));
+  await tab.store.mutate(items => state.addCartLine(items, line(1, "Fresh guest gift")));
+  tab.restoreStorage(); await tab.store.retry(); await settle();
+  assert.equal(tab.store.getSnapshot().items.length, 1); exact(tab.store.getSnapshot().items, 1, "Fresh guest gift");
+  await tab.store.retry(); await settle(); exact(tab.store.getSnapshot().items, 1, "Fresh guest gift");
+});
+
+test("an identical fresh gift after denied logout survives guest quota recovery with its exact quantity", async () => {
+  const env = sharedFixture(state.addCartLine([], line(2, "Same gift"))), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  slow.auth({ status: "loading", user: null }); fast.failWrites(key => key === state.shoppingKey("cart", "a")); fast.auth(account("a")); await settle();
+  slow.denyStorage(); slow.auth(account("b")); await settle(); slow.auth({ status: "guest", user: null }); await settle();
+  await slow.store.mutate(items => state.addCartLine(items, line(2, "Same gift")));
+  slow.restoreStorage(); slow.failWrites(key => key === state.shoppingKey("cart", null));
+  await slow.store.retry(); await settle(); exact(slow.store.getSnapshot().items, 2, "Same gift");
+  await slow.store.retry(); await settle(); exact(slow.store.getSnapshot().items, 2, "Same gift");
+  slow.restoreStorage(); await slow.store.retry(); await settle(); exact(slow.store.getSnapshot().items, 2, "Same gift");
+  slow.auth(account("b")); await settle(); exact(slow.store.getSnapshot().items, 2, "Same gift");
+  exact(fast.store.getSnapshot().items, 2, "Same gift");
+});
+
+for (const cachedOwner of [false, true]) test(`failed cart cancellation cannot migrate its old raw gift to ${cachedOwner ? "a cached" : "a new"} account`, async () => {
+  const env = sharedFixture([]), tab = env.tab("only"); await settle();
+  if (cachedOwner) {
+    tab.auth(account("a")); await settle(); tab.denyStorage();
+    await tab.store.mutate(items => state.addCartLine(items, line(1, "Existing A gift")));
+    tab.auth({ status: "guest", user: null }); await settle(); tab.restoreStorage(); await tab.store.retry(); await settle();
+  }
+  await tab.store.mutate(items => state.addCartLine(items, line(2, "Canceled raw gift")));
+  const canceled = JSON.parse(env.data.get(`${state.shoppingKey("cart", null)}-selections`))[0].id;
+  tab.failWrites(() => true); await tab.store.mutate(items => items.filter(item => item.giftMessage !== "Canceled raw gift"));
+  assert.equal(tab.store.getSnapshot().items.length, 0);
+  tab.restoreStorage(); tab.auth(account("a")); await settle();
+  assert.equal(tab.store.getSnapshot().items.some(item => item.giftMessage === "Canceled raw gift"), false);
+  assert.equal(env.data.get(`${state.shoppingKey("cart", null)}-claim-${canceled}`), "cancelled");
+  if (cachedOwner) exact(tab.store.getSnapshot().items, 1, "Existing A gift");
+});
+
+test("legacy raw gift identity stays spent during a failed identical fresh payload replacement", async () => {
+  const env = sharedFixture(state.addCartLine([], line(2, "Legacy identical gift"))), fast = env.tab("fast"), slow = env.tab("slow"); await settle();
+  const key = state.shoppingKey("cart", null); env.data.set(key, state.encodeShopping(state.decodeCart(env.data.get(key)).items));
+  slow.auth({ status: "loading", user: null }); fast.failWrites(candidate => candidate === state.shoppingKey("cart", "a")); fast.auth(account("a")); await settle();
+  slow.denyStorage(); slow.auth(account("b")); await settle(); slow.auth({ status: "guest", user: null }); await settle();
+  await slow.store.mutate(items => state.addCartLine(items, line(2, "Legacy identical gift")));
+  slow.restoreStorage(); slow.failWrites(candidate => candidate === key);
+  await slow.store.retry(); await settle(); exact(slow.store.getSnapshot().items, 2, "Legacy identical gift");
+  await slow.store.retry(); await settle(); exact(slow.store.getSnapshot().items, 2, "Legacy identical gift");
+  slow.restoreStorage(); slow.auth(account("b")); await settle(); exact(slow.store.getSnapshot().items, 2, "Legacy identical gift");
+});
+
+test("a fresh identical cart payload keeps its ID through failed old-metadata cleanup and a second tab", async () => {
+  const env = sharedFixture(state.addCartLine([], line(2, "Identical gift"))), tab = env.tab("only"); await settle();
+  const key = state.shoppingKey("cart", null), old = JSON.parse(env.data.get(`${key}-selections`))[0].id;
+  tab.failWrites(candidate => candidate === key); await tab.store.mutate(() => []);
+  await tab.store.mutate(items => state.addCartLine(items, line(2, "Identical gift")));
+  tab.restoreStorage(); tab.failWrites(candidate => candidate === `${key}-selections`);
+  await tab.store.retry(); await settle();
+  const fresh = JSON.parse(env.data.get(key)).guestSelectionIds[0]; assert.notEqual(fresh, old);
+  assert.equal(JSON.parse(env.data.get(`${key}-selections`)).some(record => record.id === old), true);
+  tab.restoreStorage(); const other = env.tab("other"); await settle(); exact(other.store.getSnapshot().items, 2, "Identical gift");
+  other.auth(account("a")); await settle(); exact(other.store.getSnapshot().items, 2, "Identical gift");
+});

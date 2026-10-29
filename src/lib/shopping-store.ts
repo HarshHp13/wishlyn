@@ -7,7 +7,7 @@ type GuestTransfer<T> = { id: string; items: T[] };
 type Snapshot<T> = { items: T[]; status: 'loading' | 'ready' | 'error'; notice: string; accountId: string | null; guestTransfers?: GuestTransfer<T>[] };
 type CartMemory<T> = { items: T[]; baselineKnown: boolean; edits: ((items: T[]) => T[])[] };
 
-function createStore<T>(kind: string, decode: (raw: string | null) => { items: T[]; recovered: boolean }, merge: (a: T[], b: T[]) => T[], localChanges: (before: T[], after: T[], local: T[]) => T[], sameSelection: (a: T, b: T) => boolean) {
+function createStore<T>(kind: string, decode: (raw: string | null) => { items: T[]; recovered: boolean }, merge: (a: T[], b: T[]) => T[], localChanges: (before: T[], after: T[], local: T[]) => T[], sameSelection: (a: T, b: T) => boolean, sameLine: (a: T, b: T) => boolean) {
   const initial: Snapshot<T> = { items: [], status: 'loading', notice: '', accountId: null };
   let snapshot = initial, scope: string | null = null, started = false;
   let lastVerifiedAccount: string | null | undefined;
@@ -16,7 +16,10 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
   // A storage failure does not make a shared snapshot local intent. Track only
   // actions that this tab could not persist, including cart quantity deltas.
   let guestLocalItems: T[] = [], guestLocalOwner: string | null = null;
+  let guestEdits: ((items: T[]) => T[])[] = [];
   const localSelectionIds = new Set<string>();
+  const canceledGuestIds = new Set<string>();
+  const assignedLocalGuests = new Map<string, { items: T[]; records: GuestTransfer<T>[] }>();
   const pendingGuests = new Map<string, GuestTransfer<T>[]>();
   const guestAssignments = new Map<string, GuestTransfer<T>[]>();
   const memory = new Map<string, CartMemory<T>>();
@@ -60,9 +63,31 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
   // Creation and persistence happen under the same Web Lock as guest writes.
   function selections(items: T[], prior: GuestTransfer<T>[]): GuestTransfer<T>[] {
     return items.map(item => {
-      const previous = prior.find(record => record.items.length === 1 && sameSelection(record.items[0], item));
+      const previous = [...prior].reverse().find(record => record.items.length === 1 && sameSelection(record.items[0], item));
       return { id: previous?.id || crypto.randomUUID(), items: [item] };
     });
+  }
+  function storedGuestSelections(items: T[]): GuestTransfer<T>[] {
+    const prior = readRecords(selectionKey);
+    const raw = localStorage.getItem(shoppingKey(kind, null));
+    const value = raw ? JSON.parse(raw) : null;
+    if (value?.guestSelectionIds !== undefined) {
+      if (!Array.isArray(value.guestSelectionIds) || value.guestSelectionIds.length > 50 || !value.guestSelectionIds.every((id: unknown) => typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id))) throw new Error('Invalid guest selection identity');
+      const ids = new Set<string>(value.guestSelectionIds);
+      return items.map(item => {
+        const record = prior.find(record => ids.has(record.id) && record.items.length === 1 && sameSelection(record.items[0], item));
+        if (!record) throw new Error('Guest selection identity could not be verified.');
+        return { id: record.id, items: [item] };
+      });
+    }
+    // Legacy payloads lack IDs. Preserve their oldest matching record while
+    // failed replacement metadata may already contain a newer local action.
+    return selections(items, [...prior].reverse());
+  }
+  function encodeGuest(items: T[], records: GuestTransfer<T>[]) {
+    // Item data and identity change in one Storage write. Extra selection
+    // records left by a failed cleanup cannot re-key an old raw payload.
+    return JSON.stringify({ ...JSON.parse(encodeShopping(items)), guestSelectionIds: records.map(record => record.id) });
   }
   function captureGuest(accountId: string) {
     const captured = guestSelections.filter(record => record.items.some(item => guestMemory.includes(item)));
@@ -71,19 +96,47 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
     guestAssignments.set(accountId, captured);
   }
   function eligibleGuestMemory(accountId: string): T[] {
-    return identity() === accountId && (guestLocalOwner === null || guestLocalOwner === accountId) ? guestLocalItems : [];
+    if (identity() !== accountId) return [];
+    return merge(assignedLocalGuests.get(accountId)?.items || [], guestLocalOwner === null || guestLocalOwner === accountId ? guestLocalItems : []);
   }
   function localRecords(accountId: string) {
-    return eligibleGuestMemory(accountId).length ? guestSelections.filter(record => localSelectionIds.has(record.id)) : [];
+    if (identity() !== accountId) return [];
+    return combine(assignedLocalGuests.get(accountId)?.records || [], guestLocalOwner === null || guestLocalOwner === accountId ? guestSelections.filter(record => localSelectionIds.has(record.id)) : []);
   }
   function consumeLocalGuest(accountId: string) {
+    assignedLocalGuests.delete(accountId);
     if (guestLocalOwner !== null && guestLocalOwner !== accountId) return;
-    guestLocalItems = []; localSelectionIds.clear();
+    guestLocalItems = []; guestEdits = []; localSelectionIds.clear();
+  }
+  function freshGuestItems() { return guestLocalOwner === null ? guestLocalItems : []; }
+  function freshGuestRecords() {
+    return guestLocalOwner === null ? guestSelections.filter(record => localSelectionIds.has(record.id)) : [];
+  }
+  function startFreshGuest() {
+    // A migration may still be queued. Keep its fresh local actions bound to
+    // that owner, but never display them or a retained shared snapshot as guest.
+    if (guestLocalOwner && guestLocalItems.length) {
+      const prior = assignedLocalGuests.get(guestLocalOwner);
+      assignedLocalGuests.set(guestLocalOwner, {
+        items: merge(prior?.items || [], guestLocalItems),
+        records: combine(prior?.records || [], guestSelections.filter(record => localSelectionIds.has(record.id))),
+      });
+    }
+    guestMemory = []; guestSelections = []; guestLocalItems = []; guestLocalOwner = null;
+    guestEdits = []; localSelectionIds.clear(); memory.delete(shoppingKey(kind, null));
   }
   function guestRecords(items: T[]) {
-    guestSelections = selections(items, readRecords(selectionKey));
-    persistRecords(selectionKey, guestSelections);
+    const prior = readRecords(selectionKey);
+    guestSelections = selections(items, combine(prior, freshGuestRecords()));
+    persistRecords(selectionKey, combine(prior, guestSelections));
+    const key = shoppingKey(kind, null), encoded = encodeGuest(items, guestSelections);
+    if (localStorage.getItem(key) !== encoded) localStorage.setItem(key, encoded);
+    guestLocalItems = []; guestLocalOwner = null; guestEdits = []; localSelectionIds.clear();
+    try { persistRecords(selectionKey, guestSelections); } catch { /* Old claims remain until their raw payload has been replaced. */ }
     return guestSelections;
+  }
+  function persistGuestCancellations() {
+    for (const id of canceledGuestIds) if (!localStorage.getItem(claimKey(id))) localStorage.setItem(claimKey(id), 'cancelled');
   }
   // Call under the shopping Web Lock, after reading the live persisted cart.
   // A durable claim must precede account publication, including quota fallback.
@@ -91,9 +144,11 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
   function claimLiveCartGuest(accountId: string, items: T[]): { items: T[]; complete: boolean } {
     const claimed: T[] = [];
     try {
-      const records = selections(items, readRecords(selectionKey));
+      persistGuestCancellations();
+      const records = storedGuestSelections(items);
       persistRecords(selectionKey, records);
       for (const record of records) {
+        if (canceledGuestIds.has(record.id)) continue;
         if (localStorage.getItem(claimKey(record.id))) continue;
         localStorage.setItem(claimKey(record.id), accountId);
         claimed.push(...record.items);
@@ -101,8 +156,12 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
       return { items: claimed, complete: true };
     } catch { return { items: claimed, complete: false }; }
   }
-  function unclaimedGuestCart(items: T[]): T[] {
-    return selections(items, readRecords(selectionKey)).filter(record => !localStorage.getItem(claimKey(record.id))).flatMap(record => record.items);
+  function unclaimedGuestItems(items: T[]): T[] {
+    return storedGuestSelections(items).filter(record => !canceledGuestIds.has(record.id) && !localStorage.getItem(claimKey(record.id))).flatMap(record => record.items);
+  }
+  function currentGuestItems(items: T[]): T[] {
+    const current = guestEdits.reduce((current, edit) => edit(current), unclaimedGuestItems(items));
+    return merge(current, freshGuestItems().filter(local => !current.some(item => sameLine(item, local))));
   }
   // An empty fallback does not prove that the owner's durable bag was empty.
   // Replay accepted owner-local edits only after that unread baseline returns.
@@ -149,14 +208,14 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
       const previous = lastVerifiedAccount;
       lastVerifiedAccount = accountId;
       if (accountId && previous === null) captureGuest(accountId);
-      if (kind === 'cart' && previous && accountId === null) memory.delete(key);
+      if (previous && accountId === null) startFreshGuest();
       memoryOnly = kind === 'cart' && memory.has(key);
       scope = key;
       publish({ ...initial, accountId });
       queue = queue.then(() => lock(() => {
         if (identity() !== accountId || scope !== key) return;
-        if (kind === 'cart' && memory.has(key)) {
-          let items = accountId ? restoreCartMemory(key) : memory.get(key)?.items || [];
+        if (kind === 'cart' && accountId && memory.has(key)) {
+          let items = restoreCartMemory(key);
           let retained = false;
           if (accountId && (previous === null || guestAssignments.has(accountId))) {
             let shared: T[] = [];
@@ -174,30 +233,30 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
           publish({ items, status: 'ready', accountId, notice: retained ? 'Browser storage is unavailable. Some guest selections are retained for verification; retry when storage is available.' : memoryOnly ? 'Browser storage is unavailable. Your shopping items will last only for this visit.' : '' });
           return;
         }
-        let migratedItems: T[] | undefined, accountItems: T[] | undefined;
+        let migratedItems: T[] | undefined, accountItems: T[] | undefined, verifiedGuestItems: T[] | undefined;
         let verifiedGuest = false;
         try {
+          persistGuestCancellations();
           localStorage.removeItem(`wishlyn-${kind}`);
           if (previous && accountId === null) localStorage.removeItem(shoppingKey(kind, null));
           let current = decode(localStorage.getItem(key));
           accountItems = current.items;
-          if (kind === 'cart' && accountId === null) {
-            const live = unclaimedGuestCart(current.items);
-            accountItems = live;
-            if (live.length !== current.items.length) localStorage.setItem(key, encodeShopping(live));
-            current = { ...current, items: live };
+          if (accountId === null) {
+            verifiedGuestItems = currentGuestItems(current.items);
+            current = { ...current, items: verifiedGuestItems };
           }
           if (accountId && (previous === null || guestAssignments.has(accountId))) {
             const guestKey = shoppingKey(kind, null);
             const guest = decode(localStorage.getItem(guestKey));
             let picks: T[];
             if (kind === 'wishlist') {
-              const stored = selections(guest.items, readRecords(selectionKey));
+              const stored = storedGuestSelections(guest.items);
               persistRecords(selectionKey, stored);
               const live = new Set(stored.map(record => record.id));
               const local = new Set(localRecords(accountId).map(record => record.id));
               const accepted = new Set((pendingGuests.get(accountId) || []).map(record => record.id));
               const permitted = (record: GuestTransfer<T>) => {
+                if (canceledGuestIds.has(record.id)) return false;
                 const claim = localStorage.getItem(claimKey(record.id));
                 // A missing claim is permission only for a current live pick
                 // or a fresh local action, never for a canceled cached pick.
@@ -242,7 +301,7 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
           publish({ items: current.items, status: 'ready', accountId, guestTransfers: records, notice: retained ? 'Browser storage is unavailable. Some guest selections are retained for verification; retry when storage is available.' : current.recovered ? 'Some saved shopping items were incompatible and have been removed. Please check your selection.' : '' });
         } catch {
           memoryOnly = true;
-          let items = accountId ? migratedItems || merge(accountItems || [], eligibleGuestMemory(accountId)) : accountItems || guestMemory;
+          let items = accountId ? migratedItems || merge(accountItems || [], eligibleGuestMemory(accountId)) : verifiedGuestItems || freshGuestItems();
           if (accountId && kind === 'wishlist') {
             const pending = combine(pendingGuests.get(accountId) || [], localRecords(accountId));
             pendingGuests.set(accountId, pending);
@@ -257,29 +316,28 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
             consumeLocalGuest(accountId);
             if (verifiedGuest) { guestMemory = []; guestSelections = []; guestAssignments.delete(accountId); }
           }
-          publish({ items, status: 'ready', accountId, guestTransfers: accountId ? pendingGuests.get(accountId) : guestSelections, notice: retained ? 'Browser storage is unavailable. Some guest selections are retained for verification; retry when storage is available.' : 'Browser storage is unavailable. Your shopping items will last only for this visit.' });
+          publish({ items, status: 'ready', accountId, guestTransfers: accountId ? pendingGuests.get(accountId) : kind === 'wishlist' ? freshGuestRecords() : undefined, notice: retained ? 'Browser storage is unavailable. Some guest selections are retained for verification; retry when storage is available.' : 'Browser storage is unavailable. Your shopping items will last only for this visit.' });
         }
       })).catch(() => notify('Your saved shopping items could not be loaded. Please retry.'));
       return;
     }
-    if (memoryOnly) return;
     if (accountId === null) {
       queue = queue.then(() => lock(() => {
         if (identity() !== null || scope !== key) return;
-        let items = snapshot.items;
+        let items: T[] | undefined;
         try {
           const current = decode(localStorage.getItem(key));
-          items = kind === 'cart' ? unclaimedGuestCart(current.items) : current.items;
-          if (items.length !== current.items.length) localStorage.setItem(key, encodeShopping(items));
+          items = currentGuestItems(current.items);
           const records = guestRecords(items);
           publish({ ...snapshot, items, guestTransfers: kind === 'wishlist' ? records : undefined, status: 'ready' });
         } catch {
           memoryOnly = true;
-          publish({ ...snapshot, items, notice: 'Browser storage is unavailable. Your shopping items will last only for this visit.', status: 'ready' });
+          publish({ ...snapshot, items: items || freshGuestItems(), guestTransfers: kind === 'wishlist' ? freshGuestRecords() : undefined, notice: 'Browser storage is unavailable. Your shopping items will last only for this visit.', status: 'ready' });
         }
       })).catch(() => notify('Your guest selections could not be loaded. Please retry.'));
       return;
     }
+    if (memoryOnly) return;
     try {
       const decoded = decode(localStorage.getItem(key));
       if (kind === 'wishlist' && accountId) pendingGuests.set(accountId, readRecords(transferKey(accountId)));
@@ -290,7 +348,7 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
     if (started || typeof window === 'undefined') return;
     started = true;
     subscribeAuth(load);
-    window.addEventListener('storage', event => { if (event.key === scope || event.key === `${scope}-guest-transfers` || (scope === shoppingKey(kind, null) && event.key === selectionKey) || event.key === null) load(); });
+    window.addEventListener('storage', event => { if (event.key === scope || event.key === `${scope}-guest-transfers` || (scope === shoppingKey(kind, null) && (event.key === selectionKey || event.key?.startsWith(`${shoppingKey(kind, null)}-claim-`))) || event.key === null) load(); });
     void refreshAuthSession().catch(() => undefined);
     load();
   }
@@ -299,7 +357,7 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
     getServerSnapshot: () => initial,
     subscribe: (listener: () => void) => { listeners.add(listener); start(); return () => { listeners.delete(listener); }; },
     notify,
-    retry: async () => { await refreshAuthSession(); const accountId = identity(); if (accountId && (guestAssignments.has(accountId) || (kind === 'cart' && memory.has(shoppingKey(kind, accountId))))) scope = null; load(); },
+    retry: async () => { await refreshAuthSession(); const accountId = identity(); if (accountId === null || (accountId && (guestAssignments.has(accountId) || (kind === 'cart' && memory.has(shoppingKey(kind, accountId)))))) scope = null; load(); },
     // Integration code recovering a cached account cart must call this when
     // guest storage cannot be read. The shared guest snapshot is ineligible.
     getEligibleGuestRecovery: eligibleGuestMemory,
@@ -336,11 +394,12 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
       queue = queue.then(() => lock(() => {
         if (identity() !== expected || scope !== key) return;
         let items = snapshot.items;
+        let guestVerified = false;
         if (kind === 'cart' && expected && memory.has(key)) items = restoreCartMemory(key);
-        try { if (!memoryOnly) items = decode(localStorage.getItem(key)).items; } catch { /* In-memory fallback. */ }
-        if (expected === null && kind === 'cart' && !memoryOnly) {
-          try { items = unclaimedGuestCart(items); } catch { /* Shared cached quantities never become local additions. */ }
-        }
+        if (expected === null) {
+          try { items = currentGuestItems(decode(localStorage.getItem(key)).items); guestVerified = true; }
+          catch { items = freshGuestItems(); }
+        } else { try { if (!memoryOnly) items = decode(localStorage.getItem(key)).items; } catch { /* In-memory fallback. */ } }
         const next = update(items);
         const local = expected === null ? localChanges(items, next, guestLocalItems) : [];
         let notice = snapshot.notice;
@@ -349,8 +408,11 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
           let prior = guestSelections;
           try { storedRecords = readRecords(selectionKey); prior = storedRecords.filter(record => record.items.some(item => items.some(current => sameSelection(item, current)))); } catch { /* In-memory keys remain stable when storage is blocked. */ }
           guestSelections = selections(next, prior);
+          for (const record of storedRecords) if (record.items.some(item => items.some(current => sameLine(item, current))) && !record.items.some(item => next.some(current => sameLine(item, current)))) canceledGuestIds.add(record.id);
         }
         try {
+          if (expected === null && !guestVerified) throw new Error('Guest ownership could not be verified.');
+          if (expected === null) persistGuestCancellations();
           const prior = kind === 'cart' && expected ? memory.get(key) : undefined;
           if (prior && !prior.baselineKnown) {
             memory.set(key, { ...prior, items: next, edits: [...prior.edits, update] });
@@ -359,20 +421,21 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
           // Keep old claim metadata until the corresponding guest payload is
           // replaced. A quota failure cannot erase ownership of the old copy.
           if (expected === null) persistRecords(selectionKey, combine(storedRecords, guestSelections));
-          localStorage.setItem(key, encodeShopping(next));
+          localStorage.setItem(key, expected === null ? encodeGuest(next, guestSelections) : encodeShopping(next));
           if (kind === 'cart' && expected) { memory.delete(key); memoryOnly = false; }
           if (expected === null) { try { persistRecords(selectionKey, guestSelections); } catch { /* Extra old records are harmless; only live payloads may claim unspent IDs. */ } }
-          if (expected === null) { guestLocalItems = []; guestLocalOwner = null; localSelectionIds.clear(); }
+          if (expected === null) { guestLocalItems = []; guestLocalOwner = null; guestEdits = []; localSelectionIds.clear(); }
         } catch {
           memoryOnly = true; notice = 'Browser storage is unavailable. Your shopping items will last only for this visit.';
           if (kind === 'cart' && expected && !memory.has(key)) memory.set(key, { items: next, baselineKnown: true, edits: [] });
           if (expected === null) {
             guestLocalItems = local; guestLocalOwner = null;
+            guestEdits.push(update);
             localSelectionIds.clear();
-            for (const record of guestSelections) if (record.items.some(item => local.includes(item))) localSelectionIds.add(record.id);
+            for (const record of guestSelections) if (record.items.some(item => local.some(local => sameLine(item, local)))) localSelectionIds.add(record.id);
           }
         }
-        publish({ ...snapshot, items: next, accountId: expected, guestTransfers: expected === null && kind === 'wishlist' ? guestSelections : snapshot.guestTransfers, status: 'ready', notice });
+        publish({ ...snapshot, items: expected === null && !guestVerified ? local : next, accountId: expected, guestTransfers: expected === null && kind === 'wishlist' ? guestVerified ? guestSelections : freshGuestRecords() : snapshot.guestTransfers, status: 'ready', notice });
       })).catch(() => notify('Your shopping change could not be saved. Please retry.'));
       return queue;
     },
@@ -381,5 +444,5 @@ function createStore<T>(kind: string, decode: (raw: string | null) => { items: T
 export const cartStore = createStore<CartItem>('cart', decodeCart, (current, guest) => guest.reduce((items, line) => addCartLine(items, line), current), (before, after, local) => after.flatMap(item => {
   const quantity = Math.min(item.quantity, Math.max(0, (local.find(line => line.id === item.id)?.quantity || 0) + item.quantity - (before.find(line => line.id === item.id)?.quantity || 0)));
   return quantity ? [{ ...item, quantity }] : [];
-}), (a, b) => a.id === b.id && a.quantity === b.quantity);
-export const wishlistStore = createStore<string>('wishlist', decodeWishlist, (current, guest) => [...new Set([...current, ...guest])].slice(0, 50), (before, after, local) => after.filter(item => local.includes(item) || !before.includes(item)), (a, b) => a === b);
+}), (a, b) => a.id === b.id && a.quantity === b.quantity, (a, b) => a.id === b.id);
+export const wishlistStore = createStore<string>('wishlist', decodeWishlist, (current, guest) => [...new Set([...current, ...guest])].slice(0, 50), (before, after, local) => after.filter(item => local.includes(item) || !before.includes(item)), (a, b) => a === b, (a, b) => a === b);

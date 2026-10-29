@@ -284,7 +284,8 @@ async (page) => {
     }
   });
   const deniedFastTransfer = page.waitForResponse(response => response.url().endsWith("/api/account/wishlist") && response.request().method() === "POST" && response.request().postDataJSON()?.action === "transfer");
-  await signIn("browser-a@example.test"); await deniedFastTransfer;
+  await signIn("browser-a@example.test");
+  const spentGuestId = (await deniedFastTransfer).request().postDataJSON().transfers[0].id;
   const deniedAMigration = await page.evaluate(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-account-browser-a") || '{"items":[]}').items.find(item => item.giftMessage === "Synthetic gift intended for A"));
   await page.request.post(origin + "/api/account/wishlist", { headers: { origin, "X-Wishlyn-Account-ID": "browser-a" }, data: { action: "remove", productId: "browser-product" } });
   await page.request.post(origin + "/api/auth/login", { headers: { origin }, data: { email: "browser-b@example.test", password: "Browser fixture password" } });
@@ -296,10 +297,33 @@ async (page) => {
   const storageDeniedSharedGuestIsolated = deniedTransfers.length === 0 && deniedBList.items.length === 0 && deniedAMigration?.quantity === 2 && deniedAMigration?.giftMessage === "Synthetic gift intended for A";
   const storageDeniedCartEmpty = await denied.tab.getByText("Your shopping bag is empty.", { exact: true }).isVisible();
   await denied.tab.getByText("Some guest selections are retained for verification", { exact: false }).first().waitFor();
+  await page.request.post(origin + "/api/auth/logout", { headers: { origin } });
+  await denied.tab.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await denied.tab.waitForFunction(() => !!document.querySelector('header a[aria-label="Sign in to Wishlyn"]'));
+  await denied.tab.waitForFunction(() => [...document.querySelectorAll("button")].some(button => button.getAttribute("aria-label") === "Add to wishlist" && !button.disabled));
+  await denied.tab.getByText("Your shopping bag is empty.", { exact: true }).waitFor();
+  const retainedGuestLogoutEmpty = (await denied.tab.getByText("Gift message: “Synthetic gift intended for A”", { exact: true }).count()) === 0;
   await denied.tab.evaluate(() => { window.__wishlynDenyStorage = false; });
   await denied.tab.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await denied.tab.waitForFunction(() => !document.querySelector('[role="dialog"]')?.textContent?.includes("retained for verification") && ![...document.querySelectorAll("dialog[open]")].some(dialog => dialog.textContent.includes("retained for verification")));
+  await denied.tab.waitForFunction(() => localStorage.getItem("wishlyn-v2-cart-guest") !== null && JSON.parse(localStorage.getItem("wishlyn-v2-cart-guest")).items.length === 0);
   await denied.tab.getByText("Your shopping bag is empty.", { exact: true }).waitFor();
+  const retainedGuestRestoredEmpty = await denied.tab.evaluate(() => JSON.parse(localStorage.getItem("wishlyn-v2-wishlist-guest")).items.length === 0);
+  await denied.tab.getByRole("button", { name: "Close cart", exact: true }).click();
+  await denied.tab.getByLabel("Add gift packaging (+ ₹350 per item)", { exact: true }).check();
+  await denied.tab.getByLabel("Gift message (optional)", { exact: true }).fill("Fresh gift after verified logout");
+  await denied.tab.getByRole("button", { name: "Add to shopping bag", exact: true }).click();
+  await denied.tab.getByText("Gift message: “Fresh gift after verified logout”", { exact: true }).waitFor();
+  await denied.tab.getByRole("button", { name: "Close cart", exact: true }).click();
+  await denied.tab.getByRole("button", { name: "Add to wishlist", exact: true }).click();
+  await denied.tab.getByRole("button", { name: "Remove from wishlist", exact: true }).waitFor();
+  const freshGuestId = await denied.tab.evaluate(() => JSON.parse(localStorage.getItem("wishlyn-v2-wishlist-guest-selections"))[0].id);
+  const freshTransferResponse = denied.tab.waitForResponse(response => response.url().endsWith("/api/account/wishlist") && response.request().method() === "POST" && response.request().postDataJSON()?.action === "transfer");
+  await page.request.post(origin + "/api/auth/login", { headers: { origin }, data: { email: "browser-b@example.test", password: "Browser fixture password" } });
+  await denied.tab.evaluate(() => window.dispatchEvent(new Event("focus")));
+  const freshTransferStatus = (await freshTransferResponse).status();
+  await denied.tab.waitForFunction(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-account-browser-b") || '{"items":[]}').items.some(item => item.giftMessage === "Fresh gift after verified logout"));
+  const freshOwnedCart = await denied.tab.evaluate(() => JSON.parse(localStorage.getItem("wishlyn-v2-cart-account-browser-b")).items);
+  const freshGuestAfterLogoutTransferred = freshTransferStatus === 200 && freshGuestId !== spentGuestId && freshOwnedCart.length === 1 && freshOwnedCart[0].quantity === 1 && freshOwnedCart[0].giftMessage === "Fresh gift after verified logout";
   await denied.tab.close();
 
   // Seed only this synthetic browser account's durable cart, then prevent the
@@ -348,6 +372,9 @@ async (page) => {
     unclaimedGuestCancellationBlocked,
     storageDeniedSharedGuestIsolated,
     storageDeniedCartEmpty,
+    retainedGuestLogoutEmpty,
+    retainedGuestRestoredEmpty,
+    freshGuestAfterLogoutTransferred,
     unreadOwnerCartRecovered,
     unreadOwnerCartPreservedOnAddition,
     failedPasswordRetained,

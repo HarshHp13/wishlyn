@@ -1,0 +1,35 @@
+{
+  "status": "FIXED",
+  "withheldUnderB": {
+    "items": [],
+    "status": "ready",
+    "accountId": "b",
+    "notice": "Browser storage is unavailable. Some guest selections are retained for verification; retry when storage is available."
+  },
+  "afterLogout": {
+    "items": [],
+    "status": "ready",
+    "accountId": null,
+    "guestTransfers": [],
+    "notice": "Browser storage is unavailable. Your shopping items will last only for this visit."
+  },
+  "serverA": [],
+  "transfers": [
+    {
+      "tab": "fast",
+      "owner": "a",
+      "body": {
+        "action": "transfer",
+        "transfers": [
+          {
+            "id": "fe3a48a1-77da-40ab-a1cb-13aec1cd4628",
+            "productIds": [
+              "guest-product"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "provenance": "Author-adapted independent fifth-head reproduction running the actual sixth-revision store source in isolated synthetic tabs; no external service used."
+}
