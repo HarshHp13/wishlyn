@@ -7,8 +7,8 @@ Date: 29 October 2026. Branch `codex/audit-integration-completion`; every implem
 - Bag, product gift/shipping wording and checkout use shared integer-paise commercial rules. Oversized but structurally valid saved bags show an adjustment message; unrelated saved orders remain accessible.
 - Checkout consumes verified external auth state, waits for bag hydration, refreshes current catalogue snapshots before quoting, and hides uncertainty without treating a superseded request as logout. Order/approval/callback state is scoped to account and requested order reference.
 - Payment cleanup compares the latest account bag within the same queued Web Lock mutation. A concurrent or queued unrelated shopping change survives payment of an earlier quote.
-- Account-scoped in-memory bag state survives session loading/error/retry when browser persistence is unavailable, while other accounts remain isolated.
-- Commerce requests combine navigation cancellation with a 25-second deadline. Saved-order failure exposes a retry action.
+- Integration preserves the W5 shared store: account memory survives uncertainty, unread durable baselines recover before replaying owner-bound local edits, and shared guest claims remain distinct from fresh local intent. W6 adds only purchase-conditional cleanup to that store.
+- Commerce requests combine navigation cancellation with a 25-second deadline. Saved-order failure exposes a working retry action. Same-account reverification refetches the order status and hides obsolete payment controls until that read completes; it also retires pending SDK startup for the prior checkout approval.
 - The installed Next.js error boundary uses `retry()` to refetch failed server content after infrastructure recovery.
 - Checkout reads account-owned saved addresses and validates their delivery shape before applying them; manual entry remains available during address-service failure.
 - Commerce, order and merchant requests carry the account captured by the displayed form/action as `X-Wishlyn-Account-ID`. The server checks it against its session without deriving authority from it; clients validate successful `viewerId` responses, separately from customer order ownership. Order forms reset across account/reference changes. Completion flags recover through same-account verification without publishing private results during uncertainty.
@@ -52,6 +52,10 @@ All tests use dedicated local PostgreSQL, synthetic accounts/products and interc
 
 Run `npm ci`, then `npm run verify` with all five explicit URLs. Never load the store's existing `.env` into mutation tests. The Quality workflow provisions its own PostgreSQL service/databases. Local production browser verification uses a dedicated server at `http://localhost:3126`, a fixture PostgreSQL server with a trusted local TLS certificate and `DATABASE_CA_CERT`, and `APP_ORIGIN`/`NEXT_PUBLIC_APP_URL` matching the test origin.
 
+`tests/integration/browser-journey.mjs` covers the actual profile/address, exact variant/gift quote, wishlist, customer/staff support, stock reservation, archive and account-isolation flows. Its guarded seed resets only the named browser database, including request budgets; repeated fixture runs cannot inherit old local bags or exhausted test budgets. Run it in the isolated `wishlyn-completion` browser opened at the fixture origin.
+
+`tests/integration/retry-recovery.mjs` is a Node runner requiring `INTEGRATION_TEST_DATABASE_URL` for exactly the loopback `wishlyn_integration_browser_test` database. It temporarily renames only that fixture’s products table and guarantees restoration, then confirms the Retry action restores the catalogue in the same document. Keep the matching production fixture server and named browser running.
+
 `tests/integration/browser-regressions.mjs` is consumed by `playwright-cli run-code --filename=<absolute-path>`. API/payment responses are intercepted with synthetic data; foreign traffic and unexpected API mutations are blocked. For error recovery, temporarily rename only the fixture database's `products` table, load `/` and observe the boundary, restore the table in a guaranteed cleanup, then click Try Again and verify catalogue navigation returns. This is never an operation for business data.
 
 ## Operational boundary
@@ -60,4 +64,4 @@ E1–E5 from the implementation plan remain owner-operated release gates: expose
 
 ## Final integration results
 
-Pending W4/W5 merge, final regression matrix, browser journeys and both exact-commit reviews.
+Complete clean-install verification on the fifth W5 source passes **183/183 tests with zero skips**, whole-application lint, typecheck, tracked credential-pattern checks, production Next.js 16.4.3 build and the production dependency audit (zero reported vulnerabilities). The actual customer/staff journey, mocked payment/checkout matrix and same-document outage/retry check also pass on that source. These results remain intermediate: both reviewers subsequently reproduced retained guest data after a storage-denied logout (R1-W5-06), so W5 needs a corrected source and renewed approvals before final W6 acceptance and merge.
