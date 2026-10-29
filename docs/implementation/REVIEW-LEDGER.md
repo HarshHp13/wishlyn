@@ -71,7 +71,6 @@ All W5 review rounds below used integration base `81df15a21281791cd3b2b95d44e77c
 | 6 — `e54a95bc3de1717c3b81c5f83a8301514a076174` | R1-W5-07: recovered fresh quantity delta reused spent shared ID; R1-W5-08: metadata ping-pong after failed payload writes; R2-W5-04: cancellation under total Storage denial lost on direct sign-in | [Request changes](https://github.com/HarshHp13/wishlyn/pull/6#issuecomment-6491336395) | [Request changes](https://github.com/HarshHp13/wishlyn/pull/6#issuecomment-6491337021) |
 
 | 7 — `21c5dc355ededd94a29c510e6371a804420c6a36` | R1-W5-09: old/live shared removal also canceled later or pending fresh same-line metadata UUIDs under selective read denial and normal reads | [Request changes](https://github.com/HarshHp13/wishlyn/pull/6#issuecomment-6492500247) | [Revised request changes](https://github.com/HarshHp13/wishlyn/pull/6#issuecomment-6492522968) |
-
 | 8 — `2b504ca4c16a431c1a0e9733fec1380e31e568ff` | All prior W5 findings independently verified corrected; 124/124 tests per reviewer, no skips | [Final LGTM](https://github.com/HarshHp13/wishlyn/pull/6#issuecomment-6492958070) | [Final LGTM](https://github.com/HarshHp13/wishlyn/pull/6#issuecomment-6492958675) |
 
 Reviewer 2 initially completed a seventh-head LGTM before the new boundary was reported; independent corroboration superseded it before publication or merge. The initial report was preserved for attribution and was not used as approval.
