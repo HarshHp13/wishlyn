@@ -1,6 +1,6 @@
 # W6 — Cross-package integration and validation
 
-Date: 29 October 2026. Branch `codex/audit-integration-completion`; implementation target `codex/audit-remediation`. W1–W5 are merged. W6 awaits its final exact-head/base reviews; umbrella PR #1 remains open and `main` is unchanged.
+Date: 29 October 2026. Branch `codex/audit-integration-completion`, [PR #7](https://github.com/HarshHp13/wishlyn/pull/7); implementation target `codex/audit-remediation`. W1–W5 are merged. W6 awaits its final exact-head/base reviews; umbrella PR #1 remains open and `main` is unchanged.
 
 ## Integrated behavior
 
