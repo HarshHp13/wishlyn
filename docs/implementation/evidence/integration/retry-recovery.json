@@ -1,1 +1,1 @@
-{"status":"PASS","outageErrorVisible":true,"retryRefetchedAfterDatabaseRecovery":true,"url":"http://localhost:3126/","provenance":"Own disposable database products temporarily renamed then restored; production Next retry without full-page navigation"}
+{"status":"PASS","outageBoundaryVisible":true,"retryRestoresCatalogue":true,"sameDocument":true,"tableRestored":true,"provenance":"Temporary table rename only in guarded loopback wishlyn_integration_browser_test; guaranteed restoration; production Next retry action, no provider/customer operation"}
