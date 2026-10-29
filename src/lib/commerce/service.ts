@@ -81,10 +81,13 @@ export async function createPurchase(owner: { id: string; email: string }, body:
     const demand = new Map<string, number>();
     lines.forEach(line => demand.set(line.variantId, (demand.get(line.variantId) || 0) + line.quantity));
     const ids = [...demand.keys()].sort();
+    // Freeze publication and product details before taking variant locks. Merchant saves
+    // use the same product-to-variant order, preventing a mixed snapshot or archive race.
+    await client.query('SELECT id FROM products WHERE id IN (SELECT product_id FROM product_variants WHERE id=ANY($1::text[])) ORDER BY id FOR SHARE', [ids]);
     const { rows: variants } = await client.query<{
       id: string; product_id: string; metal_type: string; purity: string; size: string | null; price: string; stock: number; reserved_stock: number; title: string; images: string[];
     }>(`SELECT v.*,p.title,p.images FROM product_variants v JOIN products p ON p.id=v.product_id
-      WHERE v.id=ANY($1::text[]) AND COALESCE(to_jsonb(p)->>'status','published')='published' ORDER BY v.id FOR UPDATE OF v`, [ids]);
+      WHERE v.id=ANY($1::text[]) AND COALESCE(to_jsonb(p)->>'status','published')='published' AND COALESCE((to_jsonb(v)->>'active')::boolean,true) ORDER BY v.id FOR UPDATE OF v`, [ids]);
     if (variants.length !== ids.length) throw new ApiError(409, 'unavailable_items', 'Some pieces are no longer available. Return to your bag to review them.');
     for (const variant of variants) {
       const needed = demand.get(variant.id)!;

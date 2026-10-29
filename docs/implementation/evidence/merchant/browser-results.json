@@ -1,0 +1,47 @@
+{
+  "provenance": "Production Next build, synthetic intercepted API and upload responses; no live provider/database writes.",
+  "retainedOnAuthRefresh": true,
+  "privateFormHiddenOnAuthFailure": true,
+  "retainedOnAuthFailure": true,
+  "retainedOnUploadFailure": true,
+  "retainedOnSaveFailure": true,
+  "draftCreated": true,
+  "uploadWasNotRepeatedAfterSaveFailure": true,
+  "editedPublishedReplenished": true,
+  "publicLink": "/product/fixture-ring-server-id",
+  "archivedWithStableIdentity": true,
+  "stockHistory": true,
+  "reflow": [
+    {
+      "width": 320,
+      "scrollWidth": 320,
+      "logoOffset": 0
+    },
+    {
+      "width": 390,
+      "scrollWidth": 390,
+      "logoOffset": 0
+    },
+    {
+      "width": 768,
+      "scrollWidth": 768,
+      "logoOffset": 0
+    },
+    {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "logoOffset": 0
+    }
+  ],
+  "doubledText": {
+    "width": 320,
+    "scrollWidth": 320
+  },
+  "errors": [],
+  "requests": {
+    "authRequests": 4,
+    "uploadRequests": 2,
+    "createRequests": 2,
+    "updateRequests": 2
+  }
+}
