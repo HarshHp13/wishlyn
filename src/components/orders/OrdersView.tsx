@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import MerchantNav from '@/components/admin/MerchantNav';
 import { CommerceRequestError, commerceRequest, assertPurchaseOwner } from '@/lib/commerce/client';
 import { getAuthState, getServerAuthState, subscribeAuth, refreshAuthSession, type AuthState } from '@/lib/authClient';
 import { formatMoney } from '@/lib/commerce-rules';
@@ -78,9 +79,12 @@ function AccountOrders({ auth, admin, id }: { auth: AuthState; admin: boolean; i
   const nextFulfillment = order ? ({ unfulfilled: 'processing', processing: 'shipped', shipped: 'delivered', delivered: null } as const)[order.fulfillmentStatus] : null;
 
   return <><Header /><main id="main-content" className={styles.page}><div className="container">
-    <nav className={styles.nav} aria-label="Order navigation"><Link href={admin ? '/admin' : '/profile'}>{admin ? 'Store administration' : 'My account'}</Link>{id && <Link href={base}>All orders</Link>}<Link href="/">Shop</Link></nav>
+    {!admin && <nav className={styles.nav} aria-label="Order navigation"><Link href="/profile">My account</Link>{id && <Link href={base}>All orders</Link>}<Link href="/">Shop</Link></nav>}
+    {admin && <p className={styles.eyebrow}>STORE MANAGEMENT</p>}
+    {admin && id && <Link className={styles.backLink} href={base}>← All orders</Link>}
     <h1>{id ? (admin ? 'Order workspace' : 'Your order') : (admin ? 'Orders and payment exceptions' : 'Your orders')}</h1>
-    {admin && !id && <p className={styles.intro}>Review payments, prepare confirmed purchases and record dispatch. Historical orders created before verified checkout are retained separately for a controlled migration.</p>}
+    {admin && !id && <p className={styles.intro}>Review payments, prepare orders and keep every delivery moving.</p>}
+    {admin && <MerchantNav active="orders" />}
     {ready && error && <div role="alert" className={styles.error}>{error} {unauthenticated ? <Link href={`/login?redirect=${encodeURIComponent(id ? `${base}/${id}` : base)}`}>Sign in</Link> : <button onClick={reload}>Retry loading</button>}</div>}
     {auth.status === 'loading' ? <p role="status">Verifying your account…</p> : auth.status === 'error' ? <div role="alert"><p>Your account could not be verified.</p><button onClick={() => { void refreshAuthSession().catch(() => undefined); }}>Retry account check</button></div> : auth.status === 'guest' ? <p><Link href={`/login?redirect=${encodeURIComponent(id ? `${base}/${id}` : base)}`}>Sign in to view orders</Link></p> : !ready ? <p role="status">Loading order details…</p> : id && order ? <>
       <div className={styles.heading}><div><p className={styles.reference}>{order.id}</p><h2>{statusLabel(order)}</h2><p>{descriptions[order.status]}</p></div><div className={styles.actions}>
@@ -97,7 +101,7 @@ function AccountOrders({ auth, admin, id }: { auth: AuthState; admin: boolean; i
       <section className={styles.panel}><h2>Order history</h2><ol className={styles.timeline}>{order.events?.map(event => <li key={event.id}><time dateTime={event.createdAt}>{new Date(event.createdAt).toLocaleString('en-IN')}</time><p>{event.message}</p></li>)}</ol></section>
     </> : !id && <>
       {admin && <label className={styles.filter} htmlFor="order-filter">Payment status<select id="order-filter" value={filter} onChange={event => { setFilter(event.target.value); setOffset(0); setLoading(true); }}><option value="">All orders</option><option value="review_required">Needs review</option><option value="paid">Confirmed payments</option><option value="pending_payment">Awaiting payment</option><option value="expired">Expired reservations</option><option value="cancelled">Cancelled purchases</option></select></label>}
-      {!orders.length && !error ? <p>No orders match this view. <Link href="/">Continue shopping</Link>.</p> : <ul className={styles.orderList}>{orders.map(order => <li key={order.id}><div><Link href={`${base}/${order.id}`}>{order.id}</Link><p>{new Date(order.createdAt).toLocaleDateString('en-IN')} · {statusLabel(order)} · {order.fulfillmentStatus}</p>{admin && <p>{order.email}</p>}</div><strong>{formatMoney(order.totalPaise)}</strong></li>)}</ul>}
+      {!orders.length && !error ? <div className={styles.empty}><h2>{admin ? 'No orders in this view' : 'Your next favourite awaits'}</h2><p>{admin ? 'New orders will appear here. Try another payment status to find a purchase.' : <>Your orders will appear here once you make a purchase. <Link href="/">Continue shopping</Link>.</>}</p></div> : <ul className={styles.orderList}>{orders.map(order => <li key={order.id}><div><Link href={`${base}/${order.id}`}>{order.id}</Link><p>{new Date(order.createdAt).toLocaleDateString('en-IN')} · {statusLabel(order)} · {order.fulfillmentStatus}</p>{admin && <p>{order.email}</p>}</div><strong>{formatMoney(order.totalPaise)}</strong></li>)}</ul>}
       <nav className={styles.pagination} aria-label="Order pages">{offset > 0 && <button onClick={() => { setOffset(Math.max(0, offset - 20)); setLoading(true); }}>Previous orders</button>}{nextOffset !== null && <button onClick={() => { setOffset(nextOffset); setLoading(true); }}>More orders</button>}</nav>
     </>}
   </div></main><Footer /></>;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import MerchantNav from "@/components/admin/MerchantNav";
 import {
   getAuthState,
   getServerAuthState,
@@ -177,14 +178,16 @@ function SupportContent({
     <>
       <main id="main-content" className={styles.page}>
         <div className="container">
-          <nav className={styles.nav} aria-label="Support navigation">
+          {!admin && <nav className={styles.nav} aria-label="Support navigation">
             <Link href={admin ? "/admin" : "/profile"}>
               {admin ? "Administration" : "My account"}
             </Link>
             <Link href={admin ? "/admin/orders" : "/orders"}>Orders</Link>
             {id && <Link href={base}>All requests</Link>}
             <Link href="/">Shop</Link>
-          </nav>
+          </nav>}
+          {admin && <p className={styles.eyebrow}>STORE MANAGEMENT</p>}
+          {admin && id && <Link className={styles.backLink} href={base}>← All requests</Link>}
           <h1>
             {admin
               ? "Customer support queue"
@@ -192,6 +195,8 @@ function SupportContent({
                 ? "Your support request"
                 : "Help and service information"}
           </h1>
+          {admin && !id && <p className={styles.intro}>A thoughtful response makes all the difference. Follow up on orders, returns and customer questions here.</p>}
+          {admin && <MerchantNav active="support" />}
           {!admin && !id && (
             <>
               <p className={styles.intro}>
@@ -330,7 +335,7 @@ function SupportContent({
                 !id && (
                   <>
                     {admin && (
-                      <label className={styles.field} htmlFor="support-filter">
+                      <label className={`${styles.field} ${styles.filter}`} htmlFor="support-filter">
                         Queue status
                         <select
                           id="support-filter"
