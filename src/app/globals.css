@@ -77,6 +77,11 @@ html, body {
   scroll-behavior: smooth;
 }
 
+/* Preserve the page width when a modal locks body scrolling. */
+html {
+  scrollbar-gutter: stable both-edges;
+}
+
 body {
   min-height: 100vh;
   display: flex;

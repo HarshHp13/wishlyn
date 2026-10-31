@@ -56,7 +56,7 @@ async page => {
   await page.keyboard.press('Escape');
   check(await page.getByRole('button', { name: 'Enlarge product image' }).evaluate(element => element === document.activeElement), 'Lightbox focus not restored');
   await context.route('https://api.postalpincode.in/**', route => route.abort('internetdisconnected'));
-  await page.getByLabel('Check an Indian postal area').fill('110001');
+  await page.getByLabel('Check estimated delivery').fill('110001');
   await page.getByRole('button', { name: 'Check', exact: true }).click();
   await page.getByText('Postal lookup is unavailable.', { exact: false }).waitFor();
   await page.screenshot({ path: 'docs/implementation/evidence/storefront/product-desktop.png', fullPage: true });
