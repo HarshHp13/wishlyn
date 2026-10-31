@@ -677,3 +677,13 @@
 .activeThumbnail { border-color: var(--gold-ink); box-shadow: 0 0 0 2px var(--gold-ink); }
 .activeTab { border-bottom-color: var(--gold-ink); }
 @media (max-width: 480px) { .tabsHeader { flex-direction: column; } .tabTitle { text-align: left; min-height: 44px; } .crossSellCard { flex-wrap: wrap; } .specificationList > div { grid-template-columns: 1fr; gap: 3px; } }
+
+.deliveryHint { margin: 0 0 12px; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+.pincodeStatus:empty { display: none; }
+.pincodeStatus { padding: 0; overflow-wrap: anywhere; }
+.deliveryResult { display: grid; gap: 8px; padding: 16px; border-left: 2px solid var(--gold-ink); background: var(--warm-ivory); }
+.deliveryDate { color: var(--gold-ink); font-weight: 600; }
+.deliveryCaveat { color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+.pincodeBtn { min-height: 44px; font-size: 13px; }
+.pincodeBtn:disabled { opacity: 0.65; cursor: wait; }
+.pincodeInput { font-size: 16px; }
