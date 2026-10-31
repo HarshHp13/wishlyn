@@ -9,7 +9,8 @@ async page => {
   await page.unroute('**/*');
   page.removeAllListeners('pageerror');
   page.on('pageerror', error => errors.push(error.message));
-  let user = { id: 'design-admin', email: 'asha@example.test', role: 'admin' };
+  const signedInUser = { id: 'design-admin', email: 'asha@example.test', role: 'admin' };
+  let user = signedInUser;
   let profile = { ownerId: user.id, email: user.email, firstName: 'Asha', lastName: 'Rao', version: 1 };
   let addresses = [{ id: 'home-address', version: 1, label: 'Home', firstName: 'Asha', lastName: 'Rao', phone: '9876543210', address: '12 Garden Road', city: 'Mumbai', state: 'Maharashtra', zipCode: '400001', country: 'India' }];
   const categories = [{ id: 'earrings', name: 'Earrings' }, { id: 'necklaces', name: 'Necklaces' }];
@@ -36,7 +37,14 @@ async page => {
     const method = route.request().method();
     if (url.pathname === '/api/auth/me') return failAuth ? json(route, { error: 'Fixture verification outage' }, 503) : json(route, { user });
     if (url.pathname === '/api/auth/logout') { user = null; return json(route, { success: true }); }
-    if (url.pathname === '/api/account/profile') { if (method === 'POST') profile = { ...profile, ...route.request().postDataJSON(), version: profile.version + 1 }; return json(route, { profile }); }
+    if (url.pathname === '/api/account/profile') {
+      if (method === 'POST') {
+        const body = route.request().postDataJSON();
+        if (body.version !== profile.version) return json(route, { error: 'This profile changed in another session. Reload before saving.' }, 409);
+        profile = { ...profile, ...body, version: profile.version + 1 };
+      }
+      return json(route, { profile });
+    }
     if (url.pathname === '/api/account/addresses') {
       if (method === 'POST') {
         const body = route.request().postDataJSON();
@@ -67,6 +75,10 @@ async page => {
     if (url.pathname.startsWith('/api/admin/support')) return json(route, url.pathname.endsWith(support.id) ? { request: support } : { requests: [support], nextOffset: null });
     return json(route, { error: 'Unexpected API blocked in design fixture' }, 503);
   });
+  async function screenshot(name) {
+    await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo({ top: 0, behavior: 'instant' }); });
+    await page.screenshot({ path: output + '/' + name + '.png', fullPage: true });
+  }
   const reflow = [];
   async function measure(route) {
     for (const width of [320, 390, 768, 1440]) {
@@ -79,7 +91,7 @@ async page => {
   await page.setViewportSize({ width: 1440, height: 1080 });
   await page.goto(origin + '/profile');
   await page.getByRole('button', { name: 'Save profile', exact: true }).waitFor();
-  await page.screenshot({ path: output + '/account-desktop.png', fullPage: true });
+  await screenshot('account-desktop');
   await page.getByLabel('First name', { exact: true }).fill('Asha Updated');
   await page.getByRole('button', { name: 'Save profile', exact: true }).click();
   await page.getByText('Profile saved.', { exact: true }).waitFor();
@@ -96,11 +108,11 @@ async page => {
   assert(await page.getByLabel('New password', { exact: true }).inputValue() === 'new-password-value', 'Failed password update retains form');
   await measure('/profile');
   await page.setViewportSize({ width: 390, height: 900 });
-  await page.screenshot({ path: output + '/account-mobile.png', fullPage: true });
+  await screenshot('account-mobile');
   await page.setViewportSize({ width: 320, height: 900 });
   await page.evaluate(() => { const sizes = [...document.querySelectorAll('main *')].map(el => [el, parseFloat(getComputedStyle(el).fontSize)]); for (const [el, size] of sizes) if (size) el.style.fontSize = size * 2 + 'px'; });
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Account doubled text reflows at 320');
-  await page.screenshot({ path: output + '/account-double-text.png', fullPage: true });
+  await screenshot('account-double-text');
   await page.getByRole('button', { name: 'Delete Home', exact: true }).click();
   await page.getByText('No saved addresses yet', { exact: true }).waitFor();
   assert(addresses.length === 0, 'Address delete and empty state');
@@ -118,7 +130,7 @@ async page => {
   await page.setViewportSize({ width: 1440, height: 1080 });
   await hoops.click();
   await page.getByRole('heading', { name: 'Edit product', exact: true }).waitFor();
-  await page.screenshot({ path: output + '/admin-desktop.png', fullPage: true });
+  await screenshot('admin-desktop');
   assert(await hoops.getAttribute('aria-pressed') === 'true', 'Selected product is indicated');
   await page.getByLabel('Product title', { exact: true }).fill('Everyday gold hoops updated');
   await page.getByLabel('Add product images', { exact: true }).setInputFiles({ name: 'fixture.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRXkAAAAASUVORK5CYII=', 'base64') });
@@ -149,40 +161,61 @@ async page => {
   await page.getByRole('button', { name: /Aura evil eye pendant/ }).waitFor();
   await measure('/admin');
   await page.setViewportSize({ width: 390, height: 900 });
-  await page.screenshot({ path: output + '/admin-mobile.png', fullPage: true });
+  await screenshot('admin-mobile');
   await page.setViewportSize({ width: 320, height: 900 });
   await page.evaluate(() => { const sizes = [...document.querySelectorAll('main *')].map(el => [el, parseFloat(getComputedStyle(el).fontSize)]); for (const [el, size] of sizes) if (size) el.style.fontSize = size * 2 + 'px'; });
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Admin doubled text reflows at 320');
-  await page.screenshot({ path: output + '/admin-double-text.png', fullPage: true });
+  await screenshot('admin-double-text');
   await page.goto(origin + '/admin/orders');
   await page.getByRole('link', { name: order.id, exact: true }).waitFor();
   assert(await page.getByRole('navigation', { name: 'Merchant navigation' }).getByRole('link', { name: 'Orders', exact: true }).getAttribute('aria-current') === 'page', 'Order navigation current state');
   await measure('/admin/orders');
-  await page.screenshot({ path: output + '/orders-desktop.png', fullPage: true });
+  await screenshot('orders-desktop');
   await page.getByRole('link', { name: order.id, exact: true }).click();
   await page.getByRole('heading', { name: 'Delivery and fulfillment', exact: true }).waitFor();
   await measure('/admin/orders/detail');
   await page.goto(origin + '/admin/support');
   await page.getByRole('link', { name: support.subject, exact: true }).waitFor();
   await measure('/admin/support');
-  await page.screenshot({ path: output + '/support-desktop.png', fullPage: true });
+  await screenshot('support-desktop');
   await page.getByRole('link', { name: support.subject, exact: true }).click();
   await page.getByRole('button', { name: 'Save reply', exact: true }).waitFor();
   await measure('/admin/support/detail');
   await page.goto(origin + '/profile');
   await page.getByRole('button', { name: 'Save profile', exact: true }).waitFor();
   await page.getByLabel('First name', { exact: true }).fill('Retained account draft');
+  await page.getByLabel('Address label', { exact: true }).fill('Retained address draft');
+  await page.getByLabel('Current password', { exact: true }).fill('retained-current-password');
   failAuth = true;
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await page.getByRole('button', { name: 'Retry account check', exact: true }).waitFor();
   assert(await page.getByLabel('First name', { exact: true }).count() === 0, 'Auth outage hides private account form');
+  profile = { ...profile, firstName: 'Updated elsewhere', version: profile.version + 1 };
+  addresses = [{ id: 'reverified-address', version: 1, label: 'Reverified home', firstName: 'Asha', lastName: 'Rao', phone: '9876543210', address: '12 Garden Road', city: 'Mumbai', state: 'Maharashtra', zipCode: '400001', country: 'India' }];
   failAuth = false;
+  const refreshedProfile = page.waitForResponse(response => new URL(response.url()).pathname === '/api/account/profile');
   await page.getByRole('button', { name: 'Retry account check', exact: true }).click();
+  await (await refreshedProfile).finished();
+  // A new server-only address label proves the revalidation effect has committed its response.
+  await page.getByRole('button', { name: 'Edit Reverified home', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Save profile', exact: true }).waitFor();
-  assert(await page.getByLabel('First name', { exact: true }).inputValue() === 'Retained account draft', 'Auth recovery retains account draft');
+  assert(await page.getByLabel('First name', { exact: true }).inputValue() === 'Retained account draft', 'Auth recovery retains profile draft after refetch commits');
+  assert(await page.getByLabel('Address label', { exact: true }).inputValue() === 'Retained address draft', 'Auth recovery retains address draft');
+  assert(await page.getByLabel('Current password', { exact: true }).inputValue() === 'retained-current-password', 'Auth recovery retains password draft');
+  await page.getByRole('button', { name: 'Save profile', exact: true }).click();
+  await page.getByText('This profile changed in another session. Reload before saving.', { exact: true }).waitFor();
+  assert(await page.getByLabel('First name', { exact: true }).inputValue() === 'Retained account draft', 'Dirty profile keeps its original version and conflict is shown');
+  await page.getByRole('button', { name: 'Reload account', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('#firstName')?.value === 'Updated elsewhere');
+  assert(true, 'Explicit account reload replaces profile draft');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await page.getByRole('link', { name: /Sign in to manage your account/ }).waitFor();
   assert(await page.getByLabel('First name', { exact: true }).count() === 0, 'Sign out hides private data');
+  user = signedInUser;
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await page.getByRole('button', { name: 'Save profile', exact: true }).waitFor();
+  assert(await page.getByLabel('Address label', { exact: true }).inputValue() === '', 'Confirmed sign-out discards address draft');
+  assert(await page.getByLabel('Current password', { exact: true }).inputValue() === '', 'Confirmed sign-out discards password draft');
   assert(errors.length === 0, 'No uncaught browser errors');
   return { provenance: 'Local Next app with intercepted synthetic API responses; no database or provider writes.', checks, reflow, errors };
 }

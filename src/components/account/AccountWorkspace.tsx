@@ -39,6 +39,7 @@ export default function AccountWorkspace() {
     auth.user.id !== knownOwner
   )
     setKnownOwner(auth.user.id);
+  if (auth.status === "guest" && knownOwner !== null) setKnownOwner(null);
   useEffect(() => {
     void refreshAuthSession().catch(() => undefined);
   }, []);
@@ -58,6 +59,7 @@ function AccountContent() {
   );
   const owner = auth.status === "authenticated" ? auth.user?.id : null;
   const addressHeading = useRef<HTMLHeadingElement>(null);
+  const profileDirty = useRef(false);
   const [loadedOwner, setLoadedOwner] = useState<string | null>(null),
     [profile, setProfile] = useState<AccountProfile | null>(null),
     [addresses, setAddresses] = useState<SavedAddress[]>([]),
@@ -96,7 +98,9 @@ function AccountContent() {
           a.ownerId !== owner
         )
           return;
-        setProfile(p.profile);
+        // Revalidation may finish after typing or a save. Keep the full draft,
+        // including its original optimistic version, and never downgrade a save.
+        setProfile(previous => previous && (profileDirty.current || previous.version > p.profile.version) ? previous : p.profile);
         setAddresses(a.addresses);
         setLoadedOwner(owner);
         setError("");
@@ -104,7 +108,7 @@ function AccountContent() {
       .catch((e) => {
         if (!controller.signal.aborted) {
           setLoadedOwner(owner);
-          setProfile(null);
+          if (!profileDirty.current) setProfile(null);
           setAddresses([]);
           setError(e.message);
         }
@@ -115,6 +119,7 @@ function AccountContent() {
     getAuthState().status === "authenticated" &&
     getAuthState().user?.id === owner;
   async function perform(task: () => Promise<void>, success: string) {
+    if (busy) return;
     setBusy(true);
     setError("");
     setNotice("");
@@ -127,10 +132,16 @@ function AccountContent() {
           e instanceof Error ? e.message : "This update could not be saved.",
         );
     } finally {
-      if (current()) setBusy(false);
+      // This workspace is keyed by owner; a temporary auth failure must not
+      // leave the same owner’s retained form permanently disabled.
+      setBusy(false);
     }
   }
   const reload = () => {
+    // This explicit action discards the profile draft; background checks do not.
+    profileDirty.current = false;
+    setProfile(null);
+    setLoadedOwner(null);
     void refreshAuthSession(true).then(() => setRevision(v => v + 1)).catch(() => undefined);
   };
   const visibleProfile = auth.status === "authenticated" && loadedOwner === owner ? profile : null;
@@ -188,7 +199,7 @@ function AccountContent() {
               <div className={styles.state} role="status"><UserRound size={28} strokeWidth={1.3} aria-hidden="true" /><h2>Getting things ready</h2><p>Loading your account details…</p></div>
             ) : (
               <>
-                {error && <div role="alert" className={styles.error}><p>{error}</p><button onClick={reload}>Reload account</button></div>}
+                {error && <div role="alert" className={styles.error}><p>{error}</p><button disabled={busy} onClick={reload}>Reload account</button></div>}
                 {notice && <p role="status" className={styles.notice}><Check size={17} aria-hidden="true" />{notice}</p>}
                 {profile && <>
                   <nav className={styles.sectionNav} aria-label="Account details sections">
@@ -205,13 +216,13 @@ function AccountContent() {
                       e.preventDefault();
                       void perform(async () => {
                         const data = await accountRequest<{ profile: AccountProfile }>("/api/account/profile", owner, profile);
-                        if (current()) setProfile(data.profile);
+                        if (current()) { profileDirty.current = false; setProfile(data.profile); }
                       }, "Profile saved.");
                     }}>
                       <div className={styles.fields}>
                         {(["firstName", "lastName"] as const).map((key) => <label className={styles.field} key={key} htmlFor={key}>
                           {key === "firstName" ? "First name" : "Last name"}
-                          <input id={key} autoComplete={key === "firstName" ? "given-name" : "family-name"} maxLength={80} value={profile[key]} onChange={(e) => setProfile({ ...profile, [key]: e.target.value })} />
+                          <input id={key} disabled={busy} autoComplete={key === "firstName" ? "given-name" : "family-name"} maxLength={80} value={profile[key]} onChange={(e) => { profileDirty.current = true; setProfile({ ...profile, [key]: e.target.value }); }} />
                         </label>)}
                       </div>
                       <div className={styles.email}><span>Account email</span><p>{profile.email}</p></div>
@@ -258,10 +269,10 @@ function AccountContent() {
                           { key: "zipCode", label: "PIN code", max: 6, autoComplete: "shipping postal-code" },
                         ] as const).map((field) => <label className={`${styles.field} ${"full" in field ? styles.full : ""}`} key={field.key} htmlFor={`address-${field.key}`}>
                           {field.label}
-                          <input id={`address-${field.key}`} required maxLength={field.max} autoComplete={field.autoComplete} placeholder={"placeholder" in field ? field.placeholder : undefined} type={field.key === "phone" ? "tel" : "text"} inputMode={field.key === "zipCode" ? "numeric" : undefined} value={address[field.key]} onChange={(e) => setAddress({ ...address, [field.key]: e.target.value })} />
+                          <input id={`address-${field.key}`} disabled={busy} required maxLength={field.max} autoComplete={field.autoComplete} placeholder={"placeholder" in field ? field.placeholder : undefined} type={field.key === "phone" ? "tel" : "text"} inputMode={field.key === "zipCode" ? "numeric" : undefined} value={address[field.key]} onChange={(e) => setAddress({ ...address, [field.key]: e.target.value })} />
                         </label>)}
-                        <label className={styles.field} htmlFor="address-state">State / union territory<select id="address-state" required autoComplete="shipping address-level1" value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })}><option value="">Choose a state</option>{INDIAN_STATES.map((s) => <option key={s}>{s}</option>)}</select></label>
-                        <label className={styles.field} htmlFor="address-country">Country<input id="address-country" value="India" readOnly autoComplete="shipping country-name" /></label>
+                        <label className={styles.field} htmlFor="address-state">State / union territory<select id="address-state" disabled={busy} required autoComplete="shipping address-level1" value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })}><option value="">Choose a state</option>{INDIAN_STATES.map((s) => <option key={s}>{s}</option>)}</select></label>
+                        <label className={styles.field} htmlFor="address-country">Country<input id="address-country" disabled={busy} value="India" readOnly autoComplete="shipping country-name" /></label>
                       </div>
                       <div className={styles.actions}><button className={styles.primary} disabled={busy}>Save address</button>{address.id && <button type="button" className={styles.secondary} disabled={busy} onClick={() => setAddress(emptyAddress)}>Cancel edit</button>}</div>
                     </form>
@@ -279,8 +290,8 @@ function AccountContent() {
                       }, "Password changed. Sign in again.");
                     }}>
                       <div className={styles.fields}>
-                        <label className={styles.field} htmlFor="current-password">Current password<input id="current-password" type="password" autoComplete="current-password" required maxLength={1024} value={password.currentPassword} onChange={(e) => setPassword({ ...password, currentPassword: e.target.value })} /></label>
-                        <label className={styles.field} htmlFor="new-password">New password<input id="new-password" type="password" autoComplete="new-password" required minLength={8} maxLength={72} aria-describedby="password-guidance" value={password.newPassword} onChange={(e) => setPassword({ ...password, newPassword: e.target.value })} /></label>
+                        <label className={styles.field} htmlFor="current-password">Current password<input id="current-password" disabled={busy} type="password" autoComplete="current-password" required maxLength={1024} value={password.currentPassword} onChange={(e) => setPassword({ ...password, currentPassword: e.target.value })} /></label>
+                        <label className={styles.field} htmlFor="new-password">New password<input id="new-password" disabled={busy} type="password" autoComplete="new-password" required minLength={8} maxLength={72} aria-describedby="password-guidance" value={password.newPassword} onChange={(e) => setPassword({ ...password, newPassword: e.target.value })} /></label>
                       </div>
                       <p className={styles.meta} id="password-guidance">Use at least 8 characters. Changing your password signs you out on all devices.</p>
                       <div className={styles.formFooter}><Link href="/forgot-password" className={styles.textLink}>Password recovery <ArrowUpRight size={14} aria-hidden="true" /></Link><button className={styles.primary} disabled={busy}>Change password</button></div>
