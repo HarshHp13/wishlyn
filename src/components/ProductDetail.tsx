@@ -9,11 +9,13 @@ import type { Product, ProductVariant } from '../data/db';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { productImage } from '../lib/productImages';
+import { DELIVERY_ORIGIN, DELIVERY_REFERENCE, estimateDelivery, formatDeliveryDate, formatDeliveryRange, isIndianPincode, parsePostalDestination, type DeliveryEstimate, type PostalDestination } from '../lib/delivery-estimate';
 import styles from './ProductDetail.module.css';
 
 interface Props { product: Product; initialVariants: ProductVariant[]; crossSellProduct?: Product }
 const tabs = ['details', 'shipping', 'care'] as const;
 type Tab = typeof tabs[number];
+type PostalResult = { status: 'idle' | 'loading' | 'error'; text: string } | { status: 'success'; text: string; destination: PostalDestination; estimate: DeliveryEstimate };
 const tabNames = { details: 'Specifications', shipping: 'Shipping & help', care: 'Jewellery care' };
 function optionLabel(variant: ProductVariant) {
   const purity = variant.purity && !/^100%?$/.test(variant.purity.trim()) ? variant.purity : '';
@@ -28,7 +30,7 @@ export default function ProductDetail({ product, initialVariants: variants, cros
   const [isGift, setIsGift] = useState(false);
   const [giftMessage, setGiftMessage] = useState('');
   const [pincode, setPincode] = useState('');
-  const [postal, setPostal] = useState({ status: 'idle', text: '' });
+  const [postal, setPostal] = useState<PostalResult>({ status: 'idle', text: '' });
   const postalRequest = useRef<AbortController | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [imageIndex, setImageIndex] = useState(0);
@@ -37,7 +39,7 @@ export default function ProductDetail({ product, initialVariants: variants, cros
   const zoomTrigger = useRef<HTMLButtonElement>(null);
   const images = product.images.length ? product.images : ['/product-image-unavailable.svg'];
   const nextImage = (direction: number) => setImageIndex(index => (index + direction + images.length) % images.length);
-  useEffect(() => () => { postalRequest.current?.abort(); }, []);
+  useEffect(() => () => { postalRequest.current?.abort(); postalRequest.current = null; }, []);
   useEffect(() => {
     const dialog = zoom.current;
     if (zoomOpen && !dialog?.open) dialog?.showModal();
@@ -52,24 +54,25 @@ export default function ProductDetail({ product, initialVariants: variants, cros
   async function checkPincode(event: FormEvent) {
     event.preventDefault();
     postalRequest.current?.abort();
-    if (!/^[1-9]\d{5}$/.test(pincode)) { setPostal({ status: 'error', text: 'Enter a valid 6-digit Indian postal code.' }); return; }
+    postalRequest.current = null;
+    if (!isIndianPincode(pincode)) { setPostal({ status: 'error', text: 'Enter a valid 6-digit Indian postal code.' }); return; }
     const request = new AbortController();
     postalRequest.current = request;
     const timer = setTimeout(() => request.abort(), 8000);
-    setPostal({ status: 'loading', text: 'Checking postal area…' });
+    setPostal({ status: 'loading', text: 'Checking delivery estimate…' });
     try {
       const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`, { signal: request.signal });
       if (!response.ok) throw new Error('Unavailable');
       const data = await response.json();
       if (postalRequest.current !== request) return;
-      if (!Array.isArray(data) || data[0]?.Status !== 'Success' || !Array.isArray(data[0]?.PostOffice) || !data[0].PostOffice.length) {
+      const destination = parsePostalDestination(data, pincode);
+      if (!destination) {
         setPostal({ status: 'error', text: 'No matching postal area was found. Check the code and try again.' }); return;
       }
-      const office = data[0].PostOffice[0];
-      if (typeof office.District !== 'string' || typeof office.State !== 'string') throw new Error('Invalid postal response');
-      setPostal({ status: 'success', text: `Postal area: ${office.District}, ${office.State}. This lookup identifies an area; it does not confirm courier coverage or a delivery date.` });
+      const estimate = estimateDelivery(destination, new Date());
+      setPostal({ status: 'success', text: `Estimated arrival: ${formatDeliveryRange(estimate)}`, destination, estimate });
     } catch {
-      if (postalRequest.current === request) setPostal({ status: 'error', text: 'Postal lookup is unavailable. Please retry; delivery coverage has not been confirmed.' });
+      if (postalRequest.current === request) setPostal({ status: 'error', text: 'Postal lookup is unavailable. Please retry to see a delivery estimate.' });
     } finally { clearTimeout(timer); }
   }
   function tabKey(event: KeyboardEvent<HTMLButtonElement>, tab: Tab) {
@@ -101,11 +104,28 @@ export default function ProductDetail({ product, initialVariants: variants, cros
         <button onClick={() => toggleWishlist(product.id)} disabled={wishlistStatus !== 'ready'} className={`${styles.wishlistBtn} ${isInWishlist(product.id) ? styles.wishlistBtnActive : ''}`} aria-pressed={isInWishlist(product.id)} aria-label={isInWishlist(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}><Heart size={22} fill={isInWishlist(product.id) ? 'currentColor' : 'none'} /></button>
       </div>
       {cartStatus === 'error' && <p role="alert">Your shopping session could not be verified. <Link href="/login">Sign in again</Link> to continue.</p>}
-      <div className={styles.pincodeBox}><form onSubmit={checkPincode}><label htmlFor="postal-code" className={styles.pincodeLabel}>Check an Indian postal area</label><div className={styles.pincodeForm}><input id="postal-code" type="text" maxLength={6} autoComplete="postal-code" inputMode="numeric" placeholder="6-digit postal code" value={pincode} aria-describedby="postal-status" aria-invalid={postal.status === 'error'} onChange={event => { postalRequest.current?.abort(); postalRequest.current = null; setPincode(event.target.value.replace(/\D/g, '')); setPostal({ status: 'idle', text: '' }); }} className={styles.pincodeInput} /><button type="submit" disabled={postal.status === 'loading'} className={styles.pincodeBtn}>{postal.status === 'loading' ? 'Checking…' : 'Check'}</button></div><p id="postal-status" role="status" className={styles.pincodeStatus}>{postal.text}</p></form></div>
+      <div className={styles.pincodeBox}>
+        <form onSubmit={checkPincode}>
+          <label htmlFor="postal-code" className={styles.pincodeLabel}>Check estimated delivery</label>
+          <p id="postal-hint" className={styles.deliveryHint}>Estimate based on {DELIVERY_REFERENCE} from {DELIVERY_ORIGIN.name}.</p>
+          <div className={styles.pincodeForm}>
+            <input id="postal-code" type="text" maxLength={6} autoComplete="postal-code" inputMode="numeric" placeholder="6-digit PIN code" value={pincode} aria-describedby="postal-hint postal-status" aria-invalid={postal.status === 'error'} onChange={event => { postalRequest.current?.abort(); postalRequest.current = null; setPincode(event.target.value.replace(/\D/g, '')); setPostal({ status: 'idle', text: '' }); }} className={styles.pincodeInput} />
+            <button type="submit" disabled={postal.status === 'loading'} className={styles.pincodeBtn}>{postal.status === 'loading' ? 'Checking…' : 'Check'}</button>
+          </div>
+          <div id="postal-status" role="status" aria-live="polite" aria-atomic="true" className={styles.pincodeStatus}>
+            {postal.status === 'success' ? <div className={styles.deliveryResult}>
+              <p className={styles.deliveryDate}>{postal.text}</p>
+              <p>{postal.destination.district}, {postal.destination.state} · {postal.destination.pincode}</p>
+              <p>Assumes an order today and booking by the end of {formatDeliveryDate(postal.estimate.bookingDate)} (India time){postal.estimate.bookingMoved ? ', the next open postal day after tomorrow' : ', tomorrow'}.</p>
+              <p className={styles.deliveryCaveat}>Delivery partner will be confirmed for your order. This is a Wishlyn estimate, not a guarantee. Sundays and national holidays are excluded; other holidays or delays may add time. PIN lookup does not confirm service availability.</p>
+            </div> : postal.text}
+          </div>
+        </form>
+      </div>
       <div className={styles.tabsWrapper}><div className={styles.tabsHeader} role="tablist" aria-label="Product information">{tabs.map(tab => <button key={tab} id={`product-tab-${tab}`} role="tab" aria-controls={`product-panel-${tab}`} aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} onKeyDown={event => tabKey(event, tab)} onClick={() => setActiveTab(tab)} className={`${styles.tabTitle} ${activeTab === tab ? styles.activeTab : ''}`}>{tabNames[tab]}</button>)}</div>
         {tabs.map(tab => <div key={tab} id={`product-panel-${tab}`} role="tabpanel" aria-labelledby={`product-tab-${tab}`} tabIndex={0} hidden={activeTab !== tab} className={styles.tabContent}>
           {tab === 'details' && <dl className={styles.specificationList}><div><dt>Material / option</dt><dd>{activeVariant?.metalType || 'Information not provided'}</dd></div>{activeVariant?.purity && !/^100%?$/.test(activeVariant.purity.trim()) && <div><dt>Listed material specification</dt><dd>{activeVariant.purity}</dd></div>}<div><dt>Stone details</dt><dd>{product.details.stone || 'Information not provided'}</dd></div><div><dt>Dimensions</dt><dd>{product.details.dimensions || 'Measurements have not yet been provided'}</dd></div>{activeVariant?.size && <div><dt>Selected size</dt><dd>{activeVariant.size}</dd></div>}</dl>}
-          {tab === 'shipping' && <p className={styles.tabPara}>Checkout currently supports Indian addresses. Shipping is {formatMoney(SHIPPING_PAISE)} below {formatMoney(FREE_SHIPPING_THRESHOLD_PAISE)} and included from that subtotal. Delivery timing and return eligibility need confirmation for your order. <Link href="/support">Get help with delivery or returns</Link>.</p>}
+          {tab === 'shipping' && <p className={styles.tabPara}>Checkout currently supports Indian addresses. Shipping is {formatMoney(SHIPPING_PAISE)} below {formatMoney(FREE_SHIPPING_THRESHOLD_PAISE)} and included from that subtotal. Our estimate uses India Post surface parcel timings from Sector 27, Noida (201301), assuming booking by the end of the following day, or the next open postal day. The delivery partner will be confirmed for your order. Check your PIN code above for an estimated arrival. Other postal holidays may delay booking or delivery. Return eligibility needs confirmation for your order. <Link href="/support">Get help with delivery or returns</Link>.</p>}
           {tab === 'care' && <p className={styles.tabPara}>{product.details.careInstructions?.trim() || 'Care instructions have not yet been provided for this piece. Ask us before choosing a cleaning method.'} {!product.details.careInstructions?.trim() && <Link href="/support">Ask about this piece</Link>}</p>}
         </div>)}
       </div>

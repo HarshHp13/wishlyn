@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "origin": "http://localhost:3003",
+  "fixedIndiaDate": "2026-10-31",
+  "widths": [
+    {
+      "viewport": 320,
+      "content": 320
+    },
+    {
+      "viewport": 390,
+      "content": 390
+    },
+    {
+      "viewport": 768,
+      "content": 768
+    },
+    {
+      "viewport": 1440,
+      "content": 1440
+    }
+  ],
+  "invalidPIN": true,
+  "surfaceDateRanges": true,
+  "sundayBooking": true,
+  "apiFailures": true,
+  "timeoutRecovery": true,
+  "staleRequest": true,
+  "accessibleStatus": true,
+  "shippingCopy": true,
+  "carrierUndecided": true,
+  "errors": []
+}
