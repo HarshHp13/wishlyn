@@ -2,7 +2,7 @@
 
 The shopping bag now opens without the native dialog scrolling against its slide animation. The product PIN check estimates arrival from Sector 27, Noida (201301), assuming booking by the end of the next day in India time, or the next open postal day.
 
-India Post surface parcel timings are a planning reference only. The actual delivery carrier and service remain undecided. The UI identifies the result as a Wishlyn estimate, explains the booking assumption, and says the delivery partner will be confirmed for the order.
+India Post surface parcel timings are a planning reference only. The actual delivery carrier and service remain undecided. The UI identifies the result as a Wishlyn estimate and says the delivery partner will be confirmed for the order. The booking assumption remains in the date calculation but is omitted from the customer-facing result and shipping details.
 
 ## Implementation and review
 

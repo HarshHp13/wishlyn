@@ -87,10 +87,6 @@ export function estimateDelivery(destination: PostalDestination, now: Date): Del
   };
 }
 
-export function formatDeliveryDate(date: string): string {
-  return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
-}
-
 export function formatDeliveryRange(estimate: DeliveryEstimate): string {
   return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).formatRange(
     new Date(`${estimate.earliestDate}T00:00:00Z`), new Date(`${estimate.latestDate}T00:00:00Z`));
