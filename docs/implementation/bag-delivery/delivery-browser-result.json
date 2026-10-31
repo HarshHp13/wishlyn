@@ -5,19 +5,19 @@
   "widths": [
     {
       "viewport": 320,
-      "content": 320
+      "content": 308
     },
     {
       "viewport": 390,
-      "content": 390
+      "content": 378
     },
     {
       "viewport": 768,
-      "content": 768
+      "content": 756
     },
     {
       "viewport": 1440,
-      "content": 1440
+      "content": 1428
     }
   ],
   "invalidPIN": true,
@@ -29,5 +29,6 @@
   "accessibleStatus": true,
   "shippingCopy": true,
   "carrierUndecided": true,
+  "bookingAssumptionHidden": true,
   "errors": []
 }
