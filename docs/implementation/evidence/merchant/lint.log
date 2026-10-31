@@ -1,0 +1,2 @@
+npm notice run wishlyn@0.1.0 npx
+npm notice run 'eslint' src/app/admin/page.tsx src/app/api/admin/product/route.ts src/lib/merchant src/lib/catalogue.ts src/lib/commerce/service.ts src/lib/productImages.ts next.config.ts tests/merchant/merchant.test.ts

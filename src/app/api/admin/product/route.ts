@@ -1,211 +1,35 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
-import { dbInsertProduct, dbInsertVariants, dbDeleteProduct, dbGetProducts, dbGetCategories, sql } from '@/lib/neon';
+import { requireAdmin } from '@/lib/session';
+import { apiError, assertSameOrigin, readJson, requireObject } from '@/lib/api';
+import { rateLimit } from '@/lib/rateLimit';
+import { getMerchantProduct, listMerchantProducts, saveMerchantProduct } from '@/lib/merchant/service';
+import { merchantId } from '@/lib/merchant/validation';
 
-// Helper to authenticate user and check for admin role
-async function checkAdmin(
-  request: Request
-): Promise<{ authorized: boolean; errorResponse?: NextResponse }> {
-  const authHeader = request.headers.get('Authorization');
-  const token = authHeader?.split(' ')[1];
-
-  if (!token) {
-    return {
-      authorized: false,
-      errorResponse: NextResponse.json(
-        { error: 'Authentication token required' },
-        { status: 401 }
-      ),
-    };
-  }
-
-  // Verify access token using JWT verify helper
-  const payload = verifyToken(token);
-  
-  if (!payload || payload.role !== 'admin') {
-    return {
-      authorized: false,
-      errorResponse: NextResponse.json(
-        { error: 'Forbidden: Admin authorization required' },
-        { status: 403 }
-      ),
-    };
-  }
-
-  return { authorized: true };
+async function authorize(request: Request) {
+  assertSameOrigin(request);
+  const user = await requireAdmin(request);
+  await rateLimit(request, { scope: `admin-product-${request.method}`, limit: request.method === 'GET' ? 120 : 30, windowSeconds: 900, identity: user.id });
+  return user;
 }
-
-// M-8: Type definitions and validators for input schema validation
-interface ProductInput {
-  id: string;
-  title: string;
-  description: string;
-  category_id: string;
-  images: string[];
-  stone?: string | null;
-  dimensions?: string | null;
-  care_instructions?: string | null;
-}
-
-interface VariantInput {
-  id: string;
-  product_id: string;
-  metal_type: string;
-  purity: string;
-  price: number;
-  stock: number;
-}
-
-function validateProductInput(p: any): p is ProductInput {
-  return (
-    p &&
-    typeof p.id === 'string' && p.id.trim().length > 0 &&
-    typeof p.title === 'string' && p.title.trim().length > 0 &&
-    typeof p.description === 'string' &&
-    typeof p.category_id === 'string' && p.category_id.trim().length > 0 &&
-    Array.isArray(p.images) && p.images.every((img: any) => typeof img === 'string')
-  );
-}
-
-function validateVariantInput(v: any): v is VariantInput {
-  return (
-    v &&
-    typeof v.id === 'string' && v.id.trim().length > 0 &&
-    typeof v.product_id === 'string' && v.product_id.trim().length > 0 &&
-    typeof v.metal_type === 'string' && v.metal_type.trim().length > 0 &&
-    typeof v.purity === 'string' && v.purity.trim().length > 0 &&
-    typeof v.price === 'number' && v.price >= 0 &&
-    typeof v.stock === 'number' && v.stock >= 0
-  );
-}
-
-export async function POST(request: Request) {
-  try {
-    // Verify admin privileges
-    const { authorized, errorResponse } = await checkAdmin(request);
-    if (!authorized) return errorResponse;
-
-    const body = await request.json();
-    const { product, variants } = body;
-
-    // M-8: Validate request payloads before executing queries
-    if (!validateProductInput(product)) {
-      return NextResponse.json(
-        { error: 'Invalid product details schema' },
-        { status: 400 }
-      );
-    }
-
-    if (variants && (!Array.isArray(variants) || !variants.every(validateVariantInput))) {
-      return NextResponse.json(
-        { error: 'Invalid variants schema' },
-        { status: 400 }
-      );
-    }
-
-    // Insert product using Neon database helper or dev fallback
-    if (sql) {
-      const insertedProduct = await dbInsertProduct(product);
-      if (!insertedProduct) {
-        return NextResponse.json({ error: 'Failed to create product record in Neon DB' }, { status: 400 });
-      }
-
-      if (variants && variants.length > 0) {
-        const insertedVariants = await dbInsertVariants(variants);
-        if (!insertedVariants) {
-          return NextResponse.json({
-            warning: 'Product created, but variants failed. Please recreate variants.',
-            product,
-          });
-        }
-      }
-    }
-
-    return NextResponse.json({ success: true, product });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Admin API Route Error]:', message);
-    return NextResponse.json(
-      { error: 'An internal server error occurred during product creation' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(request: Request) {
-  try {
-    // Verify admin privileges
-    const { authorized, errorResponse } = await checkAdmin(request);
-    if (!authorized) return errorResponse;
-
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Missing product ID parameter' },
-        { status: 400 }
-      );
-    }
-
-    if (sql) {
-      const deleted = await dbDeleteProduct(id);
-      if (!deleted) {
-        return NextResponse.json({ error: 'Failed to delete product from Neon DB' }, { status: 400 });
-      }
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Admin API Route Error]:', message);
-    return NextResponse.json(
-      { error: 'An internal server error occurred during product deletion' },
-      { status: 500 }
-    );
-  }
-}
-
+const response = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 export async function GET(request: Request) {
   try {
-    // Verify admin privileges
-    const { authorized, errorResponse } = await checkAdmin(request);
-    if (!authorized) return errorResponse;
-
-    const [products, categories] = await Promise.all([
-      dbGetProducts(),
-      dbGetCategories()
-    ]);
-
-    const mappedProducts = products ? products.map(p => ({
-      id: p.id,
-      title: p.title,
-      description: p.description,
-      categoryId: p.category_id,
-      basePrice: Number(p.base_price || 0),
-      images: p.images ?? [],
-      rating: Number(p.rating || 5.0),
-      reviewsCount: Number(p.reviews_count || 0),
-      details: {
-        stone: p.stone ?? undefined,
-        dimensions: p.dimensions ?? undefined,
-        careInstructions: p.care_instructions ?? undefined,
-      }
-    })) : [];
-
-    const mappedCategories = categories ? categories.map(c => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug
-    })) : [];
-
-    return NextResponse.json({ products: mappedProducts, categories: mappedCategories });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Admin API Route GET Error]:', message);
-    return NextResponse.json(
-      { error: 'An internal server error occurred during catalog fetch' },
-      { status: 500 }
-    );
-  }
+    const user = await authorize(request);
+    const params = new URL(request.url).searchParams;
+    if (params.has('id')) return response({ viewerId: user.id, product: await getMerchantProduct(merchantId(params.get('id'))) });
+    return response({ ...await listMerchantProducts({ search: params.get('search') || '', status: params.get('status') || '', lowStock: params.get('lowStock') === 'true', offset: Number(params.get('offset') || 0) }), viewerId: user.id });
+  } catch (error) { return apiError(error); }
+}
+export async function POST(request: Request) {
+  try {
+    const user = await authorize(request);
+    return response({ viewerId: user.id, product: await saveMerchantProduct(user.id, await readJson(request, 131072)) }, 201);
+  } catch (error) { return apiError(error); }
+}
+export async function PUT(request: Request) {
+  try {
+    const user = await authorize(request);
+    const body = requireObject(await readJson(request, 131072));
+    return response({ viewerId: user.id, product: await saveMerchantProduct(user.id, body, merchantId(body.id)) });
+  } catch (error) { return apiError(error); }
 }

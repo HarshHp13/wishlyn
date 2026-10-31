@@ -1,0 +1,43 @@
+npm notice run wishlyn@0.1.0 build
+npm notice run next build
+▲ Next.js 16.4.3 (Turbopack)
+✓ Running next.config.ts took 74ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 930ms
+  Running TypeScript ...
+  Finished TypeScript in 3.2s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/21) ...
+  Generating static pages using 11 workers (5/21) 
+  Generating static pages using 11 workers (10/21) 
+  Generating static pages using 11 workers (15/21) 
+✓ Generating static pages using 11 workers (21/21) in 464ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ○ /admin
+├ ƒ /api/admin/product
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/me
+├ ƒ /api/auth/signup
+├ ƒ /api/cloudinary/upload
+├ ƒ /api/create-order
+├ ƒ /api/newsletter
+├ ƒ /api/razorpay/order
+├ ƒ /api/razorpay/verify
+├ ƒ /api/verify-payment
+├ ƒ /api/wishlist-products
+├ ○ /checkout
+├ ○ /login
+├ ƒ /product/[id]
+├ ○ /profile
+└ ○ /wishlist
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -135,3 +135,6 @@
     transform: none;
   }
 }
+
+.category, .viewPiece, .price { font-size: 13px; line-height: 1.6; }
+.wishlistHeart:disabled { opacity: 0.6; }

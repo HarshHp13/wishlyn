@@ -1,0 +1,61 @@
+{
+  "status": "FIXED",
+  "sourceBase": "21c5dc355ededd94a29c510e6371a804420c6a36",
+  "count": 5,
+  "cases": [
+    {
+      "case": "selective guest payload read denial plus delayed Storage delivery, stale visible removal preserves later fresh UUID",
+      "kind": "cart",
+      "directSignIn": false,
+      "oldSelection": "dbe6318b-754d-401a-aae0-cd973ea2fbdc",
+      "laterFreshSelection": "653f6f6d-04ac-40cf-aa89-11441f09f9c4",
+      "expectedFresh": 2,
+      "actualFresh": 2,
+      "status": "FIXED"
+    },
+    {
+      "case": "selective guest payload read denial plus delayed Storage delivery, stale visible removal preserves later fresh UUID",
+      "kind": "cart",
+      "directSignIn": true,
+      "oldSelection": "8a9628c8-87d5-4a6f-8503-0f06893f5476",
+      "laterFreshSelection": "cca37932-d31a-4cc1-b408-00212c3abe52",
+      "laterFreshClaim": "a",
+      "expectedFresh": 2,
+      "actualFresh": 2,
+      "status": "FIXED"
+    },
+    {
+      "case": "selective guest payload read denial plus delayed Storage delivery, stale visible removal preserves later fresh UUID",
+      "kind": "wishlist",
+      "directSignIn": false,
+      "oldSelection": "9c14437c-90bd-4b66-97fa-a815068d9c2a",
+      "laterFreshSelection": "91d38036-78e0-4e4b-a199-f2751a94452c",
+      "expectedFresh": true,
+      "actualFresh": true,
+      "status": "FIXED"
+    },
+    {
+      "case": "selective guest payload read denial plus delayed Storage delivery, stale visible removal preserves later fresh UUID",
+      "kind": "wishlist",
+      "directSignIn": true,
+      "oldSelection": "8e95bdc3-d750-4439-81c6-99d8879b3d68",
+      "laterFreshSelection": "4541d881-9684-44ea-b121-c0d46a811a9c",
+      "laterFreshClaim": "a",
+      "expectedFresh": true,
+      "actualFresh": true,
+      "status": "FIXED"
+    },
+    {
+      "case": "normal readable live shared removal preserves a different pending same-gift UUID",
+      "kind": "cart",
+      "oldSelection": "5c40d697-9876-4427-a187-63708ad42df0",
+      "pendingFreshSelection": "ea491f53-ecc6-4714-b8ac-72b9deed3144",
+      "pendingFreshClaim": "b",
+      "expectedFreshQuantityAfterRetryAndB": 1,
+      "actualFreshQuantityAfterRetryAndB": 1,
+      "status": "FIXED"
+    }
+  ],
+  "provenance": "Author-adapted copy of independent seventh-head reproduction; assertions passed on the actual eighth-revision source. Synthetic VM tabs/Storage/Web Locks/API; no external service used.",
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38"
+}

@@ -1,0 +1,11 @@
+{
+  "status": "FIXED",
+  "sourceBase": "e54a95bc3de1717c3b81c5f83a8301514a076174",
+  "oldSelectionId": "4ef37660-3eff-4972-a5a9-686ce5ebd4fe",
+  "afterRemovalUnderDeniedStorage": [],
+  "afterDirectSignIn": [],
+  "persistedAccount": [],
+  "oldSelectionClaim": "cancelled",
+  "provenance": "Author-adapted copy of independent prior-head reproduction; assertions passed on the actual eighth-revision source. Synthetic VM tabs/Storage/Web Locks/API; no external service used.",
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38"
+}

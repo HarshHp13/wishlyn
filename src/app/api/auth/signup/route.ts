@@ -1,58 +1,30 @@
+import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { dbGetProfileByEmail, dbCreateProfile } from '@/lib/neon';
-import { hashPassword, signToken } from '@/lib/auth';
+import { ApiError, apiError, assertSameOrigin, readJson, requireObject } from '@/lib/api';
+import { normalizeEmail, validatePassword, hashPassword } from '@/lib/auth';
+import { transaction } from '@/lib/database';
+import { createSession, revokeSession, type SessionUser } from '@/lib/session';
+import { rateLimit } from '@/lib/rateLimit';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { email, password } = body;
-
-    if (!email || typeof email !== 'string' || !email.includes('@')) {
-      return NextResponse.json({ error: 'Valid email address is required' }, { status: 400 });
-    }
-
-    if (!password || typeof password !== 'string' || password.length < 8) {
-      return NextResponse.json({ error: 'Password must be at least 8 characters long' }, { status: 400 });
-    }
-
-    const existingUser = await dbGetProfileByEmail(email);
-    if (existingUser) {
-      return NextResponse.json({ error: 'An account with this email address already exists' }, { status: 409 });
-    }
-
-    const password_hash = await hashPassword(password);
-    const userId = typeof crypto?.randomUUID === 'function' ? crypto.randomUUID() : `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const role = email.toLowerCase().includes('admin') ? 'admin' : 'customer';
-
-    const newUser = await dbCreateProfile({
-      id: userId,
-      email,
-      password_hash,
-      role,
+    assertSameOrigin(request);
+    const body = requireObject(await readJson(request, 4096));
+    const email = normalizeEmail(body.email);
+    const password = validatePassword(body.password, true);
+    await rateLimit(request, { scope: 'signup-network', limit: 30, windowSeconds: 900 });
+    await rateLimit(request, { scope: 'signup-email', limit: 5, windowSeconds: 900, identity: email });
+    const passwordHash = await hashPassword(password);
+    const user: SessionUser = { id: randomUUID(), email, role: 'customer' };
+    const response = NextResponse.json({ success: true, user }, { status: 201 });
+    await transaction(async client => {
+      await client.query("INSERT INTO profiles(id,email,password_hash,role) VALUES($1,$2,$3,'customer')", [user.id, email, passwordHash]);
+      await revokeSession(request, client);
+      await createSession(user.id, response, client);
     });
-
-    if (!newUser) {
-      return NextResponse.json({ error: 'Failed to create user account' }, { status: 500 });
-    }
-
-    const token = signToken({
-      id: newUser.id,
-      email: newUser.email,
-      role: newUser.role,
-    });
-
-    return NextResponse.json({
-      success: true,
-      token,
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        role: newUser.role,
-      },
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Signup API Route Error]:', message);
-    return NextResponse.json({ error: 'An internal server error occurred during signup' }, { status: 500 });
+    return response;
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === '23505') return apiError(new ApiError(409, 'account_exists', 'An account with this email already exists. Please sign in.'));
+    return apiError(error);
   }
 }

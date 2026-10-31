@@ -1,0 +1,30 @@
+[
+  {
+    "name": "gold text / ivory",
+    "foreground": "#795522",
+    "background": "#faf8f3",
+    "ratio": 6.310332572000265,
+    "passes": true
+  },
+  {
+    "name": "white / gold button",
+    "foreground": "#ffffff",
+    "background": "#795522",
+    "ratio": 6.6975219602531535,
+    "passes": true
+  },
+  {
+    "name": "secondary / ivory",
+    "foreground": "#766e63",
+    "background": "#faf8f3",
+    "ratio": 4.732520436944328,
+    "passes": true
+  },
+  {
+    "name": "focus / white",
+    "foreground": "#795522",
+    "background": "#ffffff",
+    "ratio": 6.6975219602531535,
+    "passes": true
+  }
+]

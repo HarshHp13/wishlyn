@@ -1,199 +1,61 @@
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowDown, SlidersHorizontal, X } from "lucide-react";
-import type { Product, Category } from "../data/db";
-import ProductCard from "./ProductCard";
-import styles from "./ProductList.module.css";
+import { useTransition } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, ArrowRight, SlidersHorizontal, X } from 'lucide-react';
+import type { Product, Category } from '../data/db';
+import { catalogueUrl, type CatalogueFilters } from '../lib/catalogue-filters';
+import ProductCard from './ProductCard';
+import styles from './ProductList.module.css';
 
-interface ProductListProps {
-  initialProducts: Product[];
-  initialCategories: Category[];
-  searchTerm?: string;
-  category?: string;
-}
-
-export default function ProductList({
-  initialProducts: products,
-  initialCategories: categories,
-  searchTerm = "",
-  category,
-}: ProductListProps) {
+interface Props { products: Product[]; categories: Category[]; filters: CatalogueFilters; total: number; pageSize: number }
+export default function ProductList({ products, categories, filters, total, pageSize }: Props) {
   const router = useRouter();
-  const priceCeiling = Math.max(
-    1000,
-    Math.ceil(Math.max(0, ...products.map((p) => p.basePrice)) / 500) * 500,
-  );
-  const [activeCategory, setActiveCategory] = useState(
-    categories.some((c) => c.id === category) ? category! : "all",
-  );
-  const [selectedSort, setSelectedSort] = useState("featured");
-  const [maxPrice, setMaxPrice] = useState(priceCeiling);
-  const [visibleCount, setVisibleCount] = useState(8);
-  const displayCategories = [
-    { id: "all", name: "All jewellery", slug: "all" },
-    ...categories.filter((c) => c.id !== "all"),
-  ];
-  const filteredProducts = useMemo(
-    () =>
-      products
-        .filter(
-          (product) =>
-            (activeCategory === "all" ||
-              product.categoryId === activeCategory) &&
-            (product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              product.description
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase())) &&
-            product.basePrice <= maxPrice,
-        )
-        .sort((a, b) => {
-          if (selectedSort === "price-low") return a.basePrice - b.basePrice;
-          if (selectedSort === "price-high") return b.basePrice - a.basePrice;
-          if (selectedSort === "rating") return b.rating - a.rating;
-          return 0;
-        }),
-    [products, activeCategory, searchTerm, maxPrice, selectedSort],
-  );
-
-  function resetFilters() {
-    setActiveCategory("all");
-    setSelectedSort("featured");
-    setMaxPrice(priceCeiling);
-    setVisibleCount(8);
-  }
-
-  return (
-    <section className={styles.section} id="shop" aria-labelledby="shop-title">
-      <div className="container">
-        <div className={styles.heading}>
-          <span className="eyebrow">YOUR NEXT CAN’T-LEAVE-HOME-WITHOUT IT</span>
-          <h2 id="shop-title">
-            Meet your <em>everyday favourites.</em>
-          </h2>
-          <p>Easy to wear. Hard to take off.</p>
-        </div>
-        {searchTerm && (
-          <div className={styles.searchNotice}>
-            Results for “{searchTerm}”{" "}
-            <Link href="/#shop" aria-label="Clear search">
-              <X size={15} /> Clear search
-            </Link>
-          </div>
-        )}
-        <div className={styles.categoriesBar}>
-          <div
-            className={styles.categoryList}
-            role="group"
-            aria-label="Filter by collection"
-          >
-            {displayCategories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => {
-                  setActiveCategory(cat.id);
-                  setVisibleCount(8);
-                  const params = new URLSearchParams();
-                  if (cat.id !== "all") params.set("category", cat.id);
-                  if (searchTerm) params.set("search", searchTerm);
-                  router.replace(`/?${params.toString()}#shop`, {
-                    scroll: false,
-                  });
-                }}
-                aria-pressed={activeCategory === cat.id}
-                className={`${styles.categoryTab} ${activeCategory === cat.id ? styles.activeTab : ""}`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className={styles.toolbar}>
-          <span className={styles.resultCount} role="status">
-            {filteredProducts.length}{" "}
-            {filteredProducts.length === 1 ? "piece" : "pieces"} to make your
-            own
-          </span>
-          <div className={styles.tools}>
-            <details className={styles.priceFilter}>
-              <summary>
-                <SlidersHorizontal size={14} /> Price{" "}
-                {maxPrice < priceCeiling && (
-                  <span>· Up to ₹{maxPrice.toLocaleString("en-IN")}</span>
-                )}
-              </summary>
-              <div className={styles.filterPanel}>
-                <label htmlFor="priceRange">
-                  Up to ₹{maxPrice.toLocaleString("en-IN")}
-                </label>
-                <input
-                  type="range"
-                  id="priceRange"
-                  min="0"
-                  max={priceCeiling}
-                  step="100"
-                  value={maxPrice}
-                  onChange={(e) => {
-                    setMaxPrice(Number(e.target.value));
-                    setVisibleCount(8);
-                  }}
-                />
-                <button onClick={() => setMaxPrice(priceCeiling)}>
-                  Reset price
-                </button>
-              </div>
-            </details>
-            <label className={styles.sortGroup}>
-              Sort by
-              <select
-                value={selectedSort}
-                aria-label="Sort jewellery"
-                onChange={(e) => {
-                  setSelectedSort(e.target.value);
-                  setVisibleCount(8);
-                }}
-              >
-                <option value="featured">Featured</option>
-                <option value="price-low">Price: low to high</option>
-                <option value="price-high">Price: high to low</option>
-                <option value="rating">Highest rated</option>
-              </select>
-            </label>
-          </div>
-        </div>
-        {filteredProducts.length ? (
-          <>
-            <div className={styles.grid}>
-              {filteredProducts.slice(0, visibleCount).map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-            {visibleCount < filteredProducts.length && (
-              <div className={styles.more}>
-                <p>
-                  Showing {Math.min(visibleCount, filteredProducts.length)} of{" "}
-                  {filteredProducts.length} pieces
-                </p>
-                <button onClick={() => setVisibleCount((count) => count + 8)}>
-                  A little more to love <ArrowDown size={16} />
-                </button>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className={styles.noResults}>
-            <h3>No pieces found, just yet.</h3>
-            <p>
-              Try another collection or give your price range a little more
-              room.
-            </p>
-            <button onClick={resetFilters}>Reset filters</button>
-            {searchTerm && <Link href="/#shop">Browse all jewellery</Link>}
-          </div>
-        )}
+  const [pending, transition] = useTransition();
+  const navigate = (patch: Partial<CatalogueFilters>) => transition(() => router.push(catalogueUrl(filters, { ...patch, page: 1 }), { scroll: false }));
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  return <section className={styles.section} id="shop" aria-labelledby="shop-title" aria-busy={pending}>
+    <div className="container">
+      <div className={styles.heading}>
+        <span className="eyebrow">FIND YOUR EVERYDAY FAVOURITES</span>
+        <h2 id="shop-title">Meet your <em>everyday favourites.</em></h2>
+        <p>Explore the pieces and details that suit you.</p>
       </div>
-    </section>
-  );
+      {filters.search && <div className={styles.searchNotice}>Results for “{filters.search}” <Link href={catalogueUrl(filters, { search: '', page: 1 })} aria-label="Clear search"><X size={15} /> Clear search</Link></div>}
+      <nav className={styles.categoriesBar} aria-label="Jewellery categories"><div className={styles.categoryList}>
+        {[{ id: '', name: 'All jewellery' }, ...categories].map(category => <Link key={category.id} href={catalogueUrl(filters, { category: category.id, page: 1 })} scroll={false} aria-current={filters.category === category.id ? 'page' : undefined} className={`${styles.categoryTab} ${filters.category === category.id ? styles.activeTab : ''}`}>{category.name}</Link>)}
+      </div></nav>
+      <div className={styles.toolbar}>
+        <span className={styles.resultCount} role="status">{pending ? 'Updating results…' : `${total} ${total === 1 ? 'piece' : 'pieces'}`}</span>
+        <div className={styles.tools}>
+          <details className={styles.priceFilter}>
+            <summary><SlidersHorizontal size={14} /> Price {filters.maxPrice !== undefined && <span>· Up to ₹{filters.maxPrice.toLocaleString('en-IN')}</span>}</summary>
+            <form className={styles.filterPanel} key={filters.maxPrice ?? 'all'} onSubmit={event => { event.preventDefault(); const raw = String(new FormData(event.currentTarget).get('maxPrice') || ''); navigate({ maxPrice: raw === '' ? undefined : Number(raw) }); }}>
+              <label htmlFor="max-price">Maximum price (₹)</label>
+              <input name="maxPrice" id="max-price" type="number" min="0" max="10000000" step="1" inputMode="numeric" defaultValue={filters.maxPrice} placeholder="Any price" />
+              <button type="submit">Apply price</button>
+              <Link href={catalogueUrl(filters, { maxPrice: undefined, page: 1 })} scroll={false}>Clear price limit</Link>
+            </form>
+          </details>
+          <label className={styles.sortGroup} htmlFor="catalogue-sort">Sort by
+            <select id="catalogue-sort" value={filters.sort} onChange={event => navigate({ sort: event.target.value as CatalogueFilters['sort'] })}>
+              <option value="newest">Newest</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      {products.length ? <>
+        <div className={styles.grid}>{products.map(product => <ProductCard key={product.id} product={product} />)}</div>
+        <nav className={styles.more} aria-label="Catalogue pages">
+          <p>Showing {(filters.page - 1) * pageSize + 1}–{Math.min(filters.page * pageSize, total)} of {total} pieces</p>
+          <div className={styles.pagination}>
+            {filters.page > 1 && <Link href={catalogueUrl(filters, { page: filters.page - 1 })} rel="prev"><ArrowLeft size={16} /> Previous</Link>}
+            <span>Page {filters.page} of {pages}</span>
+            {filters.page < pages && <Link href={catalogueUrl(filters, { page: filters.page + 1 })} rel="next">Next pieces <ArrowRight size={16} /></Link>}
+          </div>
+        </nav>
+      </> : <div className={styles.noResults}><h3>No pieces match these filters.</h3><p>Try a broader search, another category or a higher maximum price.</p><Link href="/#shop">Reset search and filters</Link></div>}
+    </div>
+  </section>;
 }

@@ -1,96 +1,47 @@
+import { readFile, readdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import pg from 'pg';
-import fs from 'fs';
-import path from 'path';
+import { databaseConfig } from '../src/lib/databaseConfig.mjs';
 
-const { Client } = pg;
-
-let dbUrl = process.env.DATABASE_URL;
-
-if (!dbUrl) {
-  const envPath = path.join(process.cwd(), '.env.local');
-  if (fs.existsSync(envPath)) {
-    const envLines = fs.readFileSync(envPath, 'utf8').split('\n');
-    for (const line of envLines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('DATABASE_URL=') && !trimmed.startsWith('#')) {
-        dbUrl = trimmed.replace('DATABASE_URL=', '').trim();
-        break;
-      }
-    }
-  }
-}
-
-if (!dbUrl) {
-  console.error('❌ Error: DATABASE_URL is missing from environment and .env.local');
-  process.exit(1);
-}
-
-console.log('🚀 Connecting to Neon PostgreSQL via pg Client for migration...');
-const client = new Client({
-  connectionString: dbUrl,
-  ssl: { rejectUnauthorized: false },
-});
-
-async function runMigration() {
+export async function migrate(connectionString, apply = false) {
+  const client = new pg.Client({ ...databaseConfig(connectionString), connectionTimeoutMillis: 5000 });
+  await client.connect();
   try {
-    await client.connect();
-    console.log('✅ Connected!');
-
-    // Start a transaction
     await client.query('BEGIN');
-    console.log('⚡ Beginning transaction...');
-
-    // 1. Add price column to product_variants if it does not exist
-    console.log('⚡ Adding price column to product_variants...');
-    await client.query(`
-      ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS price NUMERIC(10,2);
-    `);
-
-    // 2. Populate the price column by summing base_price and price_adjustment
-    console.log('⚡ Migrating prices from base_price + price_adjustment...');
-    await client.query(`
-      UPDATE product_variants pv
-      SET price = p.base_price + pv.price_adjustment
-      FROM products p
-      WHERE pv.product_id = p.id;
-    `);
-
-    // 3. Mark the price column as NOT NULL
-    console.log('⚡ Setting price column to NOT NULL...');
-    await client.query(`
-      ALTER TABLE product_variants ALTER COLUMN price SET NOT NULL;
-    `);
-
-    // 4. Drop the base_price column from products
-    console.log('⚡ Dropping base_price column from products...');
-    await client.query(`
-      ALTER TABLE products DROP COLUMN IF EXISTS base_price;
-    `);
-
-    // 5. Drop the price_adjustment column from product_variants
-    console.log('⚡ Dropping price_adjustment column from product_variants...');
-    await client.query(`
-      ALTER TABLE product_variants DROP COLUMN IF EXISTS price_adjustment;
-    `);
-
-    // Commit transaction
-    await client.query('COMMIT');
-    console.log('🎉 Migration successful!');
-    
-    await client.end();
-    process.exit(0);
-  } catch (err) {
-    console.error('❌ Migration failed, rolling back:', err);
-    try {
-      await client.query('ROLLBACK');
-    } catch (e) {
-      console.error('❌ Rollback failed:', e);
+    await client.query("SELECT pg_advisory_xact_lock(194326, 1)");
+    const exists = await client.query("SELECT to_regclass('public.schema_migrations') AS name");
+    const applied = exists.rows[0].name ? (await client.query('SELECT name, checksum FROM schema_migrations')).rows : [];
+    const folder = fileURLToPath(new URL('../db/migrations/', import.meta.url));
+    const files = (await readdir(folder)).filter(f => /^\d{3}-[a-z0-9-]+\.sql$/.test(f)).sort();
+    if (applied.some(row => !files.includes(row.name))) throw new Error('Unknown migration history.');
+    const pending = [];
+    for (const name of files) {
+      const source = await readFile(path.join(folder, name), 'utf8');
+      const checksum = createHash('sha256').update(source).digest('hex');
+      const previous = applied.find(row => row.name === name);
+      if (previous && previous.checksum !== checksum) throw new Error('Applied migration checksum changed.');
+      if (!previous) pending.push({ name, source, checksum });
     }
-    try {
-      await client.end();
-    } catch (e) {}
-    process.exit(1);
-  }
+    if (apply) {
+      await client.query('CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, checksum CHAR(64) NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())');
+      for (const migration of pending) {
+        await client.query(migration.source);
+        await client.query('INSERT INTO schema_migrations(name, checksum) VALUES ($1,$2)', [migration.name, migration.checksum]);
+      }
+      await client.query('COMMIT');
+    } else await client.query('ROLLBACK');
+    return pending.map(m => m.name);
+  } catch (error) { await client.query('ROLLBACK').catch(() => undefined); throw error; }
+  finally { await client.end(); }
+}
+async function main() {
+  try {
+    const apply = process.argv.includes('--apply');
+    const names = await migrate(process.env.DATABASE_URL, apply);
+    console.log(`${apply ? 'Applied' : 'Pending (read-only check)'} migrations: ${names.join(', ') || 'none'}`);
+  } catch { console.error('Migration failed. No transaction changes committed. Check schema preconditions, configuration and migration history; database details are intentionally not printed.'); process.exitCode = 1; }
 }
 
-runMigration();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) void main();

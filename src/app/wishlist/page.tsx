@@ -1,4 +1,5 @@
-'use client';
+import type { Metadata } from 'next';
+export const metadata: Metadata = { title: 'Your wishlist | Wishlyn', robots: { index: false, follow: false } };
 
 import React from 'react';
 import Header from '../../components/Header';

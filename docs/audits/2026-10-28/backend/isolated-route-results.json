@@ -1,0 +1,442 @@
+[
+  {
+    "route": "src/app/api/create-order/route.ts",
+    "name": "client amount overrides server prices",
+    "response": {
+      "status": 200,
+      "body": {
+        "key": "audit_public_fixture",
+        "order_id": "order_audit_fixture",
+        "orderId": "order_audit_fixture",
+        "amount": 100,
+        "currency": "INR",
+        "receipt": "receipt_1793168327930"
+      }
+    },
+    "gatewayAmounts": [
+      100
+    ]
+  },
+  {
+    "route": "src/app/api/create-order/route.ts",
+    "name": "unknown variant becomes shipping-only payment",
+    "response": {
+      "status": 200,
+      "body": {
+        "key": "audit_public_fixture",
+        "order_id": "order_audit_fixture",
+        "orderId": "order_audit_fixture",
+        "amount": 25000,
+        "currency": "INR",
+        "receipt": "receipt_1793168327959"
+      }
+    },
+    "gatewayAmounts": [
+      25000
+    ]
+  },
+  {
+    "route": "src/app/api/create-order/route.ts",
+    "name": "negative quantity accepted",
+    "response": {
+      "status": 200,
+      "body": {
+        "key": "audit_public_fixture",
+        "order_id": "order_audit_fixture",
+        "orderId": "order_audit_fixture",
+        "amount": 14700,
+        "currency": "INR",
+        "receipt": "receipt_1793168327980"
+      }
+    },
+    "gatewayAmounts": [
+      14700
+    ]
+  },
+  {
+    "route": "src/app/api/create-order/route.ts",
+    "name": "fractional quantity accepted",
+    "response": {
+      "status": 200,
+      "body": {
+        "key": "audit_public_fixture",
+        "order_id": "order_audit_fixture",
+        "orderId": "order_audit_fixture",
+        "amount": 40500,
+        "currency": "INR",
+        "receipt": "receipt_1793168327996"
+      }
+    },
+    "gatewayAmounts": [
+      40500
+    ]
+  },
+  {
+    "route": "src/app/api/create-order/route.ts",
+    "name": "quantity above stock accepted",
+    "response": {
+      "status": 200,
+      "body": {
+        "key": "audit_public_fixture",
+        "order_id": "order_audit_fixture",
+        "orderId": "order_audit_fixture",
+        "amount": 1019700,
+        "currency": "INR",
+        "receipt": "receipt_1793168328012"
+      }
+    },
+    "gatewayAmounts": [
+      1019700
+    ]
+  },
+  {
+    "route": "src/app/api/razorpay/order/route.ts",
+    "name": "client amount overrides server prices",
+    "response": {
+      "status": 200,
+      "body": {
+        "key": "audit_public_fixture",
+        "order_id": "order_audit_fixture",
+        "orderId": "order_audit_fixture",
+        "amount": 100,
+        "currency": "INR"
+      }
+    },
+    "gatewayAmounts": [
+      100
+    ]
+  },
+  {
+    "route": "src/app/api/razorpay/order/route.ts",
+    "name": "unknown variant becomes shipping-only payment",
+    "response": {
+      "status": 200,
+      "body": {
+        "key": "audit_public_fixture",
+        "order_id": "order_audit_fixture",
+        "orderId": "order_audit_fixture",
+        "amount": 25000,
+        "currency": "INR"
+      }
+    },
+    "gatewayAmounts": [
+      25000
+    ]
+  },
+  {
+    "route": "src/app/api/razorpay/order/route.ts",
+    "name": "negative quantity accepted",
+    "response": {
+      "status": 200,
+      "body": {
+        "key": "audit_public_fixture",
+        "order_id": "order_audit_fixture",
+        "orderId": "order_audit_fixture",
+        "amount": 14700,
+        "currency": "INR"
+      }
+    },
+    "gatewayAmounts": [
+      14700
+    ]
+  },
+  {
+    "route": "src/app/api/razorpay/order/route.ts",
+    "name": "fractional quantity accepted",
+    "response": {
+      "status": 200,
+      "body": {
+        "key": "audit_public_fixture",
+        "order_id": "order_audit_fixture",
+        "orderId": "order_audit_fixture",
+        "amount": 40500,
+        "currency": "INR"
+      }
+    },
+    "gatewayAmounts": [
+      40500
+    ]
+  },
+  {
+    "route": "src/app/api/razorpay/order/route.ts",
+    "name": "quantity above stock accepted",
+    "response": {
+      "status": 200,
+      "body": {
+        "key": "audit_public_fixture",
+        "order_id": "order_audit_fixture",
+        "orderId": "order_audit_fixture",
+        "amount": 1019700,
+        "currency": "INR"
+      }
+    },
+    "gatewayAmounts": [
+      1019700
+    ]
+  },
+  {
+    "route": "src/app/api/verify-payment/route.ts",
+    "name": "order and stock write failures still succeed",
+    "response": {
+      "status": 200,
+      "body": {
+        "success": true,
+        "message": "Payment verified successfully",
+        "verified": true,
+        "razorpay_order_id": "order_audit_fixture",
+        "razorpay_payment_id": "pay_audit_fixture"
+      }
+    },
+    "attemptedOrders": 1,
+    "decrements": [
+      {
+        "id": "fixture-v",
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "route": "src/app/api/verify-payment/route.ts",
+    "name": "missing fulfillment data still succeeds",
+    "response": {
+      "status": 200,
+      "body": {
+        "success": true,
+        "message": "Payment verified successfully",
+        "verified": true,
+        "razorpay_order_id": "order_audit_fixture",
+        "razorpay_payment_id": "pay_audit_fixture"
+      }
+    },
+    "attemptedOrders": 0
+  },
+  {
+    "route": "src/app/api/verify-payment/route.ts",
+    "name": "same gateway proof fulfills twice",
+    "responses": [
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "Payment verified successfully",
+          "verified": true,
+          "razorpay_order_id": "order_audit_fixture",
+          "razorpay_payment_id": "pay_audit_fixture"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "message": "Payment verified successfully",
+          "verified": true,
+          "razorpay_order_id": "order_audit_fixture",
+          "razorpay_payment_id": "pay_audit_fixture"
+        }
+      }
+    ],
+    "merchantOrderIds": [
+      "merchant_A",
+      "merchant_B"
+    ],
+    "decrements": [
+      {
+        "id": "fixture-v",
+        "quantity": 1
+      },
+      {
+        "id": "fixture-v",
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "route": "src/app/api/verify-payment/route.ts",
+    "name": "mixed gift wrap for same variant misprices order",
+    "response": {
+      "status": 200,
+      "body": {
+        "success": true,
+        "message": "Payment verified successfully",
+        "verified": true,
+        "razorpay_order_id": "order_audit_fixture",
+        "razorpay_payment_id": "pay_audit_fixture"
+      }
+    },
+    "actualSubtotal": 200,
+    "expectedSubtotal": 550,
+    "actualTotal": 456,
+    "expectedTotal": 817
+  },
+  {
+    "route": "src/app/api/verify-payment/route.ts",
+    "name": "negative quantity reaches stock mutation",
+    "response": {
+      "status": 200,
+      "body": {
+        "success": true,
+        "message": "Payment verified successfully",
+        "verified": true,
+        "razorpay_order_id": "order_audit_fixture",
+        "razorpay_payment_id": "pay_audit_fixture"
+      }
+    },
+    "decrements": [
+      {
+        "id": "fixture-v",
+        "quantity": -2
+      }
+    ],
+    "stockFormulaResult": 4
+  },
+  {
+    "route": "src/app/api/razorpay/verify/route.ts",
+    "name": "order and stock write failures still succeed",
+    "response": {
+      "status": 200,
+      "body": {
+        "message": "Payment verified successfully",
+        "verified": true,
+        "orderId": "merchant_fixture"
+      }
+    },
+    "attemptedOrders": 1,
+    "decrements": [
+      {
+        "id": "fixture-v",
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "route": "src/app/api/razorpay/verify/route.ts",
+    "name": "missing fulfillment data still succeeds",
+    "response": {
+      "status": 200,
+      "body": {
+        "message": "Payment verified successfully",
+        "verified": true
+      }
+    },
+    "attemptedOrders": 0
+  },
+  {
+    "route": "src/app/api/razorpay/verify/route.ts",
+    "name": "same gateway proof fulfills twice",
+    "responses": [
+      {
+        "status": 200,
+        "body": {
+          "message": "Payment verified successfully",
+          "verified": true,
+          "orderId": "merchant_A"
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "message": "Payment verified successfully",
+          "verified": true,
+          "orderId": "merchant_B"
+        }
+      }
+    ],
+    "merchantOrderIds": [
+      "merchant_A",
+      "merchant_B"
+    ],
+    "decrements": [
+      {
+        "id": "fixture-v",
+        "quantity": 1
+      },
+      {
+        "id": "fixture-v",
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "route": "src/app/api/razorpay/verify/route.ts",
+    "name": "mixed gift wrap for same variant misprices order",
+    "response": {
+      "status": 200,
+      "body": {
+        "message": "Payment verified successfully",
+        "verified": true,
+        "orderId": "merchant_fixture"
+      }
+    },
+    "actualSubtotal": 200,
+    "expectedSubtotal": 550,
+    "actualTotal": 456,
+    "expectedTotal": 817
+  },
+  {
+    "route": "src/app/api/razorpay/verify/route.ts",
+    "name": "negative quantity reaches stock mutation",
+    "response": {
+      "status": 200,
+      "body": {
+        "message": "Payment verified successfully",
+        "verified": true,
+        "orderId": "merchant_fixture"
+      }
+    },
+    "decrements": [
+      {
+        "id": "fixture-v",
+        "quantity": -2
+      }
+    ],
+    "stockFormulaResult": 4
+  },
+  {
+    "route": "src/app/api/newsletter/route.ts",
+    "name": "failed subscriber insert returns success",
+    "response": {
+      "status": 200,
+      "body": {
+        "success": true
+      }
+    }
+  },
+  {
+    "route": "src/app/api/admin/product/route.ts",
+    "name": "variant write failure leaves saved product and 200",
+    "response": {
+      "status": 200,
+      "body": {
+        "warning": "Product created, but variants failed. Please recreate variants.",
+        "product": {
+          "id": "fixture-new",
+          "title": "Fixture New",
+          "description": "Fixture",
+          "category_id": "rings",
+          "images": []
+        }
+      }
+    },
+    "insertedProducts": 1,
+    "forwardedProductId": "fixture-new"
+  },
+  {
+    "route": "src/app/api/admin/product/route.ts",
+    "name": "unrelated variant product_id accepted",
+    "response": {
+      "status": 200,
+      "body": {
+        "success": true,
+        "product": {
+          "id": "fixture-new",
+          "title": "Fixture New",
+          "description": "Fixture",
+          "category_id": "rings",
+          "images": []
+        }
+      }
+    },
+    "createdProductId": "fixture-new",
+    "forwardedProductId": "fixture-p"
+  }
+]

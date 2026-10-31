@@ -2,9 +2,6 @@ import { neon } from '@neondatabase/serverless';
 
 const databaseUrl = process.env.DATABASE_URL;
 
-if (!databaseUrl && typeof window === 'undefined') {
-  throw new Error('[Neon DB] Missing DATABASE_URL environment variable.');
-}
 
 // Instantiate serverless Neon SQL query function (server-side environment only)
 export const sql = (typeof window === 'undefined' && databaseUrl) ? neon(databaseUrl) : null;
@@ -208,8 +205,8 @@ export async function dbDeleteProduct(id: string): Promise<boolean> {
 export async function dbInsertOrder(order: {
   id: string;
   user_email?: string | null;
-  shipping_address: any;
-  items: any;
+  shipping_address: unknown;
+  items: unknown;
   subtotal: number;
   shipping_cost: number;
   tax: number;

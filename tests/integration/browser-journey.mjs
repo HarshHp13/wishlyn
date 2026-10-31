@@ -1,0 +1,205 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions -- Playwright CLI consumes a callable expression. */
+async page => {
+  const origin = 'http://localhost:3126', context = page.context();
+  await context.unrouteAll({ behavior: 'wait' });
+  await context.clearCookies();
+  await page.evaluate(() => localStorage.clear());
+  const check = (condition, message) => { if (!condition) throw new Error(message); };
+  const errors = [], blocked = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await context.route('**/*', route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== origin) return route.abort();
+    if (url.pathname.startsWith('/api/') && ['/api/create-order', '/api/verify-payment', '/api/cloudinary/upload'].includes(url.pathname)) {
+      blocked.push(url.pathname); return route.fulfill({ status: 503, json: { error: 'External provider operation blocked in fixture journey' } });
+    }
+    return route.continue();
+  });
+  const go = path => page.goto(`${origin}${path}`, { waitUntil: 'domcontentloaded' });
+  async function login(email, password = 'BrowserFixture9!') {
+    await go('/login?redirect=%2Fprofile');
+    await page.getByLabel('Email address', { exact: true }).fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await page.waitForURL('**/profile');
+    await page.getByRole('button', { name: 'Save profile', exact: true }).waitFor();
+  }
+  await go('/');
+  await page.getByRole('link', { name: /Synthetic browser piece/ }).first().click();
+  await page.waitForURL('**/product/browser-piece');
+  await page.getByRole('heading', { name: 'Synthetic browser piece', exact: true }).waitFor();
+  await page.getByLabel('Choose your option', { exact: true }).selectOption('browser-variant-b');
+  await page.getByRole('button', { name: 'Add to wishlist', exact: true }).click();
+  await page.getByRole('button', { name: 'Remove from wishlist', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Add to shopping bag', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Shopping Cart', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Close cart', exact: true }).click();
+  const slowTab = await context.newPage();
+  slowTab.on('pageerror', error => errors.push(error.message));
+  await slowTab.goto(`${origin}/product/browser-piece`, { waitUntil: 'domcontentloaded' });
+  await slowTab.getByRole('button', { name: 'Remove from wishlist', exact: true }).waitFor();
+  let releaseAuth, notifyAuth;
+  const authStarted = new Promise(resolve => { notifyAuth = resolve; });
+  const resumeAuth = new Promise(resolve => { releaseAuth = resolve; });
+  await slowTab.route('**/api/auth/me', async route => { notifyAuth(); await resumeAuth; return route.continue(); });
+  try {
+  await page.bringToFront();
+  await login('browser-a@example.test');
+  await authStarted;
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('wishlyn-v2-cart-account-browser-customer-a') || '{}').items?.length === 1);
+  const migratedBag = await page.evaluate(() => JSON.parse(localStorage.getItem('wishlyn-v2-cart-account-browser-customer-a')));
+  check(migratedBag.items[0].quantity === 1 && migratedBag.items[0].variantId === 'browser-variant-b', 'Guest sign-in changed exact variant or doubled quantity');
+  // Remove the verified guest test line before starting the separate gift journey.
+  await page.getByRole('button', { name: /Open shopping bag/ }).click();
+  await page.getByRole('button', { name: 'Remove Synthetic browser piece from cart', exact: true }).click();
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('wishlyn-v2-cart-account-browser-customer-a') || '{}').items?.length === 0);
+  await page.getByRole('button', { name: 'Close cart', exact: true }).click();
+  await go('/product/browser-piece');
+  await page.getByRole('button', { name: 'Remove from wishlist', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Remove from wishlist', exact: true }).click();
+  await page.getByRole('button', { name: 'Add to wishlist', exact: true }).waitFor();
+  await page.waitForFunction(() => !!document.querySelector('button[aria-label="Add to wishlist"]:not(:disabled)'));
+  releaseAuth();
+  await slowTab.getByRole('link', { name: 'Account profile (browser-a@example.test)', exact: true }).waitFor();
+  await slowTab.getByRole('button', { name: 'Add to wishlist', exact: true }).waitFor();
+  await slowTab.waitForFunction(() => !!document.querySelector('button[aria-label="Add to wishlist"]:not(:disabled)'));
+  const savedRead = await context.request.get(`${origin}/api/account/wishlist`, { headers: { 'X-Wishlyn-Account-ID': 'browser-customer-a' } });
+  check(savedRead.status() === 200 && (await savedRead.json()).items.length === 0, 'Delayed tab resurrected a removed guest saved piece');
+  } finally { releaseAuth(); await slowTab.close(); }
+  await go('/profile');
+  await page.locator('#firstName').fill('Asha');
+  await page.locator('#lastName').fill('Fixture');
+  await page.getByRole('button', { name: 'Save profile', exact: true }).click();
+  await page.getByText('Profile saved.', { exact: true }).waitFor();
+  for (const [key, value] of Object.entries({ label: 'Integration home', firstName: 'Asha', lastName: 'Fixture', phone: '9876543210', address: '123 Disposable Fixture Lane', city: 'Mumbai', zipCode: '400001' })) await page.locator(`#address-${key}`).fill(value);
+  await page.locator('#address-state').selectOption('Maharashtra');
+  await page.getByRole('button', { name: 'Save address', exact: true }).click();
+  await page.getByText('Address saved.', { exact: true }).waitFor();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: 'Save profile', exact: true }).waitFor();
+  check(await page.locator('#firstName').inputValue() === 'Asha', 'Profile did not persist');
+  await page.getByText('Integration home', { exact: true }).waitFor();
+
+  await go('/product/browser-piece');
+  await page.getByLabel('Choose your option', { exact: true }).selectOption('browser-variant-b');
+  await page.getByRole('button', { name: 'Add to wishlist', exact: true }).waitFor({ state: 'visible' });
+  await page.getByRole('button', { name: 'Add to wishlist', exact: true }).click();
+  await page.getByRole('button', { name: 'Remove from wishlist', exact: true }).waitFor();
+  await page.getByRole('checkbox', { name: 'Add gift packaging' }).check();
+  await page.getByLabel('Gift message (optional)', { exact: true }).fill('Integration gift for Asha');
+  await page.getByRole('button', { name: 'Add to shopping bag', exact: true }).click();
+  const bag = page.getByRole('dialog', { name: 'Shopping Cart', exact: true });
+  await bag.waitFor();
+  await bag.getByText('Gift message: “Integration gift for Asha”', { exact: true }).waitFor();
+  await page.waitForFunction(() => !Array.from(document.querySelectorAll('button')).find(button => button.textContent === 'Review checkout')?.disabled);
+  await bag.getByRole('button', { name: 'Review checkout', exact: true }).click();
+  await page.waitForURL('**/checkout');
+  const savedAddress = page.getByLabel('Choose an address', { exact: true });
+  await savedAddress.waitFor();
+  const selectedId = await savedAddress.locator('option').nth(1).getAttribute('value');
+  await savedAddress.selectOption(selectedId);
+  check(await page.getByLabel('Street address', { exact: true }).inputValue() === '123 Disposable Fixture Lane', 'Checkout lost owned saved address');
+  await page.getByRole('button', { name: 'Review current total', exact: true }).click();
+  await page.waitForURL('**/checkout?order=*');
+  await page.getByRole('heading', { name: 'Review your order', exact: true }).waitFor();
+  const orderId = new URL(page.url()).searchParams.get('order');
+  check(/^WISH-[A-F0-9]{32}$/.test(orderId), 'No durable order reference');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: 'Review your order', exact: true }).waitFor();
+  await go(`/orders/${orderId}`);
+  await page.getByRole('heading', { name: 'Awaiting payment', exact: true }).waitFor();
+  await page.locator('main').getByText('Integration gift for Asha', { exact: false }).waitFor();
+  await page.getByRole('link', { name: 'Request help with this order', exact: true }).click();
+  await page.getByLabel('Subject', { exact: true }).fill('Disposable integration request');
+  await page.getByLabel('Request details', { exact: true }).fill('Please confirm the saved gift instructions for this synthetic order.');
+  await page.getByRole('button', { name: 'Submit request', exact: true }).click();
+  await page.waitForURL('**/support/*');
+  const requestId = new URL(page.url()).pathname.split('/').pop();
+  await page.getByText('Please confirm the saved gift instructions', { exact: false }).waitFor();
+  await go('/wishlist');
+  await page.getByRole('heading', { name: 'Synthetic browser piece', exact: true }).waitFor();
+
+  // A second tab can change the shared cookie while this form still belongs to A.
+  // Use the real login endpoint without navigating the displayed checkout form.
+  await go('/checkout');
+  const staleAddress = page.getByLabel('Choose an address', { exact: true });
+  await staleAddress.waitFor(); await staleAddress.selectOption(selectedId);
+  const otherLogin = await context.request.post(`${origin}/api/auth/login`, { headers: { origin }, data: { email: 'browser-b@example.test', password: 'BrowserFixture9!' } });
+  check(otherLogin.status() === 200, 'Shared-cookie fixture login failed');
+  const staleQuote = page.waitForResponse(response => new URL(response.url()).pathname === '/api/checkout/quote');
+  await page.getByRole('button', { name: 'Review current total', exact: true }).click();
+  const rejectedQuote = await staleQuote;
+  check(rejectedQuote.status() === 409 && (await rejectedQuote.json()).code === 'account_changed', 'Stale A form created a quote for B');
+  check(rejectedQuote.request().headers()['x-wishlyn-account-id'] === 'browser-customer-a', 'Old form was relabelled using the shared cookie');
+  await page.getByRole('alert').filter({ hasText: 'Your account changed' }).waitFor();
+  const resetSharedSession = await context.request.post(`${origin}/api/auth/logout`, { headers: { origin } });
+  check(resetSharedSession.status() === 200, 'Could not end synthetic B session');
+  await login('browser-a@example.test');
+
+  await go('/profile');
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await page.getByRole('link', { name: 'Sign in to manage your account', exact: true }).waitFor();
+  await login('browser-admin@example.test');
+  await go(`/admin/orders/${orderId}`);
+  await page.locator('main').getByText('Integration gift for Asha', { exact: false }).waitFor();
+  await go(`/admin/support/${requestId}`);
+  await page.getByLabel('Reply to customer', { exact: true }).fill('Synthetic staff reply: gift instructions are retained with the saved order.');
+  await page.getByRole('combobox', { name: 'Request status', exact: true }).selectOption('in_progress');
+  await page.getByRole('button', { name: 'Save reply', exact: true }).click();
+  await page.getByText('Synthetic staff reply:', { exact: false }).waitFor();
+  await go('/admin');
+  await page.getByRole('button', { name: /Synthetic browser piece/ }).click();
+  await page.locator('#browser-variant-b-stock').fill('3');
+  await page.getByLabel('Stock adjustment reason', { exact: true }).fill('Disposable integration restock');
+  await page.getByRole('checkbox', { name: 'I have checked that the images' }).check();
+  const stockSave = page.waitForResponse(response => new URL(response.url()).pathname === '/api/admin/product' && response.request().method() === 'PUT');
+  await page.getByRole('button', { name: 'Save product', exact: true }).click();
+  check([200, 201].includes((await stockSave).status()), 'Merchant save failed');
+  await page.locator('li').getByText('Disposable integration restock', { exact: true }).waitFor();
+  const stockRead = await page.evaluate(async () => {
+    const response = await fetch('/api/admin/product?id=browser-piece');
+    return { status: response.status, data: await response.json() };
+  });
+  check(stockRead.status === 200, 'Merchant aggregate read failed');
+  const updated = stockRead.data.product.variants.find(variant => variant.id === 'browser-variant-b');
+  check(updated.stock === 13 && updated.reservedStock === 1, 'Replenishment overwrote reservation');
+  await page.getByRole('combobox', { name: 'Save product as', exact: true }).selectOption('archived');
+  await page.getByRole('button', { name: 'Save product', exact: true }).click();
+  await page.getByText('Product saved as archived.', { exact: true }).waitFor();
+  await go('/profile');
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await page.getByRole('link', { name: 'Sign in to manage your account', exact: true }).waitFor();
+  await login('browser-b@example.test');
+  check(await page.getByText('Integration home', { exact: true }).count() === 0, 'B saw A address');
+  await go(`/orders/${orderId}`);
+  await page.locator('main').getByRole('alert').waitFor();
+  check(await page.locator('main').getByText('Integration gift for Asha', { exact: false }).count() === 0, 'B saw A order');
+  await go(`/support/${requestId}`);
+  await page.locator('main').getByRole('alert').waitFor();
+  check(await page.getByText('Synthetic staff reply:', { exact: false }).count() === 0, 'B saw A request');
+  await go('/profile');
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await page.getByRole('link', { name: 'Sign in to manage your account', exact: true }).waitFor();
+  await login('browser-a@example.test');
+  await go(`/support/${requestId}`);
+  await page.getByText('Synthetic staff reply:', { exact: false }).waitFor();
+  await go(`/orders/${orderId}`);
+  await page.locator('main').getByText('Integration gift for Asha', { exact: false }).waitFor();
+  check(await page.getByRole('heading', { name: 'Awaiting payment', exact: true }).isVisible(), 'Archive damaged saved order');
+  const geometry = [];
+  for (const path of ['/profile', `/support/${requestId}`, '/checkout?order=' + orderId]) {
+    await go(path);
+    await page.getByRole('heading', { level: 1 }).waitFor();
+    if (path === '/profile') await page.getByRole('button', { name: 'Save profile', exact: true }).waitFor();
+    else if (path.startsWith('/support/')) await page.getByText('Synthetic staff reply:', { exact: false }).waitFor();
+    else await page.getByRole('heading', { name: 'Review your order', exact: true }).waitFor();
+    await page.setViewportSize({ width: 320, height: 1000 });
+    const layout = await page.evaluate(() => ({ width: innerWidth, scrollWidth: document.documentElement.scrollWidth }));
+    check(layout.scrollWidth <= 320, `${path} overflows`); geometry.push({ path, ...layout });
+  }
+  await page.evaluate(() => { window.scrollTo({ top: 0, behavior: 'instant' }); if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); });
+  await page.waitForFunction(() => scrollY === 0);
+  await page.screenshot({ path: '/tmp/wishlyn-completion-real-journey.png', fullPage: true });
+  check(errors.length === 0, `Runtime exceptions: ${errors.join('; ')}`);
+  return { status: 'PASS', orderId, requestId, catalogueProductNavigation: true, guestBagQuantityPreserved: true, delayedGuestTabDoesNotResurrectRemovedPiece: true, realFixtureProfileAddresses: true, exactVariantGiftQuoteReload: true, serverWishlist: true, customerStaffSupport: true, reservationSafeStockAdjustment: true, archivePreservesOrder: true, accountIsolation: true, staleCookieQuoteRejected: true, geometry, pageErrors: errors, blockedProviderCalls: blocked, provenance: 'Actual APIs/SQL/session cookies against only the named disposable database; foreign/provider traffic blocked, no payment or notification sent' };
+}

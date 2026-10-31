@@ -17,7 +17,7 @@ export function BrandPromises() {
     <div className={styles.promises} aria-label="The Wishlyn promise">
       <div className="container">
         <span>
-          <Droplets size={17} strokeWidth={1.3} /> Anti-tarnish jewellery
+          <Droplets size={17} strokeWidth={1.3} /> Explore materials and finishes
         </span>
         <span>
           <Sparkles size={17} strokeWidth={1.3} /> Made for everyday wear
@@ -26,7 +26,7 @@ export function BrandPromises() {
           <Gift size={17} strokeWidth={1.3} /> A little gift, a lot of love
         </span>
         <span>
-          <Truck size={19} strokeWidth={1.3} /> Free shipping over ₹3,000
+          <Truck size={19} strokeWidth={1.3} /> Free shipping from ₹3,000
         </span>
       </div>
     </div>

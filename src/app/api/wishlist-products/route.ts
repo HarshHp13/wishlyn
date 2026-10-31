@@ -1,28 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getProductsByIds } from '@/data/db';
+import { ApiError, apiError, assertSameOrigin, readJson, requireObject } from '@/lib/api';
+import { rateLimit } from '@/lib/rateLimit';
+import { validId } from '@/lib/shopping-state';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { productIds } = body;
-
-    if (!Array.isArray(productIds) || productIds.length === 0) {
-      return NextResponse.json({ products: [] });
-    }
-
-    // Cap at 50 items to prevent abuse
-    const safeIds = productIds.slice(0, 50).filter(
-      (id: unknown): id is string => typeof id === 'string' && id.length > 0
-    );
-
-    const products = await getProductsByIds(safeIds);
-
-    return NextResponse.json({ products });
-  } catch (err) {
-    console.error('[API] /api/wishlist-products error:', err);
-    return NextResponse.json(
-      { error: 'Failed to fetch wishlist products' },
-      { status: 500 }
-    );
-  }
+    assertSameOrigin(request);
+    const { productIds } = requireObject(await readJson(request, 12000));
+    if (!Array.isArray(productIds) || productIds.length > 50 || !productIds.every(validId)) throw new ApiError(400, 'invalid_products', 'Choose up to 50 valid products.');
+    await rateLimit(request, { scope: 'wishlist-products', limit: 120, windowSeconds: 60 });
+    return Response.json({ products: await getProductsByIds([...new Set(productIds)]) }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) { return apiError(error); }
 }

@@ -1,0 +1,24 @@
+{
+  "networkCalls": 0,
+  "realDatabaseWrites": 0,
+  "mockProfileWrites": 1,
+  "signup": {
+    "status": 200,
+    "role": "admin",
+    "adminCatalogStatus": 200
+  },
+  "negativeAuthorizationControls": {
+    "missingTokenStatus": 401,
+    "customerTokenStatus": 403
+  },
+  "fallbackKey": {
+    "forgedUnregisteredAdminAccepted": true
+  },
+  "session": {
+    "browserStorageTokenCleared": true,
+    "tokenStillValidAfterLogout": true,
+    "savedAddressesRemainAfterLogout": true,
+    "cookieUsesSecure": false,
+    "cookieUsesHttpOnly": false
+  }
+}

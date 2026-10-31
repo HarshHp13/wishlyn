@@ -1,7 +1,11 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { cartHasUnavailable } from '../lib/shopping-state';
+import { estimateTotals } from '../lib/cart-pricing';
+import { formatMoney, GIFT_WRAP_PAISE, FREE_SHIPPING_THRESHOLD_PAISE, MAX_ORDER_PAISE } from '../lib/commerce-rules';
 import { useRouter } from 'next/navigation';
 import { useCart } from '../context/CartContext';
 import { productImage } from '../lib/productImages';
@@ -15,8 +19,24 @@ export const CartDrawer: React.FC = () => {
     updateQuantity,
     removeFromCart,
     cartTotal,
+    cartStatus, cartNotice, refreshCart, retryCart,
   } = useCart();
   const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshed, setRefreshed] = useState(false);
+  const unavailable = cartHasUnavailable(cartItems);
+  async function refresh() {
+    setRefreshing(true);
+    setRefreshed(await refreshCart());
+    setRefreshing(false);
+  }
+  useEffect(() => {
+    if (!isCartOpen || cartStatus !== 'ready') return;
+    let active = true;
+    queueMicrotask(() => { if (active) setRefreshed(false); });
+    void refreshCart().then(ok => { if (active) setRefreshed(ok); });
+    return () => { active = false; };
+  }, [isCartOpen, cartStatus, refreshCart]);
 
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -31,11 +51,13 @@ export const CartDrawer: React.FC = () => {
     return () => { document.body.style.overflow = previousOverflow; };
   }, [isCartOpen]);
 
-  const freeShippingThreshold = 3000;
+  const totals = estimateTotals(Math.round(cartTotal * 100));
+  const freeShippingThreshold = FREE_SHIPPING_THRESHOLD_PAISE / 100;
   const progressToFreeShipping = Math.min((cartTotal / freeShippingThreshold) * 100, 100);
   const remainingForFreeShipping = freeShippingThreshold - cartTotal;
 
   const handleCheckout = () => {
+    if (!refreshed || unavailable || !totals || cartStatus !== 'ready') return;
     setIsCartOpen(false);
     router.push('/checkout');
   };
@@ -73,7 +95,7 @@ export const CartDrawer: React.FC = () => {
             </p>
           ) : (
             <p className={styles.trackerText}>
-              ✨ Congratulations! You qualified for <strong>Free Shipping</strong>.
+              Your bag qualifies for <strong>Free Shipping</strong>.
             </p>
           )}
           <div className={styles.progressBarBg}>
@@ -86,7 +108,8 @@ export const CartDrawer: React.FC = () => {
 
         {/* Cart Items List */}
         <div className={styles.itemsContainer}>
-          {cartItems.length === 0 ? (
+          {cartNotice && <p className={styles.notice} role="status">{cartNotice}</p>}
+          {cartStatus === 'loading' ? <p role="status" className={styles.notice}>Loading your shopping session…</p> : cartStatus === 'error' ? <div className={styles.notice}><p role="alert">We could not load your shopping session.</p><button onClick={() => { void retryCart().catch(() => undefined); }}>Retry</button></div> : cartItems.length === 0 ? (
             <div className={styles.emptyCart}>
               <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className={styles.emptyIcon}>
                 <circle cx="9" cy="21" r="1"></circle>
@@ -101,9 +124,7 @@ export const CartDrawer: React.FC = () => {
           ) : (
             <ul className={styles.itemsList}>
               {cartItems.map((item) => {
-                const itemPrice = item.variant.price;
-                const giftWrapPrice = item.giftWrap ? 350 : 0;
-                const unitPrice = itemPrice + giftWrapPrice;
+                const unitPricePaise = Math.round(item.variant.price * 100) + (item.giftWrap ? GIFT_WRAP_PAISE : 0);
 
                 return (
                   <li key={item.id} className={styles.item}>
@@ -118,7 +139,7 @@ export const CartDrawer: React.FC = () => {
                     </div>
                     <div className={styles.itemDetails}>
                       <div className={styles.itemHeader}>
-                        <h3>{item.product.title}</h3>
+                        <h3><Link href={`/product/${item.product.id}`} onClick={() => setIsCartOpen(false)}>{item.product.title}</Link></h3>
                         <button
                           onClick={() => removeFromCart(item.id)}
                           className={styles.removeBtn}
@@ -131,24 +152,28 @@ export const CartDrawer: React.FC = () => {
                         </button>
                       </div>
                       <p className={styles.itemMeta}>
-                        Metal: {item.variant.metalType} ({item.variant.purity})
+                        Material: {item.variant.metalType}{item.variant.purity && !/^100%?$/.test(item.variant.purity.trim()) ? ` · ${item.variant.purity}` : ''}
                       </p>
                       {item.variant.size && (
                         <p className={styles.itemMeta}>Size: {item.variant.size}</p>
                       )}
                       {item.giftWrap && (
                         <p className={styles.giftLabel}>
-                          🎁 Gift Wrapped (+ ₹350)
+                          Gift packaging (+ {formatMoney(GIFT_WRAP_PAISE)} per item)
                         </p>
                       )}
                       
+                      {item.giftWrap && item.giftMessage && <p className={styles.giftMessage}>Gift message: “{item.giftMessage}”</p>}
+                      {item.unavailable && <p role="status">This piece is no longer available. Remove it to continue.</p>}
+                      {!item.unavailable && item.quantity > item.variant.stock && <p role="status">Only {item.variant.stock} available. Adjust this line to continue.</p>}
                       <div className={styles.itemFooter}>
                         {/* Quantity Counter */}
                         <div className={styles.quantityCounter}>
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
                             className={styles.qtyBtn}
-                            aria-label="Decrease quantity"
+                            aria-label={`Decrease quantity of ${item.product.title}`}
+                            disabled={item.quantity <= 1 || item.unavailable}
                           >
                             -
                           </button>
@@ -156,15 +181,15 @@ export const CartDrawer: React.FC = () => {
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
                             className={styles.qtyBtn}
-                            aria-label="Increase quantity"
-                            disabled={item.quantity >= item.variant.stock}
+                            aria-label={`Increase quantity of ${item.product.title}`}
+                            disabled={item.unavailable || cartItems.filter(line => line.variantId === item.variantId).reduce((sum, line) => sum + line.quantity, 0) >= item.variant.stock}
                           >
                             +
                           </button>
                         </div>
                         {/* Item Total Price */}
                         <span className={styles.itemPrice}>
-                          ₹{(unitPrice * item.quantity).toLocaleString('en-IN')}
+                          {formatMoney(unitPricePaise * item.quantity)}
                         </span>
                       </div>
                     </div>
@@ -182,9 +207,11 @@ export const CartDrawer: React.FC = () => {
               <span>Subtotal</span>
               <span className={styles.totalPrice}>₹{cartTotal.toLocaleString('en-IN')}</span>
             </div>
-            <p className={styles.taxNote}>Shipping & taxes calculated at checkout.</p>
-            <button onClick={handleCheckout} className={styles.checkoutBtn}>
-              Proceed to Secure Checkout
+            {totals ? <><p className={styles.taxNote}>Shipping: {formatMoney(totals.shippingPaise)} in India. Estimated tax: {formatMoney(totals.taxPaise)}. Final price and stock are checked before payment.</p><p className={styles.taxNote}>Estimated total: {formatMoney(totals.totalPaise)}</p></> : <p role="alert" className={styles.notice}>Reduce your bag to a subtotal of {formatMoney(MAX_ORDER_PAISE)} or less before checkout.</p>}
+            {unavailable && <p role="alert" className={styles.notice}>Some quantities are unavailable. Adjust or remove those items before checkout.</p>}
+            {!refreshed && <button className={styles.refreshBtn} disabled={refreshing} onClick={() => { void refresh(); }}>{refreshing ? 'Refreshing…' : 'Refresh prices and availability'}</button>}
+            <button onClick={handleCheckout} disabled={!refreshed || unavailable || !totals || cartStatus !== 'ready'} className={styles.checkoutBtn}>
+              Review checkout
             </button>
           </div>
         )}

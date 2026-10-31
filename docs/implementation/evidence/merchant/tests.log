@@ -1,0 +1,28 @@
+npm notice run wishlyn@0.1.0 npx
+npm notice run 'tsx' --test tests/merchant/merchant.test.ts
+✔ validation rejects arbitrary IDs, fractional stock, invalid prices, repeated options and publication without facts (2.542616ms)
+✔ configured media is shared with optimizer rules and unrelated new media is rejected (0.865469ms)
+▶ merchant PostgreSQL invariants
+  ✔ transactional create assigns IDs and preserves sized variants plus actor/reason stock history (36.736937ms)
+  ✔ same create reference cannot duplicate products or initial stock after retry (30.748017ms)
+  ✔ a cached create retry stays one coherent revision while a normal edit waits (42.872273ms)
+  ✔ variant and stock-history write failures roll back the complete product aggregate (39.133759ms)
+  ✔ foreign or omitted variant IDs fail without changing either product (34.332563ms)
+  ✔ simultaneous stale merchant saves allow one revision and one stock adjustment (26.24396ms)
+  ✔ reserved stock cannot be removed and a failed edit preserves title/revision/history (34.403216ms)
+  ✔ a form loaded before payment never restores sold stock, and later adjustments apply to current stock (49.597147ms)
+  ✔ archive preserves product/order identity, excludes browsing and blocks new quotes (39.065036ms)
+  ✔ quote waits for a product archive transaction and sees its committed status (34.335314ms)
+  ✔ quote captures a consistent product and price when editing concurrently (29.833764ms)
+  ✔ disabled variants are excluded from offers/quotes while drafts remain editable (37.691639ms)
+  ✔ bounded merchant search/filter and low-stock visibility reflect available stock (30.353405ms)
+  ✔ routes enforce current admin authority, origin, bounded body and unambiguous errors (55.907662ms)
+✔ merchant PostgreSQL invariants (824.10035ms)
+ℹ tests 16
+ℹ suites 1
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1075.650567

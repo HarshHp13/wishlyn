@@ -1,0 +1,37 @@
+{
+  "provenance": "Local development server and actual disposable PostgreSQL; synthetic users/orders; remote requests blocked; auth verification alone delayed; controlled Storage denial in one tab; no email/payment/provider action.",
+  "addressPersisted": true,
+  "guestTransferSaved": true,
+  "staleCookieWriteBlocked": true,
+  "guestCartExactMigration": true,
+  "sharedGuestReplayBlocked": true,
+  "unclaimedGuestCancellationBlocked": true,
+  "storageDeniedSharedGuestIsolated": true,
+  "storageDeniedCartEmpty": true,
+  "retainedGuestLogoutEmpty": true,
+  "retainedGuestRestoredEmpty": true,
+  "freshGuestAfterLogoutTransferred": true,
+  "unreadOwnerCartRecovered": true,
+  "unreadOwnerCartPreservedOnAddition": true,
+  "fullStorageDeniedGuestRemovalRetained": true,
+  "guestMetadataConverged": true,
+  "freshQuantityIdentityRetained": true,
+  "freshQuantityTransferredToB": true,
+  "failedPasswordRetained": true,
+  "savedPieceVisible": true,
+  "accountIsolated": true,
+  "requestIsolated": true,
+  "recoveryUnavailable": true,
+  "staffReply": true,
+  "narrowAccount": {
+    "width": 320,
+    "scrollWidth": 320,
+    "unlabelled": 0
+  },
+  "narrowSupport": {
+    "width": 320,
+    "scrollWidth": 320
+  },
+  "errors": [],
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38"
+}

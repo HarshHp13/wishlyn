@@ -4,11 +4,11 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 
 interface ErrorProps {
-  error: Error & { digest?: string };
-  reset: () => void;
+  error: unknown;
+  retry: () => void;
 }
 
-export default function Error({ error, reset }: ErrorProps) {
+export default function Error({ error, retry }: ErrorProps) {
   useEffect(() => {
     console.error('[Root Error Boundary]:', error);
   }, [error]);
@@ -54,7 +54,7 @@ export default function Error({ error, reset }: ErrorProps) {
         gap: '16px'
       }}>
         <button
-          onClick={() => reset()}
+          onClick={() => retry()}
           style={{
             padding: '12px 24px',
             backgroundColor: 'var(--charcoal)',

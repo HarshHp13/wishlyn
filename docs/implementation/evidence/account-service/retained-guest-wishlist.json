@@ -1,0 +1,36 @@
+{
+  "status": "FIXED",
+  "withheldUnderB": {
+    "items": [],
+    "status": "ready",
+    "accountId": "b",
+    "notice": "Browser storage is unavailable. Some guest selections are retained for verification; retry when storage is available."
+  },
+  "afterLogout": {
+    "items": [],
+    "status": "ready",
+    "accountId": null,
+    "guestTransfers": [],
+    "notice": "Browser storage is unavailable. Your shopping items will last only for this visit."
+  },
+  "serverA": [],
+  "transfers": [
+    {
+      "tab": "fast",
+      "owner": "a",
+      "body": {
+        "action": "transfer",
+        "transfers": [
+          {
+            "id": "3e4361e0-4d09-4271-9e7f-f910bd34753b",
+            "productIds": [
+              "guest-product"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38",
+  "provenance": "Author-adapted copy of independent prior-head reproduction; assertions passed on the actual eighth-revision source. Synthetic VM tabs/Storage/Web Locks/API; no external service used."
+}

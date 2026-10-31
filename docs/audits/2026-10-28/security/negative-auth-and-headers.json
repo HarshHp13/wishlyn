@@ -1,0 +1,54 @@
+{
+  "testedAt": "2026-10-28T05:32:55.261Z",
+  "server": "local development only",
+  "requests": [
+    {
+      "method": "GET",
+      "route": "/api/auth/me",
+      "status": 401,
+      "body": {
+        "error": "No authorization token provided"
+      }
+    },
+    {
+      "method": "GET",
+      "route": "/api/admin/product",
+      "status": 401,
+      "body": {
+        "error": "Authentication token required"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/admin/product",
+      "status": 401,
+      "body": {
+        "error": "Authentication token required"
+      }
+    },
+    {
+      "method": "DELETE",
+      "route": "/api/admin/product?id=audit-placeholder",
+      "status": 401,
+      "body": {
+        "error": "Authentication token required"
+      }
+    },
+    {
+      "method": "POST",
+      "route": "/api/cloudinary/upload",
+      "status": 401,
+      "body": {
+        "error": "Authentication required"
+      }
+    }
+  ],
+  "homepageHeaders": {
+    "content-security-policy": null,
+    "strict-transport-security": null,
+    "x-frame-options": "DENY",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "permissions-policy": "camera=(), microphone=(), geolocation=()"
+  }
+}

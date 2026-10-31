@@ -1,0 +1,38 @@
+{
+  "sourceBase": "21c5dc355ededd94a29c510e6371a804420c6a36",
+  "scenario": "Delayed old guest tab retains cached wishlist S while only raw payload reads fail; metadata readable; other tab removes/reselects same product as fresh F before old visible removal",
+  "old": "f0c5771c-44dc-44ca-a75d-71db3c7d3c93",
+  "fresh": "d543e256-9cbf-402c-8b20-7c72df909b9d",
+  "beforeOldRemoval": [
+    "guest-product"
+  ],
+  "afterOldRemoval": [],
+  "afterRetry": [
+    "guest-product"
+  ],
+  "oldClaim": "cancelled",
+  "freshClaim": "b",
+  "afterB": [
+    "guest-product"
+  ],
+  "transfers": [
+    {
+      "tab": "slow",
+      "owner": "b",
+      "body": {
+        "action": "transfer",
+        "transfers": [
+          {
+            "id": "d543e256-9cbf-402c-8b20-7c72df909b9d",
+            "productIds": [
+              "guest-product"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "provenance": "Author-adapted copy of independent seventh-head reproduction; assertions passed on the actual eighth-revision source. Synthetic VM tabs/Storage/Web Locks/API; no external service used.",
+  "status": "FIXED",
+  "storeSourceSha256": "56daf7c1d8f02e4e8ee4a68b517d1425581a06e9adc27984300acbcc0912fb38"
+}

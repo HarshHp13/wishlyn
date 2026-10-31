@@ -1,0 +1,71 @@
+[
+  {
+    "id": "GHSA-2xp9-vwfh-vxw4",
+    "status": 200,
+    "summary": "Next.js: Unauthenticated Remote Code Execution in Image Optimization API when AVIF files are used",
+    "description": "A vulnerability in the underlying `libheif` library used by `sharp` which Next.js uses for image optimization can lead to remote code execution when AVIF files are optimized.\n\nUntil a fix has propagated, optimization of AVIF files is disabled.",
+    "vulnerabilities": [
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "next"
+        },
+        "vulnerable_version_range": ">= 10.0.0, < 15.5.24",
+        "first_patched_version": "15.5.24",
+        "vulnerable_functions": []
+      },
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "next"
+        },
+        "vulnerable_version_range": ">= 16.0.0, < 16.3.3",
+        "first_patched_version": "16.3.3",
+        "vulnerable_functions": []
+      }
+    ]
+  },
+  {
+    "id": "GHSA-2464-fhr4-w9xw",
+    "status": 200,
+    "summary": "Next.js: Unauthenticated Remote Code Execution in Image Optimization API when SVG files are used",
+    "description": "## Impact\n\nA memory-related vulnerability has been discovered in an upstream library used for Image Optimization can lead to possible remote code execution (RCE) when Next.js runs on glibc-based Linux.\n\n## Workaround\n\nEnsure the version of `sharp` used by Next.js is greater than or equal to `0.35.5`. Fresh installs automatically get a fixed version of `sharp`.\nUpgrading Next.js to the patched versions will ensure package managers automatically provide a fixed version of `sharp` to Next.js.",
+    "vulnerabilities": [
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "next"
+        },
+        "vulnerable_version_range": ">= 10.0.0, <= 15.5.27",
+        "first_patched_version": "15.5.28",
+        "vulnerable_functions": []
+      },
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "next"
+        },
+        "vulnerable_version_range": ">= 16.0.0, <= 16.4.0",
+        "first_patched_version": "16.4.1",
+        "vulnerable_functions": []
+      }
+    ]
+  },
+  {
+    "id": "GHSA-cjq9-62q9-8jv4",
+    "status": 200,
+    "summary": "Next.js has Server-Side Request Forgery in Image Optimization",
+    "description": "## Impact\n\nAn attacker-controlled, allow-listed remote URL can lead to server-side request forgery (e.g. to private IPs) during Image Optimization. \n\n## Workaround\n\nAudit allow-listed remote URLs in `images.remotePatterns` (see https://nextjs.org/docs/app/getting-started/images#remote-images) for hosts that may not be trusted with their DNS entries. If no `images.remotePatterns` are configured, your app is not affected.",
+    "vulnerabilities": [
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "next"
+        },
+        "vulnerable_version_range": ">= 16.0.0, < 16.3.8",
+        "first_patched_version": "16.3.8",
+        "vulnerable_functions": []
+      }
+    ]
+  }
+]

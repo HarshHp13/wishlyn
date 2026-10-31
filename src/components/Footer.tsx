@@ -4,9 +4,11 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { useCart } from "../context/CartContext";
 import styles from "./Footer.module.css";
 
 export default function Footer() {
+  const { setIsCartOpen } = useCart();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<
     "idle" | "submitting" | "success" | "error"
@@ -55,6 +57,7 @@ export default function Footer() {
                 <input
                   id="newsletter-email"
                   type="email"
+                  maxLength={254}
                   required
                   autoComplete="email"
                   placeholder="Your email address"
@@ -115,7 +118,8 @@ export default function Footer() {
             <h3>Your Wishlyn</h3>
             <Link href="/profile">Your account</Link>
             <Link href="/wishlist">Your wishlist</Link>
-            <Link href="/checkout">Your shopping bag</Link>
+            <button type="button" onClick={() => setIsCartOpen(true)}>Your shopping bag</button>
+            <Link href="/support">Help with your order</Link>
             <Link href="/#story">
               Our world <ArrowUpRight size={12} />
             </Link>

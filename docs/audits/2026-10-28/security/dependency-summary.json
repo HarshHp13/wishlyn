@@ -1,0 +1,438 @@
+{
+  "counts": {
+    "info": 0,
+    "low": 0,
+    "moderate": 1,
+    "high": 9,
+    "critical": 1,
+    "total": 11
+  },
+  "packages": [
+    {
+      "name": "baseline-browser-mapping",
+      "severity": "moderate",
+      "versions": [
+        {
+          "path": "node_modules/baseline-browser-mapping",
+          "version": "2.10.38",
+          "dev": false
+        }
+      ],
+      "advisories": [
+        {
+          "title": "baseline-browser-mapping process termination on invalid input causes denial of service",
+          "url": "https://github.com/advisories/GHSA-w5vr-8v7q-w6rv",
+          "severity": "moderate"
+        }
+      ],
+      "fix": true
+    },
+    {
+      "name": "brace-expansion",
+      "severity": "high",
+      "versions": [
+        {
+          "path": "node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion",
+          "version": "5.0.6",
+          "dev": true
+        },
+        {
+          "path": "node_modules/brace-expansion",
+          "version": "1.1.15",
+          "dev": true
+        }
+      ],
+      "advisories": [
+        {
+          "title": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
+          "url": "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+          "severity": "high"
+        },
+        {
+          "title": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
+          "url": "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+          "severity": "high"
+        },
+        {
+          "title": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+          "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+          "severity": "high"
+        },
+        {
+          "title": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+          "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+          "severity": "high"
+        },
+        {
+          "title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+          "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+          "severity": "high"
+        },
+        {
+          "title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+          "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+          "severity": "high"
+        },
+        {
+          "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+          "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+          "severity": "moderate"
+        },
+        {
+          "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+          "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+          "severity": "moderate"
+        },
+        {
+          "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+          "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+          "severity": "high"
+        },
+        {
+          "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+          "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+          "severity": "high"
+        },
+        {
+          "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+          "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+          "severity": "high"
+        },
+        {
+          "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+          "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+          "severity": "high"
+        }
+      ],
+      "fix": true
+    },
+    {
+      "name": "browserslist",
+      "severity": "high",
+      "versions": [
+        {
+          "path": "node_modules/browserslist",
+          "version": "4.28.2",
+          "dev": true
+        }
+      ],
+      "advisories": [
+        {
+          "title": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
+          "url": "https://github.com/advisories/GHSA-c83g-rgw3-j3cx",
+          "severity": "high"
+        },
+        {
+          "title": "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
+          "url": "https://github.com/advisories/GHSA-73wf-gq98-2v4g",
+          "severity": "high"
+        }
+      ],
+      "fix": true
+    },
+    {
+      "name": "follow-redirects",
+      "severity": "high",
+      "versions": [
+        {
+          "path": "node_modules/follow-redirects",
+          "version": "1.16.0",
+          "dev": false
+        }
+      ],
+      "advisories": [
+        {
+          "title": "follow-redirects array-form headers bypass cross-origin credential stripping",
+          "url": "https://github.com/advisories/GHSA-q3jh-wrc6-jgq8",
+          "severity": "high"
+        },
+        {
+          "title": "follow-redirects sensitiveHeaders regex escaping can expose credential headers",
+          "url": "https://github.com/advisories/GHSA-8r9p-f939-6h3c",
+          "severity": "high"
+        }
+      ],
+      "fix": true
+    },
+    {
+      "name": "js-yaml",
+      "severity": "high",
+      "versions": [
+        {
+          "path": "node_modules/js-yaml",
+          "version": "4.2.0",
+          "dev": true
+        }
+      ],
+      "advisories": [
+        {
+          "title": "js-yaml: YAML merge-key chains can force quadratic CPU consumption",
+          "url": "https://github.com/advisories/GHSA-52cp-r559-cp3m",
+          "severity": "high"
+        },
+        {
+          "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
+          "url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+          "severity": "high"
+        },
+        {
+          "title": "js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources",
+          "url": "https://github.com/advisories/GHSA-2883-xcg3-v3hh",
+          "severity": "high"
+        }
+      ],
+      "fix": true
+    },
+    {
+      "name": "nanoid",
+      "severity": "high",
+      "versions": [
+        {
+          "path": "node_modules/nanoid",
+          "version": "3.3.14",
+          "dev": false
+        }
+      ],
+      "advisories": [
+        {
+          "title": "nanoid: non-secure generators can loop indefinitely with negative size",
+          "url": "https://github.com/advisories/GHSA-28wg-ghj8-5hjv",
+          "severity": "high"
+        },
+        {
+          "title": "nanoid: custom generators can loop indefinitely when size is zero",
+          "url": "https://github.com/advisories/GHSA-2v37-7h3g-55p8",
+          "severity": "high"
+        }
+      ],
+      "fix": true
+    },
+    {
+      "name": "next",
+      "severity": "critical",
+      "versions": [
+        {
+          "path": "node_modules/next",
+          "version": "16.2.9",
+          "dev": false
+        }
+      ],
+      "advisories": [
+        {
+          "title": "Next.js: Middleware / Proxy bypass in App Router applications using Turbopack and single locale",
+          "url": "https://github.com/advisories/GHSA-6gpp-xcg3-4w24",
+          "severity": "high"
+        },
+        {
+          "title": "Next.js: Denial of Service in App Router using Server Actions",
+          "url": "https://github.com/advisories/GHSA-m99w-x7hq-7vfj",
+          "severity": "high"
+        },
+        {
+          "title": "Next.js: Server-Side Request Forgery in Server Actions on custom servers",
+          "url": "https://github.com/advisories/GHSA-89xv-2m56-2m9x",
+          "severity": "high"
+        },
+        {
+          "title": "Next.js: Cache confusion of response bodies for requests with bodies",
+          "url": "https://github.com/advisories/GHSA-68g3-v927-f742",
+          "severity": "moderate"
+        },
+        {
+          "title": "Next.js: Cache confusion of response bodies for requests with bodies containing invalid UTF-8 byte sequences",
+          "url": "https://github.com/advisories/GHSA-4633-3j49-mh5q",
+          "severity": "moderate"
+        },
+        {
+          "title": "Next.js: Unbounded Server Action payload in Edge runtime",
+          "url": "https://github.com/advisories/GHSA-4c39-4ccg-62r3",
+          "severity": "moderate"
+        },
+        {
+          "title": "Next.js: Server-Side Request Forgery in rewrites via attacker-controlled destination hostname",
+          "url": "https://github.com/advisories/GHSA-p9j2-gv94-2wf4",
+          "severity": "high"
+        },
+        {
+          "title": "Next.js: Denial of Service in the Image Optimization API using SVGs",
+          "url": "https://github.com/advisories/GHSA-q8wf-6r8g-63ch",
+          "severity": "moderate"
+        },
+        {
+          "title": "Next.js: Unauthenticated disclosure of internal Server Function endpoints",
+          "url": "https://github.com/advisories/GHSA-955p-x3mx-jcvp",
+          "severity": "moderate"
+        },
+        {
+          "title": "Next.js: Unauthenticated Remote Code Execution on windows-hosted servers",
+          "url": "https://github.com/advisories/GHSA-p293-qw3h-jr36",
+          "severity": "critical"
+        },
+        {
+          "title": "Next.js: Unauthenticated Remote Code Execution in Image Optimization API when AVIF files are used",
+          "url": "https://github.com/advisories/GHSA-2xp9-vwfh-vxw4",
+          "severity": "critical"
+        },
+        {
+          "title": "Next.js: Remote Code Execution in next/og ImageResponse",
+          "url": "https://github.com/advisories/GHSA-vcvr-r3jv-pc5j",
+          "severity": "critical"
+        },
+        {
+          "title": "Next.js has cache poisoning of SSG and ISR pages in self-hosted applications",
+          "url": "https://github.com/advisories/GHSA-4jqv-mc3x-m676",
+          "severity": "moderate"
+        },
+        {
+          "title": "Next.js has information disclosure in development server's Model Context Protocol endpoint",
+          "url": "https://github.com/advisories/GHSA-39w2-rjm5-chcv",
+          "severity": "low"
+        },
+        {
+          "title": "Next.js has information disclosure in App Router metadata image routes via dynamicParams bypass",
+          "url": "https://github.com/advisories/GHSA-f87g-xv8r-7p7x",
+          "severity": "moderate"
+        },
+        {
+          "title": "Next.js has cache poisoning in SSG/ISR rendering that leads to cross-user content substitution and persistent denial of service",
+          "url": "https://github.com/advisories/GHSA-mcj8-r9mp-w47p",
+          "severity": "moderate"
+        },
+        {
+          "title": "Next.js has Server-Side Request Forgery in Image Optimization",
+          "url": "https://github.com/advisories/GHSA-cjq9-62q9-8jv4",
+          "severity": "high"
+        },
+        {
+          "title": "Next.js: Unauthenticated Remote Code Execution in Image Optimization API when SVG files are used",
+          "url": "https://github.com/advisories/GHSA-2464-fhr4-w9xw",
+          "severity": "critical"
+        },
+        {
+          "title": "Next.js: Denial of Service in App Router using Server Actions",
+          "url": "https://github.com/advisories/GHSA-p3m5-59mp-jv5r",
+          "severity": "high"
+        },
+        {
+          "title": "Next.js: Unauthenticated Remote Code Execution in `use cache` functions returning typed arrays",
+          "url": "https://github.com/advisories/GHSA-673q-mjm6-r5xr",
+          "severity": "critical"
+        }
+      ],
+      "fix": {
+        "name": "next",
+        "version": "16.4.3",
+        "isSemVerMajor": false
+      }
+    },
+    {
+      "name": "postcss",
+      "severity": "high",
+      "versions": [
+        {
+          "path": "node_modules/next/node_modules/postcss",
+          "version": "8.4.31",
+          "dev": false
+        }
+      ],
+      "advisories": [
+        {
+          "title": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
+          "url": "https://github.com/advisories/GHSA-qx2v-qp2m-jg93",
+          "severity": "moderate"
+        },
+        {
+          "title": "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
+          "url": "https://github.com/advisories/GHSA-6g55-p6wh-862q",
+          "severity": "high"
+        },
+        {
+          "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+          "url": "https://github.com/advisories/GHSA-fxqj-rqcc-2cmp",
+          "severity": "moderate"
+        },
+        {
+          "title": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+          "url": "https://github.com/advisories/GHSA-r28c-9q8g-f849",
+          "severity": "high"
+        }
+      ],
+      "fix": {
+        "name": "next",
+        "version": "16.4.3",
+        "isSemVerMajor": false
+      }
+    },
+    {
+      "name": "sharp",
+      "severity": "high",
+      "versions": [
+        {
+          "path": "node_modules/sharp",
+          "version": "0.34.5",
+          "dev": false
+        }
+      ],
+      "advisories": [
+        {
+          "title": "sharp inherited vulnerabilities in libvips: CVE-2026-33327, CVE-2026-33328, CVE-2026-35590, CVE-2026-35591",
+          "url": "https://github.com/advisories/GHSA-f88m-g3jw-g9cj",
+          "severity": "high"
+        },
+        {
+          "title": "sharp: Vulnerabilities in libheif: GHSA-g89c-p67h-r497 and GHSA-2jg2-4ch7-h545",
+          "url": "https://github.com/advisories/GHSA-rgj7-g3m4-5g8c",
+          "severity": "high"
+        },
+        {
+          "title": "sharp : Vulnerability in librsvg dependency CVE-2026-96889",
+          "url": "https://github.com/advisories/GHSA-wq5f-xc86-pv6w",
+          "severity": "high"
+        }
+      ],
+      "fix": {
+        "name": "next",
+        "version": "16.4.3",
+        "isSemVerMajor": false
+      }
+    },
+    {
+      "name": "source-map-js",
+      "severity": "high",
+      "versions": [
+        {
+          "path": "node_modules/source-map-js",
+          "version": "1.2.1",
+          "dev": false
+        }
+      ],
+      "advisories": [
+        {
+          "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+          "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q",
+          "severity": "high"
+        }
+      ],
+      "fix": true
+    },
+    {
+      "name": "zod",
+      "severity": "high",
+      "versions": [
+        {
+          "path": "node_modules/zod",
+          "version": "4.4.3",
+          "dev": true
+        }
+      ],
+      "advisories": [
+        {
+          "title": "Zod can exhaust memory while validating oversized constrained collections",
+          "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+          "severity": "high"
+        }
+      ],
+      "fix": true
+    }
+  ]
+}

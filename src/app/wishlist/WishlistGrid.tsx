@@ -1,86 +1,38 @@
 'use client';
-
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useWishlist } from '../../context/WishlistContext';
-import { Product } from '../../data/db';
+import type { Product } from '../../data/db';
+import { validProduct } from '../../lib/shopping-state';
 import ProductCard from '../../components/ProductCard';
 import styles from './WishlistGrid.module.css';
 
-export default function WishlistGrid() {
-  const { wishlistItems, wishlistCount } = useWishlist();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
+function SavedProducts({ ids }: { ids: string[] }) {
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<{ status: 'loading' | 'ready' | 'error'; products: Product[] }>({ status: 'loading', products: [] });
   useEffect(() => {
-    if (wishlistItems.length === 0) {
-      setProducts([]);
-      setLoading(false);
-      return;
-    }
-
-    const fetchProducts = async () => {
-      setLoading(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    let active = true;
+    void (async () => {
       try {
-        const res = await fetch('/api/wishlist-products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productIds: wishlistItems }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setProducts(data.products || []);
-        }
-      } catch (err) {
-        console.error('[WishlistGrid] Failed to fetch wishlist products:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, [wishlistItems]);
-
-  return (
-    <section className={styles.section}>
-      <div className={`${styles.container} container`}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>Your Wishlist</h1>
-          <p className={styles.subtitle}>
-            {wishlistCount > 0
-              ? `${wishlistCount} item${wishlistCount !== 1 ? 's' : ''} you love`
-              : 'Items you save will appear here'}
-          </p>
-        </div>
-
-        {loading ? (
-          <div className={styles.loadingState}>
-            <div className={styles.spinner} />
-            <p>Loading your wishlist...</p>
-          </div>
-        ) : products.length > 0 ? (
-          <div className={styles.grid}>
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        ) : (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-              </svg>
-            </div>
-            <h2 className={styles.emptyTitle}>Your wishlist is empty</h2>
-            <p className={styles.emptyText}>
-              Browse our collections and tap the heart icon to save your favourite pieces.
-            </p>
-            <Link href="/" className={styles.shopBtn}>
-              Explore Collections
-            </Link>
-          </div>
-        )}
-      </div>
-    </section>
-  );
+        const response = await fetch('/api/wishlist-products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productIds: ids }), signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok || !Array.isArray(data.products) || !data.products.every(validProduct)) throw new Error('Unavailable');
+        if (active) setState({ status: 'ready', products: data.products });
+      } catch { if (active) setState({ status: 'error', products: [] }); }
+      finally { clearTimeout(timeout); }
+    })();
+    return () => { active = false; controller.abort(); clearTimeout(timeout); };
+  }, [ids, attempt]);
+  if (state.status === 'loading') return <p role="status">Loading your saved pieces…</p>;
+  if (state.status === 'error') return <div className={styles.emptyState}><p role="alert">We could not load your saved pieces. Your saved list has been kept.</p><button className={styles.shopBtn} onClick={() => { setState({ status: 'loading', products: [] }); setAttempt(value => value + 1); }}>Try again</button></div>;
+  return <>{state.products.length < ids.length && <p role="status">Some saved pieces are no longer available in the catalogue.</p>}<div className={styles.grid}>{state.products.map(product => <ProductCard key={product.id} product={product} />)}</div><Link href="/#shop">Explore more jewellery</Link></>;
+}
+export default function WishlistGrid() {
+  const { wishlistItems, wishlistCount, wishlistStatus, wishlistNotice, retryWishlist } = useWishlist();
+  return <section className={styles.section}><div className={`${styles.container} container`}><div className={styles.header}><h1 className={styles.title}>Your wishlist</h1><p className={styles.subtitle}>{wishlistCount ? `${wishlistCount} saved ${wishlistCount === 1 ? 'piece' : 'pieces'}` : 'Save the pieces you want to revisit.'}</p></div>
+    {wishlistNotice && <p role="status">{wishlistNotice}</p>}
+    {wishlistStatus === 'loading' ? <p role="status">Loading your shopping session…</p> : wishlistStatus === 'error' ? <button className={styles.shopBtn} onClick={() => { void retryWishlist().catch(() => undefined); }}>Retry your session</button> : wishlistCount ? <SavedProducts key={JSON.stringify(wishlistItems)} ids={wishlistItems} /> : <div className={styles.emptyState}><h2 className={styles.emptyTitle}>Your wishlist is empty</h2><p className={styles.emptyText}>Select a heart on a piece to save it for later.</p><Link className={styles.shopBtn} href="/#shop">Browse jewellery</Link></div>}
+  </div></section>;
 }

@@ -1,0 +1,68 @@
+{
+  "scope": "Read-only public catalogue data from locally configured database; production identity not established.",
+  "categories": [
+    {
+      "id": "bracelets",
+      "name": "Bracelets",
+      "slug": "bracelets",
+      "productCount": 2
+    },
+    {
+      "id": "earrings",
+      "name": "Earrings",
+      "slug": "earrings",
+      "productCount": 14
+    },
+    {
+      "id": "necklaces",
+      "name": "Necklaces",
+      "slug": "necklaces",
+      "productCount": 9
+    },
+    {
+      "id": "rings",
+      "name": "Rings",
+      "slug": "rings",
+      "productCount": 0
+    }
+  ],
+  "products": 25,
+  "variants": 25,
+  "priceMin": 199,
+  "priceMax": 999,
+  "stockRange": [
+    0,
+    5
+  ],
+  "outOfStockVariants": 1,
+  "withSizes": 0,
+  "metals": [
+    "Anti-Tarnish",
+    "Anti-tarnish",
+    "Anti Tarnishe",
+    "Anti-Taenish",
+    "Anti tarnish",
+    "Stainless Steel / Alloy",
+    "Anti Tarnish",
+    "Anti tarnished",
+    "Anti-Tarnished",
+    "Premium Rose-Gold Finish",
+    "anti-tarnish",
+    "Gold-tone metal",
+    "Silver-tone metal"
+  ],
+  "purities": [
+    "100",
+    "18K Gold Plated / Anti-Tarnish",
+    "Anti-Tarnish / 18K Gold Plated",
+    "100%"
+  ],
+  "images": 62,
+  "withoutCare": 3,
+  "withoutDimensions": 5,
+  "withoutStone": 4,
+  "withReviews": 0,
+  "ratingValues": [
+    5
+  ]
+}

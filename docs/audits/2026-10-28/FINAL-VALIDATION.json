@@ -1,0 +1,19 @@
+{
+  "currentFindings": 31,
+  "conditionalRisks": 4,
+  "recommendations": 4,
+  "currentPriorityCounts": {
+    "P0": 1,
+    "P1": 8,
+    "P2": 21,
+    "P3": 1
+  },
+  "mappedDomainEntries": 49,
+  "missingDomainMappings": [],
+  "duplicateDomainMappings": [],
+  "brokenInternalAnchors": [],
+  "preExistingFilesChecked": 104,
+  "preExistingFilesChanged": [],
+  "configuredSecretValuesChecked": 4,
+  "secretValueMatches": []
+}

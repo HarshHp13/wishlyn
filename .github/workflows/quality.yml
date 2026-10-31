@@ -1,0 +1,47 @@
+name: Quality
+on:
+  pull_request:
+  push:
+    branches: [codex/audit-remediation]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: wishlyn_test
+          POSTGRES_PASSWORD: fixture_only
+          POSTGRES_DB: wishlyn_test
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Create isolated suite databases
+        run: |
+          node --input-type=module <<'JS'
+          import pg from 'pg';
+          const client = new pg.Client({ host: '127.0.0.1', port: 5432, user: 'wishlyn_test', password: 'fixture_only', database: 'wishlyn_test' });
+          await client.connect();
+          try {
+            for (const name of ['wishlyn_test_commerce', 'wishlyn_ci_storefront_test', 'wishlyn_ci_account_service_test']) {
+              await client.query(`CREATE DATABASE ${name}`);
+            }
+          } finally { await client.end(); }
+          JS
+      - name: Verify all packages with mandatory PostgreSQL coverage
+        run: npm run verify
+        env:
+          TEST_DATABASE_URL: postgresql://wishlyn_test:fixture_only@127.0.0.1:5432/wishlyn_test
+          COMMERCE_TEST_DATABASE_URL: postgresql://wishlyn_test:fixture_only@127.0.0.1:5432/wishlyn_test_commerce
+          STOREFRONT_TEST_DATABASE_URL: postgresql://wishlyn_test:fixture_only@127.0.0.1:5432/wishlyn_ci_storefront_test
+          MERCHANT_TEST_DATABASE_URL: postgresql://wishlyn_test:fixture_only@127.0.0.1:5432/wishlyn_test
+          ACCOUNT_SERVICE_TEST_DATABASE_URL: postgresql://wishlyn_test:fixture_only@127.0.0.1:5432/wishlyn_ci_account_service_test
+          APP_ORIGIN: https://preview.example.invalid

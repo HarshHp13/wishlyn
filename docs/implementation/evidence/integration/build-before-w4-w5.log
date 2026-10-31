@@ -1,0 +1,58 @@
+npm notice run wishlyn@0.1.0 build
+npm notice run next build
+▲ Next.js 16.4.3 (Turbopack)
+✓ Running next.config.ts took 57ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1374ms
+  Running TypeScript ...
+  Finished TypeScript in 3.1s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/31) ...
+  Generating static pages using 11 workers (7/31)
+[API] Request could not be completed.
+  Generating static pages using 11 workers (15/31)
+  Generating static pages using 11 workers (23/31)
+✓ Generating static pages using 11 workers (31/31) in 323ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ○ /admin
+├ ○ /admin/orders
+├ ƒ /admin/orders/[id]
+├ ƒ /api/admin/orders
+├ ƒ /api/admin/orders/[id]
+├ ƒ /api/admin/product
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/me
+├ ƒ /api/auth/signup
+├ ƒ /api/cart-products
+├ ƒ /api/checkout/quote
+├ ƒ /api/cloudinary/upload
+├ ƒ /api/create-order
+├ ƒ /api/internal/commerce-reconcile
+├ ƒ /api/newsletter
+├ ƒ /api/orders
+├ ƒ /api/orders/[id]
+├ ƒ /api/razorpay/order
+├ ƒ /api/razorpay/verify
+├ ƒ /api/razorpay/webhook
+├ ƒ /api/verify-payment
+├ ƒ /api/wishlist-products
+├ ○ /checkout
+├ ○ /login
+├ ○ /orders
+├ ƒ /orders/[id]
+├ ƒ /product/[id]
+├ ○ /profile
+├ ○ /robots.txt
+├ ƒ /sitemap.xml
+├ ƒ /sitemaps/[id]
+└ ○ /wishlist
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

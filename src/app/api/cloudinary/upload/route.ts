@@ -1,153 +1,44 @@
+import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
-import { verifyToken } from '@/lib/auth';
+import sharp from 'sharp';
+import { requireAdmin } from '@/lib/session';
+import { ApiError, apiError, assertSameOrigin, readBody } from '@/lib/api';
+import { rateLimit } from '@/lib/rateLimit';
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-
-// H-1: Authenticate admin before allowing uploads
-async function authenticateAdmin(request: Request): Promise<{ authorized: boolean; errorResponse?: NextResponse }> {
-  const authHeader = request.headers.get('Authorization');
-  const token = authHeader?.split(' ')[1];
-
-  if (!token) {
-    return {
-      authorized: false,
-      errorResponse: NextResponse.json({ error: 'Authentication required' }, { status: 401 }),
-    };
-  }
-
-  const payload = verifyToken(token);
-  if (!payload || payload.role !== 'admin') {
-    return {
-      authorized: false,
-      errorResponse: NextResponse.json({ error: 'Admin access required' }, { status: 403 }),
-    };
-  }
-
-  return { authorized: true };
-}
-
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const formats: Record<string, 'jpeg' | 'png' | 'webp'> = { 'image/jpeg': 'jpeg', 'image/png': 'png', 'image/webp': 'webp' };
 export async function POST(request: Request) {
   try {
-    // H-1: Require admin authentication for uploads
-    const { authorized, errorResponse } = await authenticateAdmin(request);
-    if (!authorized) return errorResponse;
-
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    assertSameOrigin(request);
+    const user = await requireAdmin(request);
+    await rateLimit(request, { scope: 'upload', limit: 30, windowSeconds: 900, identity: user.id });
+    const cloud = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const key = process.env.CLOUDINARY_API_KEY;
+    const secret = process.env.CLOUDINARY_API_SECRET;
+    if (!cloud || !/^[a-z0-9_-]+$/i.test(cloud) || cloud.includes('placeholder') || !key || !secret || key === secret || key.includes('placeholder') || secret.includes('placeholder')) {
+      throw new ApiError(503, 'media_configuration', 'Product image uploads are not configured. Your product has not been saved.');
     }
-
-    // H-2: Validate file type and size
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: 'File too large. Maximum size is 5MB.' }, { status: 400 });
-    }
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json(
-        { error: 'Invalid file type. Only JPEG, PNG, and WebP images are allowed.' },
-        { status: 400 }
-      );
-    }
-
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    // C-2: Read from server-only env var
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-
-    if (apiKey && apiSecret && apiKey === apiSecret) {
-      // H-8: Generic error message, no leaked values
-      return NextResponse.json(
-        { error: 'Cloudinary configuration error. Please check your API credentials in the server environment.' },
-        { status: 400 }
-      );
-    }
-
-    if (!cloudName || cloudName === 'dk6aax1vi_placeholder') {
-      return NextResponse.json({
-        url: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=600&q=80',
-        warning: 'Cloudinary Cloud Name is not configured. Falling back to placeholder image.'
-      });
-    }
-
-    const cloudinaryFormData = new FormData();
-    cloudinaryFormData.append('file', file);
-
-    // Check if we can perform a SIGNED upload (requires API Key and API Secret)
-    if (
-      apiKey &&
-      apiSecret &&
-      apiKey !== 'placeholder_api_key' &&
-      apiSecret !== 'placeholder_api_secret'
-    ) {
-      const timestamp = Math.round(new Date().getTime() / 1000);
-      
-      const signString = `timestamp=${timestamp}${apiSecret}`;
-      const signature = crypto
-        .createHash('sha1')
-        .update(signString)
-        .digest('hex');
-
-      cloudinaryFormData.append('api_key', apiKey);
-      cloudinaryFormData.append('timestamp', timestamp.toString());
-      cloudinaryFormData.append('signature', signature);
-
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        {
-          method: 'POST',
-          body: cloudinaryFormData,
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.error) {
-        // H-8: Log details server-side, return generic message to client
-        console.error('[Cloudinary Signed Upload Error]:', data.error.message);
-        return NextResponse.json(
-          { error: 'Image upload failed. Please verify your Cloudinary configuration.' },
-          { status: 400 }
-        );
-      }
-
-      return NextResponse.json({ url: data.secure_url });
-    } else {
-      // Perform an UNSIGNED upload (requires upload_preset)
-      const uploadPreset =
-        process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
-      cloudinaryFormData.append('upload_preset', uploadPreset);
-
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        {
-          method: 'POST',
-          body: cloudinaryFormData,
-        }
-      );
-
-      const data = await response.json();
-
-      if (data.error) {
-        // H-8: Log details server-side, return generic message to client
-        console.error('[Cloudinary Unsigned Upload Error]:', data.error.message);
-        return NextResponse.json(
-          { error: 'Image upload failed. Please check Cloudinary upload preset configuration.' },
-          { status: 400 }
-        );
-      }
-
-      return NextResponse.json({ url: data.secure_url });
-    }
-  } catch (error: unknown) {
-    // L-5: Use unknown instead of any
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Upload API Error]:', message);
-    // H-8: Generic error to client
-    return NextResponse.json(
-      { error: 'An unexpected server error occurred during upload.' },
-      { status: 500 }
-    );
-  }
+    if (!request.headers.get('content-type')?.startsWith('multipart/form-data;')) throw new ApiError(415, 'content_type', 'Send an image upload.');
+    const bytes = await readBody(request, MAX_FILE_SIZE + 65536);
+    const form = await new Response(bytes as BodyInit, { headers: { 'content-type': request.headers.get('content-type')! } }).formData().catch(() => { throw new ApiError(400, 'invalid_upload', 'The image upload could not be read.'); });
+    const file = form.get('file');
+    if (!(file instanceof File) || file.size === 0 || file.size > MAX_FILE_SIZE || !formats[file.type]) throw new ApiError(400, 'invalid_image', 'Choose a JPEG, PNG or WebP image of at most 5 MB.');
+    let image: Buffer;
+    try {
+      const input = sharp(await file.arrayBuffer(), { limitInputPixels: 20000000, animated: false, failOn: 'error' });
+      const metadata = await input.metadata();
+      if (metadata.format !== formats[file.type]) throw new Error('Image type mismatch.');
+      image = await input.rotate().toFormat(formats[file.type]).toBuffer();
+      if (image.length > MAX_FILE_SIZE) throw new Error('Decoded output is too large.');
+    } catch { throw new ApiError(400, 'invalid_image', 'The image could not be processed. Choose a valid image with at most 20 million pixels.'); }
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = createHash('sha1').update(`timestamp=${timestamp}${secret}`).digest('hex');
+    const body = new FormData();
+    body.set('file', new Blob([new Uint8Array(image)], { type: file.type }), `product.${formats[file.type]}`);
+    body.set('api_key', key); body.set('timestamp', String(timestamp)); body.set('signature', signature);
+    const upstream = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/image/upload`, { method: 'POST', body, signal: AbortSignal.timeout(15000) });
+    const data = await upstream.json();
+    if (!upstream.ok || typeof data.secure_url !== 'string' || !data.secure_url.startsWith(`https://res.cloudinary.com/${cloud}/image/upload/`)) throw new ApiError(502, 'media_unavailable', 'The image service could not complete the upload. Please retry.');
+    return NextResponse.json({ viewerId: user.id, url: data.secure_url }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) { return apiError(error); }
 }

@@ -1,13 +1,10 @@
 import type { NextConfig } from "next";
+import { productImageClouds } from './src/lib/productImages';
 
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'res.cloudinary.com',
-        pathname: '/dk6aax1vi/**',
-      },
+      ...productImageClouds().map(cloud => ({ protocol: 'https' as const, hostname: 'res.cloudinary.com', pathname: `/${cloud}/**` })),
       {
         // M-10: Restricted Supabase image hosting to specific project subdomain
         protocol: 'https',
