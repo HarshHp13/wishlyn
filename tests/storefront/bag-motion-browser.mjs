@@ -112,9 +112,19 @@ async page => {
   await dialog.getByText('Gift message: “A little shine for you”').waitFor();
   await page.waitForFunction(() => !Array.from(document.querySelectorAll('button')).find(button => button.textContent === 'Review checkout')?.disabled);
   check(await dialog.getByRole('link').count() > 0, 'Populated bag lost product link');
+  await page.setViewportSize({ width: 844, height: 390 });
+  const checkout = dialog.getByRole('button', { name: 'Review checkout', exact: true });
+  await checkout.scrollIntoViewIfNeeded();
+  check(await checkout.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return rect.top >= 0 && rect.bottom <= innerHeight;
+  }), 'Short landscape viewport clipped checkout');
+  check(await dialog.evaluate(element => element.querySelector('[class*="_itemsContainer"]').clientHeight >= 120), 'Short viewport collapsed the item scrolling area');
+  await close.scrollIntoViewIfNeeded();
   await close.click();
   await page.waitForFunction(() => getComputedStyle(document.querySelector('dialog[aria-label="Shopping Cart"]')).display === 'none');
 
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await open.click();
   const reduced = await dialog.evaluate(element => {
@@ -127,5 +137,5 @@ async page => {
   check(await page.evaluate(() => document.body.style.overflow) === '', 'Reduced-motion close leaked scroll lock');
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   check(faults.length === 0, `Runtime exceptions: ${faults.join('; ')}`);
-  return { status: 'PASS', results, rapidReopening: true, focusRestored: true, escapeAndBackdrop: true, populatedBagAndGift: true, checkoutRefresh: true, reducedMotion: true, pageErrors: faults };
+  return { status: 'PASS', results, rapidReopening: true, focusRestored: true, escapeAndBackdrop: true, populatedBagAndGift: true, checkoutRefresh: true, shortViewportScroll: true, reducedMotion: true, pageErrors: faults };
 }

@@ -36,6 +36,8 @@
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
+  /* Keep the footer reachable when a short viewport cannot fit every section. */
+  overflow-y: auto;
   z-index: 2001;
   transform: translateX(0);
   transition: transform 250ms var(--ease-drawer);
@@ -101,6 +103,7 @@
 /* Items List Container */
 .itemsContainer {
   flex: 1;
+  min-height: 120px;
   overflow-y: auto;
   padding: 24px;
 }

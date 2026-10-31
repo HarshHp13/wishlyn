@@ -7,7 +7,7 @@
       "firstX": 1440,
       "lastX": 1000,
       "maxDialogScroll": 0,
-      "maxFrameIntervalMs": 16.900000005960464
+      "maxFrameIntervalMs": 17
     },
     {
       "width": 390,
@@ -15,7 +15,7 @@
       "firstX": 390,
       "lastX": 0,
       "maxDialogScroll": 0,
-      "maxFrameIntervalMs": 16.900000005960464
+      "maxFrameIntervalMs": 16.80000001192093
     },
     {
       "width": 320,
@@ -23,7 +23,7 @@
       "firstX": 320,
       "lastX": 0,
       "maxDialogScroll": 0,
-      "maxFrameIntervalMs": 16.899999991059303
+      "maxFrameIntervalMs": 16.799999997019768
     }
   ],
   "rapidReopening": true,
@@ -31,6 +31,7 @@
   "escapeAndBackdrop": true,
   "populatedBagAndGift": true,
   "checkoutRefresh": true,
+  "shortViewportScroll": true,
   "reducedMotion": true,
   "pageErrors": []
 }
