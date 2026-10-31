@@ -5,11 +5,11 @@
   color: var(--deep-espresso);
 }
 .page h1 {
-  font: clamp(2rem, 5vw, 3rem) var(--font-serif);
-  margin: 20px 0 28px;
+  font: 500 clamp(2rem, 5vw, 3rem) / 1.1 var(--font-serif);
+  margin: 12px 0 20px;
 }
 .page h2 {
-  font: 1.45rem var(--font-serif);
+  font: 500 1.75rem var(--font-serif);
   margin: 0 0 18px;
 }
 .page p {
@@ -21,6 +21,9 @@
   flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
 }
 .grid {
   display: grid;
@@ -29,15 +32,17 @@
 }
 .panel {
   min-width: 0;
-  background: white;
+  background: var(--pure-white);
   border: 1px solid var(--border-color);
   padding: 28px;
   margin-bottom: 24px;
 }
+.panel h3 { margin: 18px 0 10px; }
 .form {
   display: grid;
   gap: 16px;
 }
+.form > button { justify-self: start; }
 .fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -55,9 +60,9 @@
 .form > textarea {
   width: 100%;
   min-width: 0;
-  border: 1px solid #9a938b;
-  border-radius: 2px;
-  background: white;
+  border: 1px solid var(--muted-sand);
+  border-radius: var(--radius-sm);
+  background: var(--pure-white);
   color: var(--deep-espresso);
   font: inherit;
   padding: 12px;
@@ -86,9 +91,10 @@
   font: inherit;
   font-size: 14px;
   padding: 12px 18px;
-  border: 1px solid #3b312a;
-  background: #3b312a;
-  color: white;
+  border: 1px solid var(--deep-espresso);
+  background: var(--deep-espresso);
+  color: var(--pure-white);
+  border-radius: var(--radius-sm);
   min-height: 44px;
   overflow-wrap: anywhere;
 }
@@ -97,7 +103,7 @@
   cursor: wait;
 }
 .page a {
-  color: #745a31;
+  color: var(--gold-ink);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -118,12 +124,16 @@
   padding: 0;
   display: grid;
   gap: 16px;
+  margin-bottom: 20px;
 }
 .item {
   border: 1px solid var(--border-color);
   padding: 18px;
   overflow-wrap: anywhere;
+  background: var(--warm-ivory);
 }
+.item > a { font-weight: 500; line-height: 1.6; }
+.item > p { color: var(--text-secondary); font-size: 13px; margin-top: 8px; }
 .item address {
   font-style: normal;
   line-height: 1.5;
@@ -131,7 +141,7 @@
 }
 .meta {
   font-size: 14px;
-  color: #675e54;
+  color: var(--text-secondary);
 }
 .conversation {
   list-style: none;
@@ -159,8 +169,13 @@
 }
 .intro {
   max-width: 760px;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
+.eyebrow { color: var(--gold-ink); font-size: 11px; font-weight: 500; letter-spacing: .16em; }
+.backLink { display: inline-block; margin-top: 16px; font-size: 13px; }
+.filter { max-width: 340px; margin: 0 0 24px; }
 @media (max-width: 700px) {
   .grid,
   .fields {
