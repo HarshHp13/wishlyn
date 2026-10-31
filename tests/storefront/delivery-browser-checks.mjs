@@ -45,6 +45,8 @@ async page => {
   let success = await status.innerText();
   check(success.includes('5–7 Nov 2026') || success.includes('5 – 7 Nov 2026'), `Local date range incorrect: ${success}`);
   check(success.includes('2 Nov 2026') && success.includes('next open postal day'), 'Sunday booking not explained');
+  check((await page.locator('#postal-hint').innerText()).includes('Estimate based on India Post surface parcel timings'), 'Estimate reference is not distinguished from the carrier');
+  check(success.includes('Delivery partner will be confirmed for your order'), 'Result implies a delivery partner is already selected');
   check(success.includes('Wishlyn estimate') && success.includes('national holidays') && success.includes('does not confirm'), 'Estimate limitations missing');
   check(await status.getAttribute('aria-atomic') === 'true', 'Status announcement is not atomic');
   const widths = [];
@@ -89,9 +91,9 @@ async page => {
   if (heldRoute) await heldRoute.abort().catch(() => {});
   await page.getByRole('tab', { name: 'Shipping & help' }).click();
   const shipping = await page.getByRole('tabpanel', { name: 'Shipping & help' }).innerText();
-  check(shipping.includes('Sector 27, Noida (201301)') && shipping.includes('India Post Parcel (surface)'), 'Shipping tab has inconsistent service/origin');
+  check(shipping.includes('Sector 27, Noida (201301)') && shipping.includes('estimate uses India Post surface parcel timings') && shipping.includes('delivery partner will be confirmed for your order'), 'Shipping tab must describe a reference estimate without selecting a carrier');
   check(errors.length === 0, `Runtime errors: ${errors.join('; ')}`);
   page.off('pageerror', onError);
   await context.unrouteAll({ behavior: 'wait' });
-  return { status: 'PASS', origin, fixedIndiaDate: '2026-10-31', widths, invalidPIN: true, surfaceDateRanges: true, sundayBooking: true, apiFailures: true, timeoutRecovery: true, staleRequest: true, accessibleStatus: true, shippingCopy: true, errors };
+  return { status: 'PASS', origin, fixedIndiaDate: '2026-10-31', widths, invalidPIN: true, surfaceDateRanges: true, sundayBooking: true, apiFailures: true, timeoutRecovery: true, staleRequest: true, accessibleStatus: true, shippingCopy: true, carrierUndecided: true, errors };
 }

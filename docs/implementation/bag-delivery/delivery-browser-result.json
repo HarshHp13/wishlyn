@@ -28,5 +28,6 @@
   "staleRequest": true,
   "accessibleStatus": true,
   "shippingCopy": true,
+  "carrierUndecided": true,
   "errors": []
 }

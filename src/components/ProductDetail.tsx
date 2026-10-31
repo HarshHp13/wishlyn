@@ -9,7 +9,7 @@ import type { Product, ProductVariant } from '../data/db';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { productImage } from '../lib/productImages';
-import { DELIVERY_ORIGIN, DELIVERY_SERVICE, estimateDelivery, formatDeliveryDate, formatDeliveryRange, isIndianPincode, parsePostalDestination, type DeliveryEstimate, type PostalDestination } from '../lib/delivery-estimate';
+import { DELIVERY_ORIGIN, DELIVERY_REFERENCE, estimateDelivery, formatDeliveryDate, formatDeliveryRange, isIndianPincode, parsePostalDestination, type DeliveryEstimate, type PostalDestination } from '../lib/delivery-estimate';
 import styles from './ProductDetail.module.css';
 
 interface Props { product: Product; initialVariants: ProductVariant[]; crossSellProduct?: Product }
@@ -107,7 +107,7 @@ export default function ProductDetail({ product, initialVariants: variants, cros
       <div className={styles.pincodeBox}>
         <form onSubmit={checkPincode}>
           <label htmlFor="postal-code" className={styles.pincodeLabel}>Check estimated delivery</label>
-          <p id="postal-hint" className={styles.deliveryHint}>{DELIVERY_SERVICE} from {DELIVERY_ORIGIN.name}.</p>
+          <p id="postal-hint" className={styles.deliveryHint}>Estimate based on {DELIVERY_REFERENCE} from {DELIVERY_ORIGIN.name}.</p>
           <div className={styles.pincodeForm}>
             <input id="postal-code" type="text" maxLength={6} autoComplete="postal-code" inputMode="numeric" placeholder="6-digit PIN code" value={pincode} aria-describedby="postal-hint postal-status" aria-invalid={postal.status === 'error'} onChange={event => { postalRequest.current?.abort(); postalRequest.current = null; setPincode(event.target.value.replace(/\D/g, '')); setPostal({ status: 'idle', text: '' }); }} className={styles.pincodeInput} />
             <button type="submit" disabled={postal.status === 'loading'} className={styles.pincodeBtn}>{postal.status === 'loading' ? 'Checking…' : 'Check'}</button>
@@ -116,8 +116,8 @@ export default function ProductDetail({ product, initialVariants: variants, cros
             {postal.status === 'success' ? <div className={styles.deliveryResult}>
               <p className={styles.deliveryDate}>{postal.text}</p>
               <p>{postal.destination.district}, {postal.destination.state} · {postal.destination.pincode}</p>
-              <p>Assumes you order today and we book by the end of {formatDeliveryDate(postal.estimate.bookingDate)} (India time){postal.estimate.bookingMoved ? ', the next open postal day after tomorrow' : ', tomorrow'}.</p>
-              <p className={styles.deliveryCaveat}>Wishlyn estimate, not a delivery guarantee. Sundays and national holidays are excluded; other postal holidays or delays may add time. PIN lookup does not confirm service availability.</p>
+              <p>Assumes an order today and booking by the end of {formatDeliveryDate(postal.estimate.bookingDate)} (India time){postal.estimate.bookingMoved ? ', the next open postal day after tomorrow' : ', tomorrow'}.</p>
+              <p className={styles.deliveryCaveat}>Delivery partner will be confirmed for your order. This is a Wishlyn estimate, not a guarantee. Sundays and national holidays are excluded; other holidays or delays may add time. PIN lookup does not confirm service availability.</p>
             </div> : postal.text}
           </div>
         </form>
@@ -125,7 +125,7 @@ export default function ProductDetail({ product, initialVariants: variants, cros
       <div className={styles.tabsWrapper}><div className={styles.tabsHeader} role="tablist" aria-label="Product information">{tabs.map(tab => <button key={tab} id={`product-tab-${tab}`} role="tab" aria-controls={`product-panel-${tab}`} aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} onKeyDown={event => tabKey(event, tab)} onClick={() => setActiveTab(tab)} className={`${styles.tabTitle} ${activeTab === tab ? styles.activeTab : ''}`}>{tabNames[tab]}</button>)}</div>
         {tabs.map(tab => <div key={tab} id={`product-panel-${tab}`} role="tabpanel" aria-labelledby={`product-tab-${tab}`} tabIndex={0} hidden={activeTab !== tab} className={styles.tabContent}>
           {tab === 'details' && <dl className={styles.specificationList}><div><dt>Material / option</dt><dd>{activeVariant?.metalType || 'Information not provided'}</dd></div>{activeVariant?.purity && !/^100%?$/.test(activeVariant.purity.trim()) && <div><dt>Listed material specification</dt><dd>{activeVariant.purity}</dd></div>}<div><dt>Stone details</dt><dd>{product.details.stone || 'Information not provided'}</dd></div><div><dt>Dimensions</dt><dd>{product.details.dimensions || 'Measurements have not yet been provided'}</dd></div>{activeVariant?.size && <div><dt>Selected size</dt><dd>{activeVariant.size}</dd></div>}</dl>}
-          {tab === 'shipping' && <p className={styles.tabPara}>Checkout currently supports Indian addresses. Shipping is {formatMoney(SHIPPING_PAISE)} below {formatMoney(FREE_SHIPPING_THRESHOLD_PAISE)} and included from that subtotal. We send orders from Sector 27, Noida (201301) by India Post Parcel (surface), with booking planned by the end of the following day, or the next open postal day. Check your PIN code above for an estimated arrival. Other postal holidays may delay booking or delivery. Return eligibility needs confirmation for your order. <Link href="/support">Get help with delivery or returns</Link>.</p>}
+          {tab === 'shipping' && <p className={styles.tabPara}>Checkout currently supports Indian addresses. Shipping is {formatMoney(SHIPPING_PAISE)} below {formatMoney(FREE_SHIPPING_THRESHOLD_PAISE)} and included from that subtotal. Our estimate uses India Post surface parcel timings from Sector 27, Noida (201301), assuming booking by the end of the following day, or the next open postal day. The delivery partner will be confirmed for your order. Check your PIN code above for an estimated arrival. Other postal holidays may delay booking or delivery. Return eligibility needs confirmation for your order. <Link href="/support">Get help with delivery or returns</Link>.</p>}
           {tab === 'care' && <p className={styles.tabPara}>{product.details.careInstructions?.trim() || 'Care instructions have not yet been provided for this piece. Ask us before choosing a cleaning method.'} {!product.details.careInstructions?.trim() && <Link href="/support">Ask about this piece</Link>}</p>}
         </div>)}
       </div>

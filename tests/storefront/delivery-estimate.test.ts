@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DELIVERY_ORIGIN, DELIVERY_SERVICE, estimateDelivery, formatDeliveryRange, isIndianPincode, parsePostalDestination, type PostalDestination } from '../../src/lib/delivery-estimate';
+import { DELIVERY_ORIGIN, DELIVERY_REFERENCE, estimateDelivery, formatDeliveryRange, isIndianPincode, parsePostalDestination, type PostalDestination } from '../../src/lib/delivery-estimate';
 
 const destination = (pincode = '201301', state = 'Uttar Pradesh', branchOfficePossible = false): PostalDestination => ({ pincode, state, district: 'Test district', branchOfficePossible });
 const office = (extra: Record<string, unknown> = {}) => ({ Pincode: '201301', District: 'Gautam Buddha Nagar', State: 'Uttar Pradesh', Country: 'India', DeliveryStatus: 'Delivery', BranchType: 'Head Post Office', ...extra });
 const payload = (...offices: Record<string, unknown>[]) => [{ Status: 'Success', PostOffice: offices }];
 
-test('origin and estimates use surface parcel planning ranges, not Speed Post', () => {
+test('origin and estimates use surface parcel reference ranges, without selecting a delivery service', () => {
   assert.equal(DELIVERY_ORIGIN.pincode, '201301');
-  assert.equal(DELIVERY_SERVICE, 'India Post Parcel (surface)');
+  assert.equal(DELIVERY_REFERENCE, 'India Post surface parcel timings');
   const now = new Date('2026-10-26T08:00:00Z');
   assert.deepEqual(estimateDelivery(destination(), now), { bookingDate: '2026-10-27', bookingMoved: false, earliestDate: '2026-10-30', latestDate: '2026-11-02', transitDays: [3, 5] });
   assert.deepEqual(estimateDelivery(destination('226001'), now).transitDays, [4, 7]);

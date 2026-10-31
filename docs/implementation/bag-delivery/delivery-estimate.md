@@ -1,10 +1,10 @@
 # Product delivery estimate
 
-The product PIN check now gives an estimated arrival for India Post Parcel (surface), starting from Sector 27, Noida, Uttar Pradesh, PIN 201301. It assumes an order placed today and booking by the end of the next day in Asia/Kolkata. It does not change checkout shipping prices or claim that a PIN lookup confirms service availability.
+The product PIN check now gives an estimated arrival using India Post surface parcel timings as a reference, starting from Sector 27, Noida, Uttar Pradesh, PIN 201301. The delivery partner and service are not yet selected and will be confirmed for the order. Date math assumes an order placed today and booking by the end of the next day in Asia/Kolkata. It does not change checkout shipping prices or claim that a PIN lookup confirms service availability.
 
 ## Planning assumptions
 
-These are Wishlyn planning ranges, not current India Post retail delivery commitments:
+These are Wishlyn planning ranges for a reference estimate, not a selected delivery service or current India Post retail delivery commitments:
 
 | Destination identified by the PIN lookup | Postal days after booking |
 | --- | --- |
@@ -26,7 +26,7 @@ Booking moves to the next postal day when tomorrow is Sunday or a national holid
 
 - `npm run typecheck` and `npm run lint` passed.
 - `npm run test:storefront`: 32 passed, 5 database-dependent tests skipped without their dedicated fixture database. Ten new deterministic tests cover service ranges, India midnight, Sunday booking, Saturdays, national holidays, month/year/leap boundaries, possible branch-office allowance and malformed/mismatched lookup data.
-- `playwright-cli -s=postal-impl run-code --filename=tests/storefront/delivery-browser-checks.mjs` passed on the local product page. Checked keyboard submission, invalid PINs without a request, local/national date ranges, Sunday booking explanation, network/malformed/not-found errors, timeout recovery, stale requests, live-region semantics and consistent shipping copy. Viewports 320, 390, 768 and 1440 pixels had no horizontal overflow. No page exceptions.
+- `playwright-cli -s=postal-impl run-code --filename=tests/storefront/delivery-browser-checks.mjs` passed on the local product page. Checked keyboard submission, invalid PINs without a request, local/national date ranges, Sunday booking explanation, network/malformed/not-found errors, timeout recovery, stale requests, live-region semantics consistent shipping copy, and explicit wording that the delivery partner remains unconfirmed. Viewports 320, 390, 768 and 1440 pixels had no horizontal overflow. No page exceptions.
 - Screenshots inspected at 390 and 1440 pixels; files are local at `/tmp/wishlyn-bag-delivery/postal-mobile.png` and `postal-desktop.png`. Postal API responses were mocked for deterministic UI validation. The local development database was read only; mutation requests were blocked.
 
 To rerun the browser checks, open a local product page in an isolated Playwright session first. The script fixes the browser date to 31 October 2026 and expects a product page with the new PIN checker.

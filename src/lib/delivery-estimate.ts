@@ -1,8 +1,8 @@
-/** Store planning estimates for India Post Parcel (surface), not carrier promises.
+/** Store planning estimates using India Post surface parcels as a reference, not a selected carrier.
  * Rationale and sources: docs/implementation/bag-delivery/delivery-estimate.md.
  */
 export const DELIVERY_ORIGIN = { name: 'Sector 27, Noida', pincode: '201301', state: 'Uttar Pradesh' } as const;
-export const DELIVERY_SERVICE = 'India Post Parcel (surface)';
+export const DELIVERY_REFERENCE = 'India Post surface parcel timings';
 
 export interface PostalDestination {
   pincode: string;
