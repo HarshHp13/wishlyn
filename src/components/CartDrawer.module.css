@@ -1,12 +1,17 @@
 .wrapper {
   position: fixed;
   top: 0;
-  left: 0;
-  right: 0;
+  left: 50%;
+  right: auto;
   bottom: 0;
   display: flex;
   justify-content: flex-end;
   z-index: 2000;
+  /* Span the viewport, including the symmetric page scrollbar gutters. */
+  transform: translateX(-50%);
+  /* A dialog is scrollable by default. Focusing the translated close button
+     would scroll this container and cancel the panel's opening movement. */
+  overflow: clip;
 }
 
 .overlay {
@@ -326,7 +331,7 @@
   }
 }
 
-.wrapper { margin: 0; padding: 0; border: 0; background: transparent; width: 100%; max-width: none; height: 100dvh; max-height: none; color: var(--text-primary); transition: display 250ms allow-discrete, overlay 250ms allow-discrete; }
+.wrapper { margin: 0; padding: 0; border: 0; background: transparent; width: 100vw; max-width: none; height: 100dvh; max-height: none; color: var(--text-primary); transition: display 250ms allow-discrete, overlay 250ms allow-discrete; }
 .wrapper:not([open]) { display: none; }
 .wrapper::backdrop { background: transparent; }
 .wrapper:not([open]) .drawer { transform: translateX(100%); }

@@ -1,0 +1,36 @@
+{
+  "status": "PASS",
+  "results": [
+    {
+      "width": 1440,
+      "frameCount": 28,
+      "firstX": 1440,
+      "lastX": 1000,
+      "maxDialogScroll": 0,
+      "maxFrameIntervalMs": 16.900000005960464
+    },
+    {
+      "width": 390,
+      "frameCount": 28,
+      "firstX": 390,
+      "lastX": 0,
+      "maxDialogScroll": 0,
+      "maxFrameIntervalMs": 16.900000005960464
+    },
+    {
+      "width": 320,
+      "frameCount": 28,
+      "firstX": 320,
+      "lastX": 0,
+      "maxDialogScroll": 0,
+      "maxFrameIntervalMs": 16.899999991059303
+    }
+  ],
+  "rapidReopening": true,
+  "focusRestored": true,
+  "escapeAndBackdrop": true,
+  "populatedBagAndGift": true,
+  "checkoutRefresh": true,
+  "reducedMotion": true,
+  "pageErrors": []
+}
